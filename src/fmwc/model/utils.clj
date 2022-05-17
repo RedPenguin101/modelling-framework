@@ -21,8 +21,12 @@
     (date-to-str (.plusMonths (str-to-date date) months))))
 
 (defn end-of-month [date months]
-  (let [date (str-to-date date)]
-    (date-to-str (.plusMonths (.plusDays date (dec (.lengthOfMonth date)))
-                              months))))
+  (let [month-adj (.plusMonths (str-to-date date) months)]
+    (date-to-str (.plusDays month-adj (- (.lengthOfMonth month-adj)
+                                         (.getDayOfMonth month-adj))))))
 
-(end-of-month "2021-03-31" (* 12 25))
+(comment
+  (end-of-month "2021-03-30" (* 12 25))
+  (add-months "2021-03-31" 2)
+  (end-of-month "2021-03-31" 2)
+  (.getDayOfMonth (str-to-date "2021-03-31")))
