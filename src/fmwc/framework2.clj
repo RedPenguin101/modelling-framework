@@ -78,3 +78,9 @@
               (run model table period graph-order))
             (create-table model)
             (range 1 (inc periods)))))
+
+(defn dependency-order [model]
+  (alg/topsort (dependency-graph model)))
+
+(defn vizi-deps [model]
+  (uber/viz-graph (dependency-graph model)))
