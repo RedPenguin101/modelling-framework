@@ -146,7 +146,15 @@
     :electricity-generation-revenue electricity-generation-revenue})
 
 (def model (fw/make-model [time-rows inputs revenue-rows]))
-(fw/check-model-deps model)
+(def deps (fw/dependency-order model))
+(def output (fw/run2 model 5))
 
-(try (fw/run2 model 5)
-     (catch Exception e (ex-data e)))
+(comment
+  (fw/check-model-deps model)
+
+  (try (fw/run2 model 5)
+       (catch Exception e (ex-data e)))
+
+
+  (fw/vizi-deps model))
+
