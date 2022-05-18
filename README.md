@@ -20,3 +20,12 @@
 * Model comprised of Pages
 * Model parameters - like the time sheet in Excel
 * Inputs - base case, can be merged with scenarios 
+
+## Todo
+* trace-dependents / precedents
+* Presentation tables
+* Excel interaction
+* limit linkability to NS
+* Check validity of functions in clacs
+* Corkscrews
+* Replace self references at model creation time?
