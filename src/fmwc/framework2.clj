@@ -15,12 +15,6 @@
         (coll? fst) (recur (into found (extract-deps [] fst)) rst)
         :else (recur found rst)))
 
-(defn get-edges [row-name row]
-  (->> (:calculator row)
-       (extract-deps [])
-       (map #(if (= :self (second %)) [(first %) row-name] %))
-       (map #(vector row-name (second %) {:relationship (first %)}))))
-
 (defn get-edges-no-self-ref [row-name row]
   (->> (:calculator row)
        (extract-deps [])
