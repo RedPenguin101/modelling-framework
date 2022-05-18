@@ -22,7 +22,7 @@
 * Inputs - base case, can be merged with scenarios 
 
 ## Todo
-* trace-dependents / precedents
+* **DONE** trace-dependents / precedents
 * **DONE** Presentation tables
 * Excel interaction
 * limit linkability to NS

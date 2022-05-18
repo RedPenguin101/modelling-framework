@@ -84,3 +84,27 @@
 
 (defn vizi-deps [model]
   (uber/viz-graph (dependency-graph model)))
+
+(defn precedent-edges [full-graph node]
+  (set (let [precs (uber/successors full-graph node)]
+         (concat (map #(vector node %) precs)
+                 (mapcat #(precedent-edges full-graph %) precs)))))
+
+(defn trace-precedents [model row]
+  (->> (precedent-edges (dependency-graph model) row)
+       (uber/add-directed-edges* (uber/digraph))
+       (uber/viz-graph)))
+
+(defn dependent-edges [full-graph node]
+  (set (let [precs (uber/predecessors full-graph node)]
+         (concat (map #(vector node %) precs)
+                 (mapcat #(dependent-edges full-graph %) precs)))))
+
+(defn trace-dependents [model row]
+  (->> (dependent-edges (dependency-graph model) row)
+       (uber/add-directed-edges* (uber/digraph))
+       (uber/viz-graph)))
+
+(comment
+  (trace-precedents fmwc.model/model :revenue/compound-degradation)
+  (trace-dependents fmwc.model/model :inputs/aquisition-date))
