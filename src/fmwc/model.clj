@@ -2,7 +2,8 @@
   (:require [fmwc.framework2 :as fw]
             [fmwc.model.utils :refer [equal-to?
                                       flagged? make-flag
-                                      add-months month-of end-of-month year-of
+                                      add-months end-of-month add-days
+                                      month-of year-of
                                       date> date<=]]))
 
 ;; Inputs
