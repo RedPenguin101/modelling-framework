@@ -24,8 +24,14 @@
 ## Todo
 * **DONE** trace-dependents / precedents
 * **DONE** Presentation tables
-* Excel interaction
-* limit linkability to NS
-* Check validity of functions in clacs
-* Corkscrews
+* limit linkability to NS?
+* Check validity of functions in calcs
+* **DONE** Corkscrews
+* **DONE** Placeholders
 * Replace self references at model creation time?
+* Placeholder indication
+* Excel interaction
+* Performance optimization
+  * Change detection and update based on deps?
+  * better table lookup?
+  * Earlier 'compilation'?

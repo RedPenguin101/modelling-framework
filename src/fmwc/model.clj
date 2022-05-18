@@ -9,12 +9,12 @@
 (def standard-inputs
   ;;note that these inputs may be depended on by standard model rows
   #:inputs
-   {:first-date-of-time-rulers  {:units "date"   :starter "2020-07-01"}
-    :aquisition-date            {:units "date"   :starter "2021-03-31"}
+   {:first-date-of-time-rulers  {:units "date"    :starter "2020-07-01"}
+    :aquisition-date            {:units "date"    :starter "2021-03-31"}
     :annual-year-end-date-of-first-operating-period {:units "date" :starter "2020-07-31"}
-    :operating-years-remaining  {:units "years"  :starter 25}
-    :length-of-operating-period {:units "months" :starter 3}
-    :periods-in-year            {:units ""       :starter 4}})
+    :operating-years-remaining  {:units "years"   :starter 25}
+    :length-of-operating-period {:units "months"  :starter 3}
+    :periods-in-year            {:units "periods" :starter 4}})
 
 (def inputs
   #:inputs
