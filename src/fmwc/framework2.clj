@@ -2,7 +2,8 @@
   (:require [ubergraph.core :as uber]
             [ubergraph.alg :as alg]
             [clojure.set :as set]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk]
+            [clojure.pprint :as pp]))
 ;; Util fns
 ;;;;;;;;;;;;;;;;
 
@@ -125,7 +126,25 @@
   (let [qualifiers (set qualifiers)]
     (into {} (filter (fn [[k]] (qualifiers (keyword (namespace k)))) m))))
 
-(defn output->table [model output table-name row-names]
-  {table-name
-   (for [k row-names]
-     (into [(name k) (get-in model [k :units])] (output k)))})
+(def col-headers (into ["name" "unit" "open"] (map (partial str "period ") (range 1 500))))
+
+(defn output->vec-table [model output row-names]
+  (for [k row-names]
+    (into [(name k) (get-in model [k :units])] (output k))))
+
+(defn display-adjust-row [row]
+  (cond (= "percent" (second row))
+        (into (vec (take 3 row)) (map #(str (Math/round (float (* 100 %))) "%") (drop 3 row)))
+        (float? (nth row 3))
+        (into (vec (take 3 row)) (map #(Math/round %) (drop 3 row)))
+        :else row))
+
+(defn output->table [model output row-names]
+  (map #(zipmap col-headers %)
+       (map display-adjust-row (output->vec-table model output row-names))))
+
+(defn print-table
+  ([table] (print-table table [1 10]))
+  ([table [start end]]
+   (pp/print-table (into (vec (take 3 col-headers)) (take (inc (- end start)) (drop (+ 2 start) col-headers)))
+                   table)))

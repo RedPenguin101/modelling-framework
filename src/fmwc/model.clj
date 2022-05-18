@@ -6,6 +6,8 @@
 ;; Inputs
 ;;;;;;;;;;;;;;;;
 
+(def link identity)
+
 (def standard-inputs
   ;;note that these inputs may be depended on by standard model rows
   #:inputs
@@ -75,28 +77,31 @@
 
 (def model (fw/make-model [fmwc.model.time/time-rows standard-inputs inputs revenue-rows
                            retained-earnings dividend]))
+
 (def deps (fw/dependency-order model))
-(def output (fw/run2 model 5))
+
+(def output (time (fw/run2 model 183)))
+
+(fw/select-qualified-keys model #{:retained-earnings})
 
 (comment
   (fw/check-model-deps model)
 
-  (try (fw/run2 model 5)
-       (catch Exception e (ex-data e)))
+  (time (get-in (try (fw/run2 model 183)
+                     (catch Exception e (ex-data e)))
+                [:inputs/periods-in-year 0]))
 
-  `(fw/vizi-deps model))
+  (fw/vizi-deps model))
 
-
-(def table-header [:time/model-period-ending
-                   :time/contract-year
-                   :time/model-column-counter])
+(def table-header [:time/model-period-ending])
 
 (def revenue-calc [:revenue/compound-degradation :revenue/seasonality-adjustment
                    :revenue/electricity-generation :revenue/electricity-generation-revenue])
 
+(def retained-earnings-calc (keys retained-earnings))
+
 (comment
-  (fw/output->table model output "time" ((group-by namespace (reverse deps)) "time"))
-
-  (fw/output->table model output "header " table-header)
-
-  (fw/output->table model output "revenue" revenue-calc))
+  (fw/print-table (fw/output->table model output (into table-header revenue-calc)))
+  (fw/print-table (fw/output->table model output (into table-header revenue-calc))
+                  [50 55])
+  (fw/print-table (fw/output->table model output (into table-header retained-earnings-calc))))
