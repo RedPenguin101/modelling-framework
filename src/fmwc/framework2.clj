@@ -21,10 +21,18 @@
        (remove #(= :self (second %)))
        (map #(vector row-name (second %) {:relationship (first %)}))))
 
+(defn get-edges-no-self-or-prev-ref [row-name row]
+  (->> (:calculator row)
+       (extract-deps [])
+       (remove #(or (= :prev (first %))
+                    (= :placeholder (first %))
+                    (= :self (second %))))
+       (map #(vector row-name (second %) {:relationship (first %)}))))
+
 (defn dependency-graph [model]
   (uber/add-directed-edges*
    (uber/digraph)
-   (mapcat #(apply get-edges-no-self-ref %) model)))
+   (mapcat #(apply get-edges-no-self-or-prev-ref %) model)))
 
 (defn check-model-deps [model]
   (set/difference (set (uber/nodes (dependency-graph model)))
@@ -38,10 +46,14 @@
   (update-vals model #(vector (:starter %))))
 
 (defn replace-reference [[relative target] table period]
-  (if (= :const relative)
-    (first (table target))
-    (nth (target table)
-         (if (= relative :prev) (dec period) period))))
+  (cond
+    (= :placeholder relative) target
+    (= :const relative) (first (table target))
+    :else (nth (target table)
+               (if (= relative :prev) (dec period) period))))
+
+(comment
+  (replace-reference [:placeholder 10] {} 5))
 
 (defn replace-self-ref [nm [rel targ]]
   (if (= :self targ) [rel nm] [rel targ]))
