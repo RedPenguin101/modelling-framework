@@ -47,8 +47,9 @@
 
 (def model-period-ending
   {:units "date"
-   :calculator '(add-months [:this :time/model-period-beginning]
-                            [:const :inputs/length-of-operating-period])})
+   :calculator '(add-days (add-months [:this :time/model-period-beginning]
+                                      [:const :inputs/length-of-operating-period])
+                          -1)})
 
 (def end-of-contract-year-flag
   {:units "flag"
