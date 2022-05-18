@@ -6,17 +6,19 @@
 ;; Inputs
 ;;;;;;;;;;;;;;;;
 
-(def inputs
+(def standard-inputs
+  ;;note that these inputs may be depended on by standard model rows
   #:inputs
-   {:aquisition-date            {:units "date"   :starter "2021-03-31"}
-    :first-date-of-time-rulers  {:units "date"   :starter "2020-07-01"}
+   {:first-date-of-time-rulers  {:units "date"   :starter "2020-07-01"}
+    :aquisition-date            {:units "date"   :starter "2021-03-31"}
     :annual-year-end-date-of-first-operating-period {:units "date" :starter "2020-07-31"}
-
     :operating-years-remaining  {:units "years"  :starter 25}
     :length-of-operating-period {:units "months" :starter 3}
-    :periods-in-year            {:units ""       :starter 4}
+    :periods-in-year            {:units ""       :starter 4}})
 
-    :annual-degradation         {:units "percent" :starter 0.005}
+(def inputs
+  #:inputs
+   {:annual-degradation         {:units "percent" :starter 0.005}
     :year-1-p50-yield           {:units "KWh" :starter 250}
     :power-tariff               {:units "$/KWh" :starter 0.065}
     :yields                     {:units "percent" :starter [0.33 0.36 0.155 0.155]}
@@ -58,7 +60,7 @@
     :electricity-generation         electricity-generation
     :electricity-generation-revenue electricity-generation-revenue})
 
-(def model (fw/make-model [fmwc.model.time/time-rows inputs revenue-rows]))
+(def model (fw/make-model [fmwc.model.time/time-rows standard-inputs inputs revenue-rows]))
 (def deps (fw/dependency-order model))
 (def output (fw/run2 model 5))
 
