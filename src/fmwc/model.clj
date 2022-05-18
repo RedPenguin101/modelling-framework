@@ -164,19 +164,21 @@
 (select-qualified-keys output [:inputs])
 
 ((group-by namespace deps) "time")
-(defn output->table [output keys]
-  (for [k keys]
-    (into [k] (output k))))
 
-(output->table output ((group-by namespace (reverse deps)) "time"))
+(defn output->table [model output table-name row-names]
+  {table-name
+   (for [k row-names]
+     (into [(name k) (get-in model [k :units])] (output k)))})
+
+(output->table model output "time" ((group-by namespace (reverse deps)) "time"))
 
 (def table-header [:time/model-period-ending
                    :time/contract-year
                    :time/model-column-counter])
 
-(output->table output table-header)
+(output->table model output "header " table-header)
 
 (def revenue-calc [:revenue/compound-degradation :revenue/seasonality-adjustment
                    :revenue/electricity-generation :revenue/electricity-generation-revenue])
 
-(output->table output revenue-calc)
+(output->table model output "revenue" revenue-calc)

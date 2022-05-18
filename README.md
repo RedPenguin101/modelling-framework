@@ -23,7 +23,7 @@
 
 ## Todo
 * trace-dependents / precedents
-* Presentation tables
+* **DONE** Presentation tables
 * Excel interaction
 * limit linkability to NS
 * Check validity of functions in clacs
