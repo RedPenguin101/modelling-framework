@@ -43,7 +43,8 @@
     (nth (target table)
          (if (= relative :prev) (dec period) period))))
 
-(defn replace-self-ref [nm [rel targ]] (if (= :self targ) [rel nm] [rel targ]))
+(defn replace-self-ref [nm [rel targ]]
+  (if (= :self targ) [rel nm] [rel targ]))
 
 (defn replace-refs-in-calc [calc replacements]
   (walk/postwalk
@@ -71,13 +72,9 @@
           table
           row-names))
 
-(defn runner [model graph-order]
-  (fn [table period]
-    (run model table period graph-order)))
-
 (defn run2 [model periods]
-  (let [graph-order (reverse (alg/topsort (dependency-graph model)))
-        runr (runner model graph-order)]
-    (reduce runr
+  (let [graph-order (reverse (alg/topsort (dependency-graph model)))]
+    (reduce (fn [table period]
+              (run model table period graph-order))
             (create-table model)
             (range 1 (inc periods)))))
