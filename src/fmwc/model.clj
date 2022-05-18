@@ -25,7 +25,6 @@
     :yields                     {:units "percent" :starter [0.33 0.36 0.155 0.155]}
     :availability               {:units "percent" :starter 0.97}})
 
-
 ;; TIME
 ;;;;;;;;;;;;;;;;
 
@@ -158,3 +157,26 @@
 
   (fw/vizi-deps model))
 
+(defn select-qualified-keys [m qualifiers]
+  (let [qualifiers (set qualifiers)]
+    (into {} (filter (fn [[k]] (qualifiers (keyword (namespace k)))) m))))
+
+(select-qualified-keys output [:inputs])
+
+((group-by namespace deps) "time")
+(defn output->table [output keys]
+  (for [k keys]
+    (into [k] (output k))))
+
+(output->table output ((group-by namespace (reverse deps)) "time"))
+
+(def table-header [:time/model-period-ending
+                   :time/contract-year
+                   :time/model-column-counter])
+
+(output->table output table-header)
+
+(def revenue-calc [:revenue/compound-degradation :revenue/seasonality-adjustment
+                   :revenue/electricity-generation :revenue/electricity-generation-revenue])
+
+(output->table output revenue-calc)
