@@ -108,3 +108,12 @@
 (comment
   (trace-precedents fmwc.model/model :revenue/compound-degradation)
   (trace-dependents fmwc.model/model :inputs/aquisition-date))
+
+(defn select-qualified-keys [m qualifiers]
+  (let [qualifiers (set qualifiers)]
+    (into {} (filter (fn [[k]] (qualifiers (keyword (namespace k)))) m))))
+
+(defn output->table [model output table-name row-names]
+  {table-name
+   (for [k row-names]
+     (into [(name k) (get-in model [k :units])] (output k)))})
