@@ -77,20 +77,15 @@
 (def model (fw/make-model [fmwc.model.time/time-rows standard-inputs inputs revenue-rows
                            retained-earnings dividend]))
 
-(def deps (fw/dependency-order model))
-
-(def output (time (fw/run2 model 183)))
-
-(fw/select-qualified-keys model #{:retained-earnings})
+(def output (time (fw/run2 model 25)))
 
 (comment
   (fw/check-model-deps model)
 
-  (time (get-in (try (fw/run2 model 183)
-                     (catch Exception e (ex-data e)))
-                [:inputs/periods-in-year 0]))
-
-  (fw/vizi-deps model))
+  (fw/vizi-deps model)
+  (fw/vizi-deps (fw/select-qualified-keys model #{:revenue}))
+  (fw/vizi-deps (fw/select-qualified-keys model #{:retained-earnings}))
+  (fw/dependency-order model))
 
 (def table-header [:time/model-period-ending])
 
@@ -102,5 +97,5 @@
 (comment
   (fw/print-table (fw/output->table model output (into table-header revenue-calc)))
   (fw/print-table (fw/output->table model output (into table-header revenue-calc))
-                  [50 55])
+                  [20 25])
   (fw/print-table (fw/output->table model output (into table-header retained-earnings-calc))))

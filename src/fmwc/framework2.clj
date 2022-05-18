@@ -17,12 +17,6 @@
         (coll? fst) (recur (into found (extract-deps [] fst)) rst)
         :else (recur found rst)))
 
-(defn get-edges-no-self-ref [row-name row]
-  (->> (:calculator row)
-       (extract-deps [])
-       (remove #(= :self (second %)))
-       (map #(vector row-name (second %) {:relationship (first %)}))))
-
 (defn get-edges-no-self-or-prev-ref [row-name row]
   (->> (:calculator row)
        (extract-deps [])
@@ -93,6 +87,9 @@
             (create-table model)
             (range 1 (inc periods)))))
 
+;; Graph stuff
+;;;;;;;;;;;;;;;;;;;;
+
 (defn dependency-order [model]
   (alg/topsort (dependency-graph model)))
 
@@ -122,6 +119,22 @@
 (comment
   (trace-precedents fmwc.model/model :revenue/compound-degradation)
   (trace-dependents fmwc.model/model :inputs/aquisition-date))
+
+(comment
+  (def graph (dependency-graph fmwc.model/model))
+  (defn leaves [graph] (filter #(zero? (uber/in-degree graph %)) (uber/nodes graph)))
+
+  "Optimization idea: to do some diffing on models.
+   * Do initial calc to get OUTPUT
+   * adjust model
+   * Store DIFF of model from previous version
+   * get the DIFF-ROWS: those that are decendents of any of the diffs (or the diffs themselves)
+   * recalc the OUTPUT, but only if the row is in the DIFF-ROWS"
+
+  "Maybe column / record storage for table would be more efficient too")
+
+;; Table stuff
+;;;;;;;;;;;;;;;;;;;;;;
 
 (defn select-qualified-keys [m qualifiers]
   (let [qualifiers (set qualifiers)]
