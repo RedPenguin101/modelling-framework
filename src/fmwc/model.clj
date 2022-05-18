@@ -67,12 +67,12 @@
     :calculator [:placeholder 10.0]}})
 
 (def retained-earnings
-  {:retained-earnings/beg      {:starter 0.0 :calculator [:prev :retained-earnings/end]}
-   :retained-earnings/revenue  {:starter 0.0 :calculator [:this :revenue/electricity-generation-revenue]}
-   :retained-earnings/dividend {:starter 0.0 :calculator [:this :cashflow/dividend]}
-   :retained-earnings/end      {:starter 0.0 :calculator '(- (+ [:this :retained-earnings/beg]
-                                                                [:this :retained-earnings/revenue])
-                                                             [:this :retained-earnings/dividend])}})
+  {:retained-earnings/beg      {:units "$000" :starter 0.0 :calculator [:prev :retained-earnings/end]}
+   :retained-earnings/revenue  {:units "$000" :starter 0.0 :calculator [:this :revenue/electricity-generation-revenue]}
+   :retained-earnings/dividend {:units "$000" :starter 0.0 :calculator [:this :cashflow/dividend]}
+   :retained-earnings/end      {:units "$000" :starter 0.0 :calculator '(- (+ [:this :retained-earnings/beg]
+                                                                              [:this :retained-earnings/revenue])
+                                                                           [:this :retained-earnings/dividend])}})
 
 (def model (fw/make-model [fmwc.model.time/time-rows standard-inputs inputs revenue-rows
                            retained-earnings dividend]))

@@ -24,13 +24,15 @@
 ## Todo
 * **DONE** trace-dependents / precedents
 * **DONE** Presentation tables
-* limit linkability to NS?
-* Check validity of functions in calcs
 * **DONE** Corkscrews
 * **DONE** Placeholders
+* limit linkability to NS?
+* Check validity of functions in calcs
 * Replace self references at model creation time?
 * Placeholder indication
 * Excel interaction
+* Checks on model start
+* Better printing
 * Performance optimization
   * Change detection and update based on deps?
   * better table lookup?

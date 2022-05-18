@@ -43,6 +43,18 @@
                                 (date<= [:this  :time/model-period-ending]
                                         [:this :time/end-of-operating-period])))})
 
+(def financial-close-period-flag
+  {:units "flag" :starter 0
+   :calculator '(make-flag
+                 (and (date>= [:const :inputs/aquisition-date]
+                              [:this  :time/model-period-beginning])
+                      (date<= [:const :inputs/aquisition-date]
+                              [:this  :time/model-period-ending])))})
+
+(def first-operating-period-flag
+  {:units "flag" :starter 0
+   :calculator [:prev :time/financial-close-period-flag]})
+
 (def period-number
   {:units "counter"
    :starter 0
@@ -75,6 +87,8 @@
     :first-model-column-flag         first-model-column-flag
     :model-period-beginning          model-period-beginning
     :model-period-ending             model-period-ending
+    :financial-close-period-flag     financial-close-period-flag
+    :first-operating-period-flag     first-operating-period-flag
     :end-of-contract-year-flag       end-of-contract-year-flag
     :end-of-operating-period         end-of-operating-period
     :operating-period-flag           operating-period-flag

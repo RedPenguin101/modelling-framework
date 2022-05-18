@@ -4,20 +4,23 @@
             [clojure.set :as set]
             [clojure.walk :as walk]
             [clojure.pprint :as pp]))
+
+(def debug (atom nil))
+
 ;; Util fns
 ;;;;;;;;;;;;;;;;
 
-(defn add-keys-as-name [m]
+(defn- add-keys-as-name [m]
   (into {} (map (fn [[k v]] [k (assoc v :name k)]) m)))
 
-(defn extract-deps [found [fst & rst :as expr]]
+(defn- extract-deps [found [fst & rst :as expr]]
   (cond (vector? expr) (conj found expr)
         (nil? fst) found
         (vector? fst) (recur (conj found fst) rst)
         (coll? fst) (recur (into found (extract-deps [] fst)) rst)
         :else (recur found rst)))
 
-(defn get-edges-no-self-or-prev-ref [row-name row]
+(defn- get-edges-no-self-or-prev-ref [row-name row]
   (->> (:calculator row)
        (extract-deps [])
        (remove #(or (= :prev (first %))
@@ -25,7 +28,7 @@
                     (= :self (second %))))
        (map #(vector row-name (second %) {:relationship (first %)}))))
 
-(defn dependency-graph [model]
+(defn- dependency-graph [model]
   (uber/add-directed-edges*
    (uber/digraph)
    (mapcat #(apply get-edges-no-self-or-prev-ref %) model)))
@@ -38,10 +41,14 @@
 
 ;; runing the model
 
-(defn create-table [model]
+(defn- create-table [model]
   (update-vals model #(vector (:starter %))))
 
-(defn replace-reference [[relative target] table period]
+(defn- replace-reference [[relative target] table period]
+  (swap! debug merge {:period period
+                      :rel relative
+                      :target target
+                      :table table})
   (cond
     (= :placeholder relative) target
     (= :const relative) (first (table target))
@@ -51,15 +58,16 @@
 (comment
   (replace-reference [:placeholder 10] {} 5))
 
-(defn replace-self-ref [nm [rel targ]]
+(defn- replace-self-ref [nm [rel targ]]
   (if (= :self targ) [rel nm] [rel targ]))
 
-(defn replace-refs-in-calc [calc replacements]
+(defn- replace-refs-in-calc [calc replacements]
   (walk/postwalk
    #(if (vector? %) (replacements %) %)
    calc))
 
-(defn run-calc [row table period]
+(defn- run-calc [row table period]
+  (swap! debug assoc :row (:name row))
   (let [deps (extract-deps [] (:calculator row))
         deps-with-self-repl (map #(replace-self-ref (:name row) %) deps)
         replacements (zipmap deps (map #(replace-reference % table period) deps-with-self-repl))]
@@ -67,21 +75,31 @@
          (catch Exception e (throw (ex-info "Error calculating"
                                             {:name (:name row)
                                              :calc (:calculator row)
-                                             :replaced-calc (replace-refs-in-calc (:calculator row) replacements)}))))))
+                                             :replaced-calc (replace-refs-in-calc (:calculator row) replacements)
+                                             :table-state table}))))))
 
-(defn update-table [model row-name table period]
+(defn- update-table [model row-name table period]
   (update table row-name conj (run-calc (row-name model)
                                         table
                                         period)))
 
-(defn run [model table period row-names]
+(defn- run [model table period row-names]
   (reduce (fn [table row-name]
+            #_(println "running" row-name "for period" period)
             (update-table model row-name table period))
           table
           row-names))
 
+(defn run-order [model]
+  (let [top-sort (reverse (alg/topsort (dependency-graph model)))
+        not-included (set/difference (set (keys model)) (set top-sort))]
+    (concat top-sort not-included)))
+
+(comment
+  (sort (run-order fmwc.model.forest/model)))
+
 (defn run2 [model periods]
-  (let [graph-order (reverse (alg/topsort (dependency-graph model)))]
+  (let [graph-order (run-order model)]
     (reduce (fn [table period]
               (run model table period graph-order))
             (create-table model)
@@ -96,7 +114,7 @@
 (defn vizi-deps [model]
   (uber/viz-graph (dependency-graph model)))
 
-(defn precedent-edges [full-graph node]
+(defn- precedent-edges [full-graph node]
   (set (let [precs (uber/successors full-graph node)]
          (concat (map #(vector node %) precs)
                  (mapcat #(precedent-edges full-graph %) precs)))))
@@ -106,7 +124,7 @@
        (uber/add-directed-edges* (uber/digraph))
        (uber/viz-graph)))
 
-(defn dependent-edges [full-graph node]
+(defn- dependent-edges [full-graph node]
   (set (let [precs (uber/predecessors full-graph node)]
          (concat (map #(vector node %) precs)
                  (mapcat #(dependent-edges full-graph %) precs)))))
@@ -122,7 +140,7 @@
 
 (comment
   (def graph (dependency-graph fmwc.model/model))
-  (defn leaves [graph] (filter #(zero? (uber/in-degree graph %)) (uber/nodes graph)))
+  (defn- leaves [graph] (filter #(zero? (uber/in-degree graph %)) (uber/nodes graph)))
 
   "Optimization idea: to do some diffing on models.
    * Do initial calc to get OUTPUT
@@ -136,17 +154,17 @@
 ;; Table stuff
 ;;;;;;;;;;;;;;;;;;;;;;
 
-(defn select-qualified-keys [m qualifiers]
+(defn- select-qualified-keys [m qualifiers]
   (let [qualifiers (set qualifiers)]
     (into {} (filter (fn [[k]] (qualifiers (keyword (namespace k)))) m))))
 
 (def col-headers (into ["name" "unit" "open"] (map (partial str "period ") (range 1 500))))
 
-(defn output->vec-table [model output row-names]
+(defn- output->vec-table [model output row-names]
   (for [k row-names]
     (into [(name k) (get-in model [k :units])] (output k))))
 
-(defn display-adjust-row [row]
+(defn- display-adjust-row [row]
   (cond (= "percent" (second row))
         (into (vec (take 3 row)) (map #(str (Math/round (float (* 100 %))) "%") (drop 3 row)))
         (float? (nth row 3))

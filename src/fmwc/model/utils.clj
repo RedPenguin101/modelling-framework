@@ -2,7 +2,7 @@
 
 (defn make-flag [x] (if x 1 0))
 (defn equal-to? [x] (fn [val] (if (= x val) 1 0)))
-(defn flagged? [x] (not (zero? x)))
+(defn flagged? [x] (not (or (nil? x) (zero? x))))
 
 (defn str->date [date-str] (java.time.LocalDate/parse date-str))
 (defn date->str [date] (.toString date))
