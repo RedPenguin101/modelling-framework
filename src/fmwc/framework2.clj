@@ -10,8 +10,9 @@
 (defn add-keys-as-name [m]
   (into {} (map (fn [[k v]] [k (assoc v :name k)]) m)))
 
-(defn extract-deps [found [fst & rst]]
-  (cond (nil? fst) found
+(defn extract-deps [found [fst & rst :as expr]]
+  (cond (vector? expr) (conj found expr)
+        (nil? fst) found
         (vector? fst) (recur (conj found fst) rst)
         (coll? fst) (recur (into found (extract-deps [] fst)) rst)
         :else (recur found rst)))

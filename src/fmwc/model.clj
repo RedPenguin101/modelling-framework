@@ -6,8 +6,6 @@
 ;; Inputs
 ;;;;;;;;;;;;;;;;
 
-(def link identity)
-
 (def standard-inputs
   ;;note that these inputs may be depended on by standard model rows
   #:inputs
@@ -66,12 +64,12 @@
 (def dividend
   {:cashflow/dividend
    {:units "$000"
-    :calculator '(link [:placeholder 10.0])}})
+    :calculator [:placeholder 10.0]}})
 
 (def retained-earnings
-  {:retained-earnings/beg      {:starter 0.0 :calculator '(link [:prev :retained-earnings/end])}
-   :retained-earnings/revenue  {:starter 0.0 :calculator '(link [:this :revenue/electricity-generation-revenue])}
-   :retained-earnings/dividend {:starter 0.0 :calculator '(link [:this :cashflow/dividend])}
+  {:retained-earnings/beg      {:starter 0.0 :calculator [:prev :retained-earnings/end]}
+   :retained-earnings/revenue  {:starter 0.0 :calculator [:this :revenue/electricity-generation-revenue]}
+   :retained-earnings/dividend {:starter 0.0 :calculator [:this :cashflow/dividend]}
    :retained-earnings/end      {:starter 0.0 :calculator '(- (+ [:this :retained-earnings/beg]
                                                                 [:this :retained-earnings/revenue])
                                                              [:this :retained-earnings/dividend])}})
