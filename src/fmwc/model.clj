@@ -11,18 +11,18 @@
 (def standard-inputs
   ;;note that these inputs may be depended on by standard model rows
   #:inputs
-   {:first-date-of-time-rulers  {:units "date"    :starter "2020-07-01"}
-    :aquisition-date            {:units "date"    :starter "2021-03-31"}
-    :annual-year-end-date-of-first-operating-period {:units "date" :starter "2020-07-31"}
-    :operating-years-remaining  {:units "years"   :starter 25}
-    :length-of-operating-period {:units "months"  :starter 3}
-    :periods-in-year            {:units "periods" :starter 4}})
+   {:first-date-of-time-rulers                      {:units "date"    :starter "2020-07-01"}
+    :aquisition-date                                {:units "date"    :starter "2021-03-31"}
+    :annual-year-end-date-of-first-operating-period {:units "date"    :starter "2020-07-31"}
+    :operating-years-remaining                      {:units "years"   :starter 25}
+    :length-of-operating-period                     {:units "months"  :starter 3}
+    :periods-in-year                                {:units "periods" :starter 4}})
 
 (def inputs
   #:inputs
    {:annual-degradation         {:units "percent" :starter 0.005}
-    :year-1-p50-yield           {:units "KWh" :starter 250}
-    :power-tariff               {:units "$/KWh" :starter 0.065}
+    :year-1-p50-yield           {:units "KWh"     :starter 250}
+    :power-tariff               {:units "$/KWh"   :starter 0.065}
     :yields                     {:units "percent" :starter [0.33 0.36 0.155 0.155]}
     :availability               {:units "percent" :starter 0.97}})
 
@@ -49,10 +49,11 @@
 
 (def electricity-generation-revenue
   {:units "$000"
-   :calculator '(/ (* 1000000
+   :calculator '(/ (* 1000000 ;GW->KW
                       [:const :inputs/power-tariff]
                       [:this :revenue/electricity-generation]
                       [:this :time/operating-period-flag])
+                   ;$->$000
                    1000)})
 
 (def revenue-rows
