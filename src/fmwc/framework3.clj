@@ -93,7 +93,7 @@
 (defn- every-row-has-calcultor [calc]
   (if (every? :calculator (vals (:rows calc)))
     true
-    (throw (ex-info "Row is missing a calculator"
+    (throw (ex-info (str "Calc " (:name calc) "is missing a calculator")
                     {:calc calc}))))
 
 (defn calculation-validation-halting [calcs]
