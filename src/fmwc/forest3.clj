@@ -79,6 +79,18 @@
                               (date<= [:aquisition-date]
                                       [:period-end-date])))}}})
 
+(def financial-exit-period-flag
+  {:name :financial-exit-period-flag
+   :category :time
+   :import [:aquisition-date :period-start-date :period-end-date]
+   :rows {:financial-exit-period-flag
+          {:export true
+           :calculator '(make-flag
+                         (and (date>= [:end-of-operating-period]
+                                      [:period-start-date])
+                              (date<= [:end-of-operating-period]
+                                      [:period-end-date])))}}})
+
 (def end-of-operating-period
   {:name :end-of-operating-period
    :category :time
@@ -97,8 +109,8 @@
            :calculator '(make-flag
                          (and (date> [:period-start-date]
                                      [:aquisition-date])
-                              (date<= [:period-end-date]
-                                      [:end-of-operating-period])))}}})
+                              (date< [:period-end-date]
+                                     [:end-of-operating-period])))}}})
 
 ;;; PRICES
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -139,32 +151,24 @@
 ;;; CLOSING
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(def purchase-price
-  {:name :aquisition-cashflow
-   :category :closing
-   :import [:purchase-price :financial-close-period-flag]
-   :rows {:aquisition-cashflow {:export true
-                                :calculator '(if (flagged? [:financial-close-period-flag])
+(def closing
+  {:name :closing
+   :category :capital
+   :rows {:aquisition-cashflow {:calculator '(if (flagged? [:financial-close-period-flag])
                                                [:purchase-price]
-                                               0.0)}}})
-
-(def debt-drawdown
-  {:name :debt-drawdown
-   :category :closing
-   :import [:financial-close-period-flag :ltv :ending-value]
-   :rows {:debt-drawdown {:export true
+                                               0.0)}
+          :debt-drawdown {:export true
                           :calculator '(if (flagged? [:financial-close-period-flag])
                                          (* [:ltv] [:ending-value])
-                                         0)}}})
-
-(def origination-fee
-  {:name :origination-fee
-   :category :closing
-   :import [:debt-drawdown :input/origination-fee :financial-close-period-flag]
-   :rows {:origination-fee {:export true
-                            :calculator '(if (flagged? [:financial-close-period-flag])
+                                         0)}
+          :origination-fee {:calculator '(if (flagged? [:financial-close-period-flag])
                                            (* [:input/origination-fee] [:debt-drawdown])
-                                           0)}}})
+                                           0)}
+          :closing-cashflow {:export true
+                             :calculator '(- [:debt-drawdown]
+                                             [:origination-fee]
+                                             [:aquisition-cashflow])}}})
+
 
 ;;; DEBT
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -179,15 +183,6 @@
 ;;; VOLUME AND VALUE
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(def harvest
-  {:name :harvest
-   :category :harvest
-   :import []
-   :rows {:breakeven-harvest-amount
-          {:export true
-           :calculator '(/ [:expense]
-                           [:profit])}}})
-
 (def volume
   {:name :ending-volume
    :category :volume
@@ -195,7 +190,8 @@
    :rows {:starting-volume {:calculator [:ending-volume :prev]}
           :growth {:calculator '(* [:starting-volume]
                                    [:growth-rate])}
-          :harvest {:calculator '(if (flagged? [:operating-period-flag])
+          :harvest {:export true
+                    :calculator '(if (flagged? [:operating-period-flag])
                                    (/ [:expenses] [:profit])
                                    0)}
           :ending-volume {:export true
@@ -209,29 +205,59 @@
   {:name :value
    :category :value
    :import []
-   :rows {:ending-value {:export true
+   :rows {:export true
+          :ending-value {:export true
                          :calculator '(* [:ending-volume]
                                          [:profit])}}})
+
+;; Sale
+;;;;;;;;;;;;;;;;;;;
+
+(def exit
+  {:name :exit
+   :category :capital
+   :rows {:sale-proceeds {:calculator [:value]}
+          :loan-repayment {:calculator [:debt-balance :prev]}}})
+
+;; Cashflows
+;;;;;;;;;;;;;;;;;;;
+
+(def cashflows
+  {:name :cashflows
+   :category :financial-statements
+   :rows {:aquisition {:calculator [:closing-cashflow]}
+          :disposition {:calculator [:placeholder -0.0]}
+          :gross-profit {:calculator '(* [:profit] [:harvest])}
+          :expenses-paid {:calculator '(- [:expenses])}
+          :net-cashflow {:calculator '(+ [:closing-cashflow]
+                                         [:disposition]
+                                         [:gross-profit]
+                                         [:expenses-paid])}}})
+
+;; Orchestration
+;;;;;;;;;;;;;;;;;;;
 
 (def calcs [model-column-number first-model-column-flag
             period-start-date period-end-date
             financial-close-period-flag
-            end-of-operating-period operating-period-flag
+            end-of-operating-period operating-period-flag financial-exit-period-flag
             prices
-            purchase-price debt-drawdown origination-fee
+            closing
             debt
             expenses
-            volume value])
+            cashflows
+            volume value
+            exit])
 
 (def model (fw/build-model calcs inputs))
 
 (fw/calculation-validation-halting calcs)
 (fw/check-model-halting model)
 
-(def results (fw/run-model model 10))
+(def results (time (fw/run-model model 25)))
 
 (comment
-  (try (fw/run-model model 10)
+  (try (fw/run-model model 25)
        (catch Exception e
          (ex-data e))))
 
@@ -246,11 +272,26 @@
     (throw (ex-info (str "Rows in Not implemented for " typ " " nm)
                     model))))
 
-(def headers [:period-start-date :period-end-date])
-(def rows (concat #_headers
-           (rows-in model :category :volume)
+(def headers [:period-end-date])
+(def rows (concat headers
+                  #_(rows-in model :category :volume)
                   #_(rows-in model :category :value)
+                  (rows-in model :calculation :exit)
+                  [:operating-period-flag]
+                  [:financial-exit-period-flag]
                   #_(rows-in model :category :debt)
                   #_(rows-in model :category :expenses)))
 
-(fw/print-results (fw/row-select results rows) [1 6])
+(fw/print-results (fw/row-select results rows) [12 18])
+
+(defn print-categories [cats results periods]
+  (doall (for [cat cats]
+           (do (println (str "\n\n" cat))
+               (fw/print-results (fw/row-select results (rows-in model :category cat)) periods)))))
+
+(set (map :category (vals (:calculations model))))
+(def cats [:time :prices :capital :debt :volume  :value
+           :expenses :financial-statements])
+
+(comment
+  (print-categories cats results [12 18]))
