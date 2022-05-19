@@ -145,8 +145,7 @@
             financial-close-period-flag
             end-of-operating-period operating-period-flag
             inflation sale-price costs tax
-            purchase-price])
-
+            purchase-price debt-drawdown])
 
 (def model (fw/build-model calcs inputs))
 

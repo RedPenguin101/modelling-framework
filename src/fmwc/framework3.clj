@@ -74,7 +74,7 @@
                                     (set (keys calc)))}))))
 
 (defn- no-calc-refs-externals [calc]
-  (let [permitted (set (concat (:import calc) (keys (:rows calc))))
+  (let [permitted (set (concat [:placeholder] (:import calc) (keys (:rows calc))))
         deps (set (map first (mapcat extract-deps (map :calculator (vals (:rows calc))))))]
     (if (empty? (set/difference deps permitted))
       true
@@ -102,7 +102,7 @@
 
 (defn- calculation-edges [calc]
   (keep
-   #(when (= 1 (count (second %)))
+   #(when (not= :prev (second (second %)))
       [(first %) (first (second %))])
    (mapcat expand (update-vals (:rows calc)
                                (comp extract-deps :calculator)))))
@@ -167,7 +167,8 @@
 
 (defn- replace-refs-in-calc [calc replacements]
   (if (vector? calc)
-    (replacements (first calc))
+    (if (= :placeholder (first calc)) (second calc)
+        (replacements (first calc)))
     (walk/postwalk
      #(if (vector? %) (replacements (first %)) %)
      calc)))
