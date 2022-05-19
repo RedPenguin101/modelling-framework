@@ -41,6 +41,14 @@
                          :calculator [nm :prev])
                   :value)))
 
+(defn- calc-imports [calc]
+  (let [internal-calcs (set (keys (:rows calc)))
+        deps (set (map first (mapcat (comp extract-deps :calculator) (vals (:rows calc)))))]
+    (disj (set/difference deps internal-calcs) :placeholder)))
+
+(comment
+  (calc-imports fmwc.forest3/volume))
+
 ;; Calc validations
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; todo: only one export per calc?
@@ -94,9 +102,9 @@
       (throw (ex-info (str "Duplicate names " (mapv first dups))
                       {:dups dups})))
     (map (every-pred calc-has-keys
-                     name-matches-export?
-                     one-export?
-                     no-calc-refs-externals
+                     #_name-matches-export?
+                     #_one-export?
+                     #_no-calc-refs-externals
                      every-row-has-calcultor)
          calcs)))
 
@@ -106,6 +114,9 @@
       [(first %) (first (second %))])
    (mapcat expand (update-vals (:rows calc)
                                (comp extract-deps :calculator)))))
+
+(comment
+  (calculation-edges (get-in fmwc.forest3/model [:calculations :ending-volume])))
 
 ;; model validations
 ;;;;;;;;;;;;;;;;;;;;;
@@ -122,7 +133,7 @@
   (mapcat exported-measures (vals (:calculations model))))
 
 (defn- imports [model]
-  (update-vals (:calculations model) :import))
+  (update-vals (:calculations model) calc-imports))
 
 (defn- import-export-mismatch?
   [model]
@@ -142,6 +153,10 @@
 (defn check-model-halting [model]
   (doall [(import-export-mismatch? model)
           (circular-deps? model)]))
+
+
+;; Model building
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- full-dependency-graph [model]
   (ug/add-directed-edges* (ug/digraph) (mapcat calculation-edges (vals (:calculations model)))))

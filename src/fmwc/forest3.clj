@@ -22,7 +22,12 @@
    :input/management-fee {:value 0.015}
    :ltv {:value 0.6}
    :growth-rate {:value 0.05}
+   :interest-rate {:value 0.03}
    :input/origination-fee {:value 0.01}})
+
+
+;;; TIME
+;;;;;;;;;;;;;;;;;;;;;;;
 
 (def model-column-number
   {:name     :model-column-number
@@ -95,47 +100,44 @@
                               (date<= [:period-end-date]
                                       [:end-of-operating-period])))}}})
 
-(def inflation
-  {:name :compound-inflation
+;;; PRICES
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(def prices
+  {:name :prices
+   :import []
    :category :prices
-   :import [:model-column-number :inflation-rate]
    :rows {:inflation-period {:calculator '(dec [:model-column-number])}
           :compound-inflation {:export true
                                :calculator '(Math/pow
                                              [:inflation-rate]
-                                             [:inflation-period])}}})
+                                             [:inflation-period])}
+          :sale-price {:calculator '(* [:compound-inflation]
+                                       [:starting-price])}
+          :costs {:calculator '(* [:compound-inflation]
+                                  [:starting-costs])}
+          :profit {:export true
+                   :calculator '(- [:sale-price] [:costs])}}})
 
-(def sale-price
-  {:name :sale-price
-   :import [:compound-inflation :starting-price]
-   :category :prices
-   :rows {:sale-price {:export true
-                       :calculator '(* [:compound-inflation]
-                                       [:starting-price])}}})
+;;; EXPENSES
+;;;;;;;;;;;;;;;;;;;;;;;
 
-(def costs
-  {:name :costs
-   :import [:compound-inflation :starting-costs]
-   :category :prices
-   :rows {:costs {:export true
-                  :calculator '(* [:compound-inflation]
-                                  [:starting-costs])}}})
-
-(def tax
-  {:name :tax
+(def expenses
+  {:name :expenses
    :import [:compound-inflation :starting-tax]
    :category :expenses
-   :rows {:tax {:export true
-                :calculator '(* [:compound-inflation]
-                                [:starting-tax])}}})
+   :rows {:tax {:calculator '(* [:compound-inflation]
+                                [:starting-tax])}
+          :interest {:calculator '(* [:interest-rate]
+                                     [:debt-balance])}
+          :management-fee {:calculator '(* [:ending-value :prev]
+                                           [:input/management-fee])}
+          :expenses {:export true
+                     :calculator '(+ [:management-fee]
+                                     [:tax] [:interest])}}})
 
-(def management-fee
-  {:name :management-fee
-   :import [:compound-inflation :starting-tax]
-   :category :expenses
-   :rows {:management-fee {:export true
-                           :calculator '(* [:ending-value :prev]
-                                           [:input/management-fee])}}})
+;;; CLOSING
+;;;;;;;;;;;;;;;;;;;;;;;
 
 (def purchase-price
   {:name :aquisition-cashflow
@@ -164,6 +166,28 @@
                                            (* [:input/origination-fee] [:debt-drawdown])
                                            0)}}})
 
+;;; DEBT
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(def debt
+  {:name :debt-balance
+   :category :debt
+   :rows {:debt-balance {:export true
+                         :calculator '(+ [:debt-balance :prev]
+                                         [:debt-drawdown :prev])}}})
+
+;;; VOLUME AND VALUE
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(def harvest
+  {:name :harvest
+   :category :harvest
+   :import []
+   :rows {:breakeven-harvest-amount
+          {:export true
+           :calculator '(/ [:expense]
+                           [:profit])}}})
+
 (def volume
   {:name :ending-volume
    :category :volume
@@ -171,7 +195,9 @@
    :rows {:starting-volume {:calculator [:ending-volume :prev]}
           :growth {:calculator '(* [:starting-volume]
                                    [:growth-rate])}
-          :harvest {:calculator [:placeholder 100.0]}
+          :harvest {:calculator '(if (flagged? [:operating-period-flag])
+                                   (/ [:expenses] [:profit])
+                                   0)}
           :ending-volume {:export true
                           :calculator '(if (flagged? [:financial-close-period-flag])
                                          [:input/starting-volume]
@@ -180,20 +206,21 @@
                                             [:harvest]))}}})
 
 (def value
-  {:name :ending-value
+  {:name :value
    :category :value
-   :import [:ending-volume :sale-price :costs]
+   :import []
    :rows {:ending-value {:export true
                          :calculator '(* [:ending-volume]
-                                         (- [:sale-price] [:costs]))}}})
+                                         [:profit])}}})
 
 (def calcs [model-column-number first-model-column-flag
             period-start-date period-end-date
             financial-close-period-flag
             end-of-operating-period operating-period-flag
-            inflation sale-price costs tax
+            prices
             purchase-price debt-drawdown origination-fee
-            management-fee
+            debt
+            expenses
             volume value])
 
 (def model (fw/build-model calcs inputs))
@@ -220,9 +247,10 @@
                     model))))
 
 (def headers [:period-start-date :period-end-date])
-(def rows (concat headers
-                  (rows-in model :category :volume)
-                  (rows-in model :category :value)
-                  (rows-in model :category :expenses)))
+(def rows (concat #_headers
+           (rows-in model :category :volume)
+                  #_(rows-in model :category :value)
+                  #_(rows-in model :category :debt)
+                  #_(rows-in model :category :expenses)))
 
 (fw/print-results (fw/row-select results rows) [1 6])
