@@ -61,8 +61,8 @@
 (def volume
   #:volume
    {:opening {:units "m3" :calculator [:prev :volume/end]}
-    :growth {:units "m3" :calculator '(* [:this :volume/opening]
-                                         [:const :inputs/growth-rate])}
+    :growth  {:units "m3" :calculator '(* [:this :volume/opening]
+                                          [:const :inputs/growth-rate])}
     :harvest {:units "m3" :calculator [:placeholder 50.0]
               #_'(- (/ [:this :expenses/total]
                        [:this :prices/profit]))}
