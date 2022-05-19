@@ -29,82 +29,47 @@
 ;;; TIME
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(def model-column-number
-  {:name     :model-column-number
+(def time-calcs
+  {:name :time
    :category :time
    :rows {:model-column-number {:units "counter"
                                 :export true
                                 :starter 0
-                                :calculator '(inc [:model-column-number :prev])}}})
-
-(def first-model-column-flag
-  {:name :first-model-column-flag
-   :category :time
-   :import [:model-column-number]
-   :rows {:first-model-column-flag {:units "flag"
+                                :calculator '(inc [:model-column-number :prev])}
+          :first-model-column-flag {:units "flag"
                                     :export true
                                     :calculator
                                     '(if (= 1 [:model-column-number])
-                                       1 0)}}})
-
-(def period-start-date
-  {:name :period-start-date
-   :category :time
-   :import [:model-start-date :first-model-column-flag :period-end-date]
-   :rows {:period-start-date
+                                       1 0)}
+          :period-start-date
           {:export true
            :calculator '(if (= 1 [:first-model-column-flag])
                           [:model-start-date]
-                          (add-days [:period-end-date :prev] 1))}}})
-
-(def period-end-date
-  {:name :period-end-date
-   :category :time
-   :import [:period-start-date :length-of-operating-period]
-   :rows {:period-end-date
+                          (add-days [:period-end-date :prev] 1))}
+          :period-end-date
           {:export true
            :calculator '(add-days (add-months [:period-start-date]
                                               [:length-of-operating-period])
-                                  -1)}}})
-
-(def financial-close-period-flag
-  {:name :financial-close-period-flag
-   :category :time
-   :import [:aquisition-date :period-start-date :period-end-date]
-   :rows {:financial-close-period-flag
+                                  -1)}
+          :financial-close-period-flag
           {:export true
            :calculator '(make-flag
                          (and (date>= [:aquisition-date]
                                       [:period-start-date])
                               (date<= [:aquisition-date]
-                                      [:period-end-date])))}}})
-
-(def financial-exit-period-flag
-  {:name :financial-exit-period-flag
-   :category :time
-   :import [:aquisition-date :period-start-date :period-end-date]
-   :rows {:financial-exit-period-flag
+                                      [:period-end-date])))}
+          :financial-exit-period-flag
           {:export true
            :calculator '(make-flag
                          (and (date>= [:end-of-operating-period]
                                       [:period-start-date])
                               (date<= [:end-of-operating-period]
-                                      [:period-end-date])))}}})
-
-(def end-of-operating-period
-  {:name :end-of-operating-period
-   :category :time
-   :import [:aquisition-date :operating-years-remaining]
-   :rows {:end-of-operating-period
+                                      [:period-end-date])))}
+          :end-of-operating-period
           {:export true
            :calculator '(end-of-month [:aquisition-date]
-                                      (* 12 [:operating-years-remaining]))}}})
-
-(def operating-period-flag
-  {:name :operating-period-flag
-   :category :time
-   :import [:period-start-date :aquisition-date :period-end-date :end-of-operating-period]
-   :rows {:operating-period-flag
+                                      (* 12 [:operating-years-remaining]))}
+          :operating-period-flag
           {:export true
            :calculator '(make-flag
                          (and (date> [:period-start-date]
@@ -231,10 +196,12 @@
           :disposition-fee {:calculator '(if (flagged? [:financial-exit-period-flag])
                                            (* [:sale-proceeds] [:disposition-fee-rate])
                                            0)}
-          :loan-repayment {:calculator '(if (flagged? [:financial-exit-period-flag])
+          :loan-repayment {:export true
+                           :calculator '(if (flagged? [:financial-exit-period-flag])
                                           [:starting-debt]
                                           0)}
-          :exit-cashflow {:calculator '(- [:sale-proceeds] [:disposition-fee] [:loan-repayment])}}})
+          :exit-cashflow {:export true
+                          :calculator '(- [:sale-proceeds] [:disposition-fee] [:loan-repayment])}}})
 
 ;; Cashflows
 ;;;;;;;;;;;;;;;;;;;
@@ -254,10 +221,7 @@
 ;; Orchestration
 ;;;;;;;;;;;;;;;;;;;
 
-(def calcs [model-column-number first-model-column-flag
-            period-start-date period-end-date
-            financial-close-period-flag
-            end-of-operating-period operating-period-flag financial-exit-period-flag
+(def calcs [time-calcs
             prices
             closing
             debt
