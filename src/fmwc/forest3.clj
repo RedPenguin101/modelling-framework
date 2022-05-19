@@ -139,7 +139,7 @@
 (def debt-drawdown
   {:name :debt-drawdown
    :category :closing
-   :import [:financial-close-period-flag :ltv :value]
+   :import [:financial-close-period-flag :ltv :ending-value]
    :rows {:debt-drawdown {:export true
                           :calculator '(if (flagged? [:financial-close-period-flag])
                                          (* [:ltv] [:ending-value])
@@ -148,7 +148,7 @@
 (def origination-fee
   {:name :origination-fee
    :category :closing
-   :import [:debt-drawdown :input/origination-fee]
+   :import [:debt-drawdown :input/origination-fee :financial-close-period-flag]
    :rows {:origination-fee {:export true
                             :calculator '(if (flagged? [:financial-close-period-flag])
                                            (* [:input/origination-fee] [:debt-drawdown])
