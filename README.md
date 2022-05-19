@@ -43,3 +43,4 @@
 * One row per calc? Is that really what we want?
 * Categorization is clunky
 * keep forgetting to add calcs
+* formatting for table
