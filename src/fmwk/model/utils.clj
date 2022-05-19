@@ -1,4 +1,4 @@
-(ns fmwc.model.utils)
+(ns fmwk.model.utils)
 
 (defn make-flag [x] (if x 1 0))
 (defn equal-to? [x] (fn [val] (if (= x val) 1 0)))
@@ -34,4 +34,4 @@
   (add-months "2021-03-31" 2)
   (add-days "2021-03-01" -1)
   (end-of-month "2021-03-31" 2)
-  (.getDayOfMonth (str-to-date "2021-03-31")))
+  (.getDayOfMonth (str->date "2021-03-31")))

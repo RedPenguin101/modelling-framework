@@ -1,9 +1,6 @@
-(ns fmwc.forest3
-  (:require [fmwc.framework3 :as fw]
-            [fmwc.model.utils :refer :all]
-            [ubergraph.core :as ug]
-            [ubergraph.core :as uber]
-            [ubergraph.alg :as alg]))
+(ns fmwk.forest-fmwk
+  (:require [fmwk.framework :as fw]
+            [fmwk.model.utils :refer :all]))
 
 
 ;; model

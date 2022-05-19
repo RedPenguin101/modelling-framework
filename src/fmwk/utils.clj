@@ -1,4 +1,4 @@
-(ns fmwc.utils)
+(ns fmwk.utils)
 
 (defn include
   "Given a key and a function which operates on a map, will return a function

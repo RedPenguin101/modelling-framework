@@ -1,6 +1,6 @@
-(ns fmwc.forest
-  (:require [fmwc.irr :refer [irr]]
-            [fmwc.utils :refer [include]]))
+(ns fmwk.forest-manual
+  (:require [fmwk.irr :refer [irr]]
+            [fmwk.utils :refer [include]]))
 
 ;; PROBLEM DEFINITION
 ;;;;;;;;;;;;;;;;;;;;;;;;

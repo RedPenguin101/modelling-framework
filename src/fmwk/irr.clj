@@ -1,4 +1,4 @@
-(ns fmwc.irr)
+(ns fmwk.irr)
 
 (defn- discount-factor [d i]
   (Math/pow (+ 1 d) (- i)))

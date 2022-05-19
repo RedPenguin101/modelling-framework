@@ -1,4 +1,4 @@
-(ns fmwc.framework3
+(ns fmwk.framework
   (:require [clojure.set :as set]
             [clojure.walk :as walk]
             [clojure.test :refer [deftest is are testing]]
@@ -6,7 +6,7 @@
             [ubergraph.core :as ug]
             [ubergraph.alg :as alg]
             [clojure.pprint :as pp]
-            [fmwc.model.utils :refer :all]))
+            [fmwk.model.utils :refer :all]))
 
 (comment
   (def p (p/open {:launcher :vs-code}))
