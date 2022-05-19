@@ -17,7 +17,10 @@
    :starting-price {:value 50.0}
    :starting-costs {:value (+ 4.75 1.5)}
    :starting-tax {:value 1250}
-   :purchase-price {:value 2000000.0}})
+   :purchase-price {:value 2000000.0}
+   :input/starting-volume {:value 50000.0}
+   :ltv {:value 0.6}
+   :input/origination-fee {:value 0.01}})
 
 (def model-column-number
   {:name     :model-column-number
@@ -136,16 +139,50 @@
 (def debt-drawdown
   {:name :debt-drawdown
    :category :closing
-   :import []
+   :import [:financial-close-period-flag :ltv :value]
    :rows {:debt-drawdown {:export true
-                          :calculator [:placeholder 1000000.0]}}})
+                          :calculator '(if (flagged? [:financial-close-period-flag])
+                                         (* [:ltv] [:ending-value])
+                                         0)}}})
+
+(def origination-fee
+  {:name :origination-fee
+   :category :closing
+   :import [:debt-drawdown :input/origination-fee]
+   :rows {:origination-fee {:export true
+                            :calculator '(if (flagged? [:financial-close-period-flag])
+                                           (* [:input/origination-fee] [:debt-drawdown])
+                                           0)}}})
+
+(def volume
+  {:name :ending-volume
+   :category :volume
+   :import [:input/starting-volume :financial-close-period-flag]
+   :rows {:ending-volume {:export true
+                          :calculator '(if (flagged? [:financial-close-period-flag])
+                                         [:input/starting-volume]
+                                         -50)}}})
+
+(def value
+  {:name :ending-value
+   :category :value
+   :import [:ending-volume :sale-price :costs]
+   :rows {:ending-value {:export true
+                         :calculator '(* [:ending-volume]
+                                         (- [:sale-price] [:costs]))}}})
+
+;; TODO
+;; * Debt dd (LTV*Value)
+;;   * Value (Vol * ...)
+;;     * Volume
 
 (def calcs [model-column-number first-model-column-flag
             period-start-date period-end-date
             financial-close-period-flag
             end-of-operating-period operating-period-flag
             inflation sale-price costs tax
-            purchase-price debt-drawdown])
+            purchase-price debt-drawdown origination-fee
+            volume value])
 
 (def model (fw/build-model calcs inputs))
 
@@ -171,6 +208,9 @@
                     model))))
 
 (def headers [:period-start-date :period-end-date])
-(def rows (into headers (rows-in model :category :closing)))
+(def rows (concat headers
+                  (rows-in model :category :volume)
+                  (rows-in model :category :value)
+                  (rows-in model :category :closing)))
 
 (fw/print-results (fw/row-select results rows) [1 6])

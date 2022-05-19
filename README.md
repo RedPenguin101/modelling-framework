@@ -37,3 +37,9 @@
   * Change detection and update based on deps?
   * better table lookup?
   * Earlier 'compilation'?
+
+## Jottings on V3
+* Imports seem pretty useless
+* One row per calc? Is that really what we want?
+* Categorization is clunky
+* keep forgetting to add calcs
