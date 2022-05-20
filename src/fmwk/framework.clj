@@ -1,11 +1,12 @@
 (ns fmwk.framework
-  (:require [clojure.set :as set]
+  (:require [clojure.pprint :as pp]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.walk :as walk]
+            [fmwk.utils :as u]
             [portal.api :as p]
-            [ubergraph.core :as uber]
             [ubergraph.alg :as uber-alg]
-            [clojure.pprint :as pp]
-            [fmwk.utils :as u]))
+            [ubergraph.core :as uber]))
 
 (comment
   (def p (p/open {:launcher :vs-code}))
@@ -96,6 +97,31 @@
        [:expenses :tax]
        [:expenses :interest])))
 
+(comment
+  "Playing with name qualification"
+  (defn- qualify-row-name [sheet calc row]
+    (keyword (str (name sheet) "." (name calc)) (name row)))
+
+
+  (qualify-row-name :hello :world :foo)
+
+  (defn- split-row-name
+    "Given a qualified row name, returns a tuple of [sheet calc row]"
+    [quali-row-name]
+    (conj (mapv keyword (str/split (namespace quali-row-name) #"\."))
+          (keyword (name quali-row-name))))
+
+  (split-row-name :hello.world/foo)
+
+  (defn qualify-row-names [calc]
+    (let [qualifier (partial qualify-row-name (:sheet calc) (:calculation-name calc))]
+      (update calc :rows #(update-keys % qualifier))))
+
+  (qualify-row-names {:sheet :hello
+                      :calculation-name :world
+                      :rows {:foo {}
+                             :bar {}}}))
+
 ;; Calc validations
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -126,7 +152,6 @@
     (map (every-pred calc-has-required-keys?
                      every-row-has-calculator?)
          calcs)))
-
 
 ;; model helpers
 ;;;;;;;;;;;;;;;;;;;;;
@@ -268,6 +293,7 @@
                                model)))
     (throw (ex-info (str "Rows in Not implemented for " typ " " nm)
                     model))))
+
 
 (defn transpose-records [records]
   (map #(zipmap (into [:name :starter] (map (fn [x] (str "period " x)) (range 1 (count records)))) %)
