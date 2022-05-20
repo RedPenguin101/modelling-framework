@@ -232,6 +232,19 @@
 
 
 ;; Table printing
+(defn rows-in
+  "Given a model, and a category or calcluation name, will return the name of all the rows
+   in that category or calculation"
+  [model typ nm]
+  (case typ
+    :category (mapcat (comp keys :rows) (filter #(= (:category %) nm) (vals (:calculations model))))
+    :calculation (mapcat (comp keys :rows) (filter #(= (:name %) nm) (vals (:calculations model))))
+    :special (if (= :exports nm)
+               (exports model)
+               (throw (ex-info (str "Rows in Not implemented for " typ " " nm)
+                               model)))
+    (throw (ex-info (str "Rows in Not implemented for " typ " " nm)
+                    model))))
 
 (defn transpose-records [records]
   (map #(zipmap (into [:name :starter] (map (fn [x] (str "period " x)) (range 1 (count records)))) %)
