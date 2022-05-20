@@ -192,39 +192,20 @@
        (catch Exception e
          (ex-data e))))
 
-(defn rows-in [model typ nm]
-  (case typ
-    :category (mapcat (comp keys :rows) (filter #(= (:category %) nm) (vals (:calculations model))))
-    :calculation (mapcat (comp keys :rows) (filter #(= (:name %) nm) (vals (:calculations model))))
-    :special (if (= :exports nm)
-               (fw/exports model)
-               (throw (ex-info (str "Rows in Not implemented for " typ " " nm)
-                               model)))
-    (throw (ex-info (str "Rows in Not implemented for " typ " " nm)
-                    model))))
+
 
 (def headers [:period-end-date])
 (def rows (concat headers
-                  #_(rows-in model :category :volume)
-                  #_(rows-in model :category :value)
-                  #_(rows-in model :calculation :exit)
-                  (rows-in model :calculation :cashflows)
+                  #_(fw/rows-in model :category :volume)
+                  #_(fw/rows-in model :category :value)
+                  #_(fw/rows-in model :calculation :exit)
+                  (fw/rows-in model :calculation :cashflows)
                   #_[:financial-exit-period-flag]
 
-                  #_(rows-in model :category :debt)
-                  #_(rows-in model :category :expenses)
+                  #_(fw/rows-in model :category :debt)
+                  #_(fw/rows-in model :category :expenses)
                   [:operating-period-flag]))
 
 (fw/print-results (fw/row-select results rows) [12 18])
 
-(defn print-categories [cats results periods]
-  (doall (for [cat cats]
-           (do (println (str "\n\n" cat))
-               (fw/print-results (fw/row-select results (rows-in model :category cat)) periods)))))
-
 (set (map :category (vals (:calculations model))))
-(def cats [:time :prices :capital :debt :volume  :value
-           :expenses :financial-statements])
-
-(comment
-  (print-categories cats results [12 18]))
