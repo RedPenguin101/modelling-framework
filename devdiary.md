@@ -6,6 +6,7 @@
 * Namespace rows by calulation and sheet
 * Model compilation should through if validations fail. Maybe with assertions?
 * 'add totals to calculation' function
+* Better display options!
 
 ## 20th May 2022
 My stopping point yesterday was a working model for the Forest FMWC scenario. Some observations:
