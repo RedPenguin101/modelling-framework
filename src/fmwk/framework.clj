@@ -1,12 +1,10 @@
 (ns fmwk.framework
   (:require [clojure.set :as set]
             [clojure.walk :as walk]
-            [clojure.test :refer [deftest is are testing]]
             [portal.api :as p]
             [ubergraph.core :as ug]
             [ubergraph.alg :as alg]
-            [clojure.pprint :as pp]
-            [fmwk.model.utils :refer :all]))
+            [clojure.pprint :as pp]))
 
 (comment
   (def p (p/open {:launcher :vs-code}))

@@ -1,81 +1,8 @@
-(ns fmwk.forest-fmwk
+(ns fmwk.forest
   (:require [fmwk.framework :as fw]
-            [fmwk.model.utils :refer :all]))
-
-
-;; model
-;;;;;;;;;;;;;;;
-
-(def inputs
-  {:model-start-date {:value "2020-01-01"}
-   :inflation-rate {:value 1.02}
-   :length-of-operating-period {:value 12}
-   :aquisition-date {:value "2020-12-31"}
-   :operating-years-remaining {:value 15}
-   :sale-date {:value "2035-12-31"}
-   :starting-price {:value 50.0}
-   :starting-costs {:value (+ 4.75 1.5)}
-   :starting-tax {:value 1250}
-   :purchase-price {:value 2000000.0}
-   :volume-at-aquisition {:value 50000.0}
-   :management-fee-rate {:value 0.015}
-   :ltv {:value 0.6}
-   :growth-rate {:value 0.05}
-   :interest-rate {:value 0.03}
-   :disposition-fee-rate {:value 0.01}
-   :origination-fee-rate {:value 0.01}})
-
-
-;;; TIME
-;;;;;;;;;;;;;;;;;;;;;;;
-
-(def time-calcs
-  {:name :time
-   :category :time
-   :rows {:model-column-number {:units "counter"
-                                :export true
-                                :starter 0
-                                :calculator '(inc [:model-column-number :prev])}
-          :first-model-column-flag {:units "flag"
-                                    :export true
-                                    :calculator
-                                    '(if (= 1 [:model-column-number])
-                                       1 0)}
-          :period-start-date
-          {:export true
-           :calculator '(if (= 1 [:first-model-column-flag])
-                          [:model-start-date]
-                          (add-days [:period-end-date :prev] 1))}
-          :period-end-date
-          {:export true
-           :calculator '(add-days (add-months [:period-start-date]
-                                              [:length-of-operating-period])
-                                  -1)}
-          :financial-close-period-flag
-          {:export true
-           :calculator '(make-flag
-                         (and (date>= [:aquisition-date]
-                                      [:period-start-date])
-                              (date<= [:aquisition-date]
-                                      [:period-end-date])))}
-          :financial-exit-period-flag
-          {:export true
-           :calculator '(make-flag
-                         (and (date>= [:end-of-operating-period]
-                                      [:period-start-date])
-                              (date<= [:end-of-operating-period]
-                                      [:period-end-date])))}
-          :end-of-operating-period
-          {:export true
-           :calculator '(end-of-month [:aquisition-date]
-                                      (* 12 [:operating-years-remaining]))}
-          :operating-period-flag
-          {:export true
-           :calculator '(make-flag
-                         (and (date> [:period-start-date]
-                                     [:aquisition-date])
-                              (date<= [:period-end-date]
-                                      [:end-of-operating-period])))}}})
+            [fmwk.forest.inputs]
+            [fmwk.forest.time]
+            [fmwk.utils :refer :all]))
 
 ;;; PRICES
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -221,7 +148,7 @@
 ;; Orchestration
 ;;;;;;;;;;;;;;;;;;;
 
-(def calcs [time-calcs
+(def calcs [fmwk.forest.time/time-calcs
             prices
             closing
             debt
@@ -230,7 +157,7 @@
             volume value
             exit])
 
-(def model (fw/build-model calcs inputs))
+(def model (fw/build-model calcs fmwk.forest.inputs/inputs))
 
 (fw/calculation-validation-halting calcs)
 (fw/check-model-halting model)
@@ -239,6 +166,26 @@
   (ubergraph.core/viz-graph (:full-graph model)))
 
 (def results (time (fw/run-model model 25)))
+
+(comment
+  "playing with name qualification"
+  (require '[clojure.string :as str])
+  (defn qualify-row-name [category calc row]
+    (keyword (str (name category) "." (name calc)) (name row)))
+
+
+  (qualify-row-name :financing :debt :drawdowns)
+  ;; => :financing.debt/drawdowns
+
+  (qualify-row-name :financing :junior :drawdowns)
+  ;; => :financing.junior/drawdowns
+
+  "use this for model validation?"
+  (assert (= 1 (+ 1 1)))
+  ;; => Execution error (AssertionError) at fmwk.forest-fmwk/eval48594 (REPL:257).
+  ;;    Assert failed: (= 1 (+ 1 1))
+  )
+
 
 (comment
   (try (fw/run-model model 25)
