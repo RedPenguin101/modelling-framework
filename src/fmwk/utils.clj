@@ -1,5 +1,7 @@
 (ns fmwk.utils)
 
+(defn map-vals [f m] (update-vals m f))
+
 (defn include
   "Given a key and a function which operates on a map, will return a function
    that, given a map, will apply the function to the map and add the result
