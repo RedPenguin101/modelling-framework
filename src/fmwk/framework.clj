@@ -2,9 +2,10 @@
   (:require [clojure.set :as set]
             [clojure.walk :as walk]
             [portal.api :as p]
-            [ubergraph.core :as ug]
-            [ubergraph.alg :as alg]
-            [clojure.pprint :as pp]))
+            [ubergraph.core :as uber]
+            [ubergraph.alg :as uber-alg]
+            [clojure.pprint :as pp]
+            [fmwk.utils :as u]))
 
 (comment
   (def p (p/open {:launcher :vs-code}))
@@ -13,25 +14,31 @@
 ;; utils
 ;;;;;;;;;;;;;;
 
-(defn- expand [[k vs]] (map #(vector k %) vs))
+(defn- expand
+  "Where the value in a kv pair is a sequence, this function
+   will 'unpack' the value. So 
+     [:a [:b :c :d]]
+   will become
+     [[:a :b] [:a :c] [:a :d]]"
+  [[k vs]] (map #(vector k %) vs))
 
 
-;; calculations helpers
+;; Row and calculation helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- extract-deps
-  ([expr] (extract-deps [] expr))
-  ([found [fst & rst :as expr]]
-   (cond (vector? expr) (conj found expr)
-         (nil? fst) found
-         (vector? fst) (recur (conj found fst) rst)
-         (coll? fst) (recur (into found (extract-deps [] fst)) rst)
-         :else (recur found rst))))
+(defn- refs-previous-period? [row-ref] (= :prev (second row-ref)))
+(defn- placeholder? [row-ref] (= :placeholder (first row-ref)))
+(def refs-current-period? (complement (some-fn placeholder? refs-previous-period?)))
 
-(defn exported-measures [calc]
-  (keep #(when (:export (second %)) (first %)) (:rows calc)))
+(defn- current-period-refs [refs]
+  (keep #(when (refs-current-period? %) (first %)) refs))
 
-(defn- input-to-row [[nm input]]
+(defn- input-to-row
+  "Inputs are are defined by the user using a different spec from calculation
+   rows. However internally to the model they are simply rows where every period
+   value is the constant provided. This function transforms an input spec to
+   a row spec for storing in the model"
+  [[nm input]]
   (vector nm
           (dissoc (assoc input
                          :starter (:value input)
@@ -39,36 +46,59 @@
                          :calculator [nm :prev])
                   :value)))
 
-(defn- calc-imports [calc]
+;; calculations helpers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- extract-refs
+  "Given an expression containing references (defined as a vector), 
+   will extract all of the references and return them"
+  ([expr] (extract-refs [] expr))
+  ([found [fst & rst :as expr]]
+   (cond (vector? expr) (conj found expr)
+         (nil? fst) found
+         (vector? fst) (recur (conj found fst) rst)
+         (coll? fst) (recur (into found (extract-refs [] fst)) rst)
+         :else (recur found rst))))
+
+(defn- exported-measures [calc]
+  (keep #(when (:export (second %)) (first %)) (:rows calc)))
+
+(defn- calc-imports
+  "Given a calculation, will determine which of the references to other rows
+   are references to things outside the calculation."
+  [calc]
   (let [internal-calcs (set (keys (:rows calc)))
-        deps (set (map first (mapcat (comp extract-deps :calculator) (vals (:rows calc)))))]
+        deps (->> (vals (:rows calc))
+                  (mapcat (comp extract-refs :calculator))
+                  (map first)
+                  set)]
     (disj (set/difference deps internal-calcs) :placeholder)))
 
+(defn- calculation-edges
+  "Given a calculation, will return the edges of the graph of dependencies
+   between the rows, including imports. Excludes previous "
+  [calc]
+  (->> (:rows calc)
+       (u/map-vals (comp current-period-refs extract-refs :calculator))
+       (mapcat expand)))
+
 (comment
-  (calc-imports fmwc.forest3/volume))
+  (= (calculation-edges fmwk.forest/expenses)
+     '([:tax :operating-period-flag]
+       [:tax :compound-inflation]
+       [:tax :starting-tax]
+       [:interest :interest-rate]
+       [:interest :starting-debt]
+       [:management-fee :operating-period-flag]
+       [:management-fee :management-fee-rate]
+       [:expenses :management-fee]
+       [:expenses :tax]
+       [:expenses :interest])))
 
 ;; Calc validations
 ;;;;;;;;;;;;;;;;;;;;;;;;;
-;; todo: only one export per calc?
-;;       name must match calc?
 
-(defn- name-matches-export? [calc]
-  (if (= (:name calc) (first (exported-measures calc)))
-    true
-    (throw (ex-info (str "Calc name " (:name calc) " doesn't match exports " (vec (exported-measures calc)))
-                    {:name (:name calc)
-                     :exports (exported-measures calc)
-                     :calc calc}))))
-
-(defn- one-export? [calc]
-  (if (= 1 (count (exported-measures calc)))
-    true
-    (throw (ex-info (str "Calc " (:name calc) " doesn't have 1 exports")
-                    {:name (:name calc)
-                     :exports (exported-measures calc)
-                     :calc calc}))))
-
-(defn- calc-has-keys [calc]
+(defn- calc-has-required-keys? [calc]
   (if (empty? (set/difference
                #{:name :category :rows}
                (set (keys calc))))
@@ -79,39 +109,24 @@
                                     #{:name :category}
                                     (set (keys calc)))}))))
 
-(defn- no-calc-refs-externals [calc]
-  (let [permitted (set (concat [:placeholder] (:import calc) (keys (:rows calc))))
-        deps (set (map first (mapcat extract-deps (map :calculator (vals (:rows calc))))))]
-    (if (empty? (set/difference deps permitted))
-      true
-      (throw (ex-info (str "Calc " (:name calc) " references unimported row(s) " (set/difference deps permitted))
-                      {:calc calc
-                       :unimported-row (set/difference deps permitted)})))))
-
-(defn- every-row-has-calcultor [calc]
+(defn- every-row-has-calculator? [calc]
   (if (every? :calculator (vals (:rows calc)))
     true
     (throw (ex-info (str "Calc " (:name calc) "is missing a calculator")
                     {:calc calc}))))
+
+;; TODO: Once rows are calc-qualified, this won't be necessary
 
 (defn calculation-validation-halting [calcs]
   (if (not= (count calcs) (count (set (map :name calcs))))
     (let [dups ((group-by #(= 1 (val %)) (frequencies (map :name calcs))) false)]
       (throw (ex-info (str "Duplicate names " (mapv first dups))
                       {:dups dups})))
-    (map (every-pred calc-has-keys
-                     #_name-matches-export?
-                     #_one-export?
-                     #_no-calc-refs-externals
-                     every-row-has-calcultor)
+    (map (every-pred calc-has-required-keys?
+                     every-row-has-calculator?)
          calcs)))
 
-(defn- calculation-edges [calc]
-  (keep
-   #(when (not= :prev (second (second %)))
-      [(first %) (first (second %))])
-   (mapcat expand (update-vals (:rows calc)
-                               (comp extract-deps :calculator)))))
+
 
 (comment
   (calculation-edges (get-in fmwc.forest3/model [:calculations :ending-volume])))
@@ -143,7 +158,7 @@
                         {:name nm}))))))
 
 (defn- circular-deps? [model]
-  (if (alg/dag? (:full-graph model))
+  (if (uber-alg/dag? (:full-graph model))
     true
     (throw (ex-info (str "Model contains circular dependencies")
                     (:full-graph model)))))
@@ -157,7 +172,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- full-dependency-graph [model]
-  (ug/add-directed-edges* (ug/digraph) (mapcat calculation-edges (vals (:calculations model)))))
+  (uber/add-directed-edges* (uber/digraph) (mapcat calculation-edges (vals (:calculations model)))))
 
 (defn extract-rows [model]
   (merge (into {} (mapcat :rows (vals (:calculations model))))
@@ -169,7 +184,7 @@
     (assoc model
            :full-graph fg
            :rows rows
-           :calc-order (reverse (alg/topsort fg)))))
+           :calc-order (reverse (uber-alg/topsort fg)))))
 
 (defn build-model [calculations inputs]
   (let [basic (basic-model calculations inputs)]
@@ -190,7 +205,7 @@
   (reduce (fn [record row-name]
             (assoc record row-name
                    (let [calc (get-in model [:rows row-name :calculator])
-                         reps (into {} (for [[t r] (extract-deps calc)]
+                         reps (into {} (for [[t r] (extract-refs calc)]
                                          [t (if (= :prev r)
                                               (get prv-rec t)
                                               (get record t))]))]
