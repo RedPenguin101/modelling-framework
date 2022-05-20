@@ -76,7 +76,8 @@
 
 (defn- calculation-edges
   "Given a calculation, will return the edges of the graph of dependencies
-   between the rows, including imports. Excludes previous "
+   between the rows, including imports. Excludes reference to previous periods
+   and placeholders"
   [calc]
   (->> (:rows calc)
        (u/map-vals (comp current-period-refs extract-refs :calculator))
@@ -127,26 +128,37 @@
          calcs)))
 
 
-
-(comment
-  (calculation-edges (get-in fmwc.forest3/model [:calculations :ending-volume])))
-
-;; model validations
+;; model helpers
 ;;;;;;;;;;;;;;;;;;;;;
-; no duplicate names
 
-(defn- records->map [records ky]
+(defn- records->map
+  "Given a sequence of records (maps) and a key which is in those records,
+   (and should have a unique value, like a name) will return a map 
+   of the keys to the records"
+  [records ky]
   (into {} (map #(vector (ky %) %) records)))
 
-(defn basic-model [calculations inputs]
-  (hash-map :calculations (records->map calculations :name)
-            :inputs inputs))
+(comment
+  (records->map [{:name :name1 :a 1 :b 2 :c 3}
+                 {:name :name2 :a 4 :b 5 :c 6}]
+                :name)
+  {:name1 {:name :name1, :a 1, :b 2, :c 3},
+   :name2 {:name :name2, :a 4, :b 5, :c 6}})
 
-(defn exports [model]
+(defn- exports [model]
   (mapcat exported-measures (vals (:calculations model))))
 
 (defn- imports [model]
   (update-vals (:calculations model) calc-imports))
+
+;; maybe change this to work on rows?
+(defn- full-dependency-graph [model]
+  (->> (vals (:calculations model))
+       (mapcat calculation-edges)
+       (uber/add-directed-edges* (uber/digraph))))
+
+;; model validations
+;;;;;;;;;;;;;;;;;;;;;
 
 (defn- import-export-mismatch?
   [model]
@@ -171,26 +183,35 @@
 ;; Model building
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- full-dependency-graph [model]
-  (uber/add-directed-edges* (uber/digraph) (mapcat calculation-edges (vals (:calculations model)))))
+(defn- basic-model [calculations inputs]
+  (hash-map :calculations (records->map calculations :name)
+            :inputs inputs))
 
-(defn extract-rows [model]
+(defn model->rows
+  "Turns a model definition (calculations and inputs)
+   into a map of rows"
+  [model]
   (merge (into {} (mapcat :rows (vals (:calculations model))))
          (into {} (map input-to-row (:inputs model)))))
 
 (defn- enrich-model [model]
-  (let [fg (full-dependency-graph model)
-        rows (extract-rows model)]
+  (let [fg (full-dependency-graph model)]
     (assoc model
            :full-graph fg
-           :rows rows
+           :rows (model->rows model)
            :calc-order (reverse (uber-alg/topsort fg)))))
 
 (defn build-model [calculations inputs]
-  (let [basic (basic-model calculations inputs)]
-    (enrich-model basic)))
+  (enrich-model (basic-model calculations inputs)))
 
-(defn zero-period [model]
+;; Model running
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn zero-period
+  "Creates the 'zeroeth period', aka the 'starter'
+   period. Uses the row starter value (or the input value),
+   or zero if there is none."
+  [model]
   (update-vals (:rows model) #(or (:starter %) 0)))
 
 (defn- replace-refs-in-calc [calc replacements]
@@ -201,6 +222,7 @@
      #(if (vector? %) (replacements (first %)) %)
      calc)))
 
+;; Yikes! Todo: clean this up
 (defn next-period [[prv-rec] model]
   (reduce (fn [record row-name]
             (assoc record row-name
@@ -221,7 +243,7 @@
           {}
           (:calc-order model)))
 
-(defn roll-model [prvs model] (conj prvs (next-period prvs model)))
+(defn- roll-model [prvs model] (conj prvs (next-period prvs model)))
 
 (defn run-model [model periods]
   (reverse (loop [prv (list (zero-period model))
@@ -230,8 +252,9 @@
                prv
                (recur (roll-model prv model) (dec prd))))))
 
+;; Table printing and model selection
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Table printing
 (defn rows-in
   "Given a model, and a category or calcluation name, will return the name of all the rows
    in that category or calculation"
