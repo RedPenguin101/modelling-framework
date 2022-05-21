@@ -1,6 +1,7 @@
 (ns fmwk-test.fmwk-test
   (:require [clojure.test :refer [deftest is testing are]]
             [clojure.spec.alpha :as spec]
+            [fmwk.irr :refer [irr]]
             [fmwk.utils :refer :all]
             [fmwk.framework2 :as SUT]))
 
@@ -14,27 +15,29 @@
 (def time-calcs
   #:time
    {:model-column-number '(inc [:model-column-number :prev])
-    :first-model-column-flag '(if (= 1 [:model-column-number]) 1 0)
-    :period-start-date '(if (= 1 [:first-model-column-flag])
+    :period-start-date '(if (= 1 [:flags/first-model-column])
                           [:inputs/model-start-date]
                           (add-days [:period-end-date :prev] 1))
     :period-end-date '(add-days (add-months [:period-start-date]
                                             [:inputs/length-of-operating-period])
                                 -1)
-    :financial-close-period-flag '(and (date>= [:inputs/aquisition-date]
-                                               [:period-start-date])
-                                       (date<= [:inputs/aquisition-date]
-                                               [:period-end-date]))
-    :financial-exit-period-flag '(and (date>= [:end-of-operating-period]
-                                              [:period-start-date])
-                                      (date<= [:end-of-operating-period]
-                                              [:period-end-date]))
     :end-of-operating-period '(end-of-month [:inputs/aquisition-date]
-                                            (* 12 [:inputs/operating-years-remaining]))
-    :operating-period-flag '(and (date> [:period-start-date]
-                                        [:inputs/aquisition-date])
-                                 (date<= [:period-end-date]
-                                         [:end-of-operating-period]))})
+                                            (* 12 [:inputs/operating-years-remaining]))})
+
+(def flags
+  #:flags{:first-model-column '(if (= 1 [:time/model-column-number]) 1 0)
+          :financial-close-period '(and (date>= [:inputs/aquisition-date]
+                                                [:time/period-start-date])
+                                        (date<= [:inputs/aquisition-date]
+                                                [:time/period-end-date]))
+          :financial-exit-period '(and (date>= [:time/end-of-operating-period]
+                                               [:time/period-start-date])
+                                       (date<= [:time/end-of-operating-period]
+                                               [:time/period-end-date]))
+          :operating-period '(and (date> [:time/period-start-date]
+                                         [:inputs/aquisition-date])
+                                  (date<= [:time/period-end-date]
+                                          [:time/end-of-operating-period]))})
 
 ;; Inputs
 ;;;;;;;;;;;;;;;;;;;;
@@ -75,47 +78,35 @@
 
 (def expenses
   (SUT/add-total
-   #:expenses{:tax '(if [:time/operating-period-flag]
-                      (* [:prices/compound-inflation]
-                         [:inputs/starting-tax])
-                      0)
+   #:expenses{:tax '(when-flag [:flags/operating-period]
+                               (* [:prices/compound-inflation]
+                                  [:inputs/starting-tax]))
               :interest '(* [:inputs/interest-rate]
                             [:debt.debt-balance/start])
-              :management-fee '(if [:time/operating-period-flag]
-                                 (* [:value/end :prev]
+              :management-fee '(if [:flags/operating-period]
+                                 (* [:value/start]
                                     [:inputs/management-fee-rate])
                                  0)}))
 
-(def closing
-  #:capital.closing
-   {:aquisition-cashflow '(if [:time/financial-close-period-flag]
-                            [:inputs/purchase-price]
-                            0.0)
-    :debt-drawdown '(if [:time/financial-close-period-flag]
-                      (* [:inputs/ltv] [:value/end])
-                      0)
-    :origination-fee '(if [:time/financial-close-period-flag]
-                        (* [:inputs/origination-fee-rate] [:debt-drawdown])
-                        0)
-    :closing-cashflow '(- [:debt-drawdown]
-                          [:origination-fee]
-                          [:aquisition-cashflow])})
-
-
 (def debt
-  (SUT/corkscrew :debt.debt-balance
-                 [:capital.closing/debt-drawdown]
-                 [:capital.exit/loan-repayment]))
+  (merge
+   #:debt{:drawdown '(when-flag [:flags/financial-close-period]
+                                (* [:inputs/ltv] [:value/end]))
+          :repayment '(when-flag
+                       [:flags/financial-exit-period]
+                       [:debt.debt-balance/start])}
+   (SUT/corkscrew :debt.debt-balance
+                  [:debt/drawdown]
+                  [:debt/repayment])))
 
 (def volume
   (merge
    #:volume {:growth '(* [:volume.balance/start]
                          [:inputs/growth-rate])
-             :harvest '(if (and [:time/operating-period-flag]
-                                (not [:time/financial-exit-period-flag]))
-                         (/ [:expenses/total] [:prices/profit])
-                         0)
-             :purchased '(if [:time/financial-close-period-flag]
+             :harvest '(when-flag (and [:flags/operating-period]
+                                       (not [:flags/financial-exit-period]))
+                                  (/ [:expenses/total] [:prices/profit]))
+             :purchased '(if [:flags/financial-close-period]
                            [:inputs/volume-at-aquisition] 0)}
 
    (SUT/corkscrew :volume.balance
@@ -123,37 +114,52 @@
                   [:volume/harvest])))
 
 (def value
-  {:value/end '(* [:volume.balance/end]
+  {:value/start [:end :prev]
+   :value/end '(* [:volume.balance/end]
                   [:prices/profit])})
+
+(def closing
+  #:capital.closing
+   {:aquisition-cashflow '(when-flag
+                           [:flags/financial-close-period]
+                           [:inputs/purchase-price])
+    :origination-fee '(when-flag
+                       [:flags/financial-close-period]
+                       (* [:inputs/origination-fee-rate]
+                          [:debt/drawdown]))})
 
 (def exit
   #:capital.exit
-   {:sale-proceeds '(if [:time/financial-exit-period-flag]
-                      [:value/end] 0)
-    :disposition-fee '(if [:time/financial-exit-period-flag]
-                        (* [:sale-proceeds] [:inputs/disposition-fee-rate]) 0)
-    :loan-repayment '(if [:time/financial-exit-period-flag]
-                       [:debt.debt-balance/start] 0)
-    :exit-cashflow '(- [:sale-proceeds] [:disposition-fee] [:loan-repayment])})
+   {:sale-proceeds '(when-flag [:flags/financial-exit-period]
+                               [:value/end])
+    :disposition-fee '(when-flag
+                       [:flags/financial-exit-period]
+                       (* [:sale-proceeds] [:inputs/disposition-fee-rate]))})
 
 (def cashflows
   (SUT/add-total
    :net-cashflow
-   #:financial-statements.cashflows
-    {:aquisition [:capital.closing/closing-cashflow]
-     :disposition [:capital.exit/exit-cashflow]
+   #:cashflows
+    {:aquisition '(- [:debt/drawdown]
+                     [:capital.closing/origination-fee]
+                     [:capital.closing/aquisition-cashflow])
+     :disposition '(- [:capital.exit/sale-proceeds]
+                      [:capital.exit/disposition-fee]
+                      [:debt/repayment])
      :gross-profit '(* [:prices/profit] [:volume/harvest])
      :expenses-paid '(- [:expenses/total])}))
 
 (def model (SUT/build-and-validate-model
             inputs
-            [time-calcs prices expenses closing
+            [time-calcs flags
+             prices expenses closing
              debt volume value
              exit cashflows]))
 
 (SUT/fail-catch (SUT/build-and-validate-model
                  inputs
-                 [time-calcs prices expenses closing
+                 [time-calcs flags
+                  prices expenses closing
                   debt volume value
                   exit cashflows]))
 
@@ -290,5 +296,11 @@
                        :end '(+ [:start] [:increase] [:decrease])})))
 
 (deftest full-model-run
-  (is (= (Math/round (:financial-statements.cashflows/net-cashflow (first (time (SUT/run-model model 16)))))
+  (is (= (Math/round (:cashflows/net-cashflow (first (time (SUT/run-model model 16)))))
          2678047)))
+
+(comment
+  (def results (reverse (SUT/run-model model 25)))
+  (irr (map :cashflows/net-cashflow results))
+
+  1)

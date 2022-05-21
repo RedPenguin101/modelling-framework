@@ -19,6 +19,12 @@
 (defn equal-to? [x] (fn [val] (if (= x val) 1 0)))
 (defn flagged? [x] (not (or (nil? x) (zero? x))))
 
+(defn when-flag [flag expr]
+  (list 'if flag expr 0.0))
+
+(comment
+  (when-flag [:hello] '(+ [:a] [:b] [:c])))
+
 (defn str->date [date-str] (java.time.LocalDate/parse date-str))
 (defn date->str [date] (.toString date))
 

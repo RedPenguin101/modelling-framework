@@ -4,6 +4,11 @@
 * Compile model to function on arrays to increase performance?
 * Eliminate transients: like pure looks throughs.
 * Units and metadata
+* Model report: 
+  * number of rows
+  * number of evaluations per period
+  * Unused rows
+* flag optimizations: when you've calculated the flags, you can store them in a set, then if an expression depends on the flag you can just look it up and avoid evaluating if the flag isn't true
 
 ## 21st May 2022
 
@@ -15,6 +20,7 @@
 * **DONE** Namespace rows by calulation and sheet 
   (Do I actually need the calcs abstraction at all then? It's doesn't add anything! maybe for comments?)
 * **DONE** Model compilation should through if validations fail. Maybe with assertions?
+* **DONE** Helper for `when-flag`, gloss on `(if flag x 0)`
 
 ## 20th May 2022
 My stopping point yesterday was a working model for the Forest FMWC scenario. Some observations:
