@@ -119,7 +119,8 @@
 
 (defn circular? [rows] (not (uberalg/dag? (rows->graph rows))))
 
-(defn all-rows-are-exprs? [rows] (every? expression? (vals rows)))
+(defn all-rows-are-exprs? [rows]
+  (every? coll? (vals rows)))
 
 (defn bad-references [rows]
   (let [permitted (set (keys rows))]
@@ -153,6 +154,18 @@
 
 (defn build-model [inputs calculations]
   (de-localize-rows (apply merge (inputs->rows inputs) calculations)))
+
+(defn build-and-validate-model [inputs calculations]
+  (when (not (all-rows-are-exprs? (apply merge calculations)))
+    (throw (ex-info "Not all rows are expressions" {})))
+  (let [model (build-model inputs calculations)]
+    (when (circular? model)
+      (throw (ex-info "Circular dependencies in model" model)))
+    (when (not-empty (bad-references model))
+      (throw (ex-info "References to non-existant rows" (bad-references model))))
+    (when (not (all-rows-qualified? model))
+      (throw (ex-info "Some model rows are not qualified" {:unqualified-kw (remove qualified-keyword? (keys model))})))
+    model))
 
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

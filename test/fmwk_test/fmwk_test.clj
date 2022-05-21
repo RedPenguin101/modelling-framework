@@ -146,11 +146,16 @@
      :gross-profit '(* [:prices/profit] [:volume/harvest])
      :expenses-paid '(- [:expenses/total])}))
 
-(def model (SUT/build-model inputs [time-calcs prices expenses closing debt volume exit cashflows]))
+(def model (SUT/build-and-validate-model
+            inputs
+            [time-calcs prices expenses closing
+             debt volume exit cashflows]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TESTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 
 (deftest input-test
   (is (= (SUT/inputs->rows inputs)
@@ -229,6 +234,21 @@
   (is (not (SUT/circular? {:a [:b]})))
   (is      (SUT/circular? {:a [:b] :b [:a]}))
   (is (not (SUT/circular? {:a [:b] :b [:a :prev]}))))
+
+(deftest model-validations
+  (is (thrown-with-msg? Exception
+                        #"Circular dependencies in model"
+                        (SUT/build-and-validate-model {} [#:test{:a [:b] :b [:a]}])))
+  (is (thrown-with-msg? Exception
+                        #"Not all rows are expressions"
+                        (SUT/build-and-validate-model {} [#:test{:a 1 :b [:a]}])))
+
+  (is (thrown-with-msg? Exception
+                        #"References to non-existant rows"
+                        (SUT/build-and-validate-model {} [#:test{:a [:c] :b [:a]}])))
+  (is (thrown-with-msg? Exception
+                        #"Some model rows are not qualified"
+                        (SUT/build-and-validate-model {} [{:a [:constant 1] :b [:a]}]))))
 
 (deftest reference-resolution
   (is (= (SUT/resolve-reference [:b] {:b 6} [{}]) 6))
