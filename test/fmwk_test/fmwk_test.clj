@@ -74,16 +74,17 @@
            :profit '(- [:sale-price] [:costs])})
 
 (def expenses
-  (SUT/add-total #:expenses{:tax '(if [:time/operating-period-flag]
-                                    (* [:prices/compound-inflation]
-                                       [:inputs/starting-tax])
-                                    0)
-                            :interest '(* [:inputs/interest-rate]
-                                          [:debt.debt-balance/starting-debt])
-                            :management-fee '(if [:time/operating-period-flag]
-                                               (* [:volume/ending-value :prev]
-                                                  [:inputs/management-fee-rate])
-                                               0)}))
+  (SUT/add-total
+   #:expenses{:tax '(if [:time/operating-period-flag]
+                      (* [:prices/compound-inflation]
+                         [:inputs/starting-tax])
+                      0)
+              :interest '(* [:inputs/interest-rate]
+                            [:debt.debt-balance/start])
+              :management-fee '(if [:time/operating-period-flag]
+                                 (* [:volume/ending-value :prev]
+                                    [:inputs/management-fee-rate])
+                                 0)}))
 
 (def closing
   #:capital.closing
@@ -102,13 +103,9 @@
 
 
 (def debt
-  #:debt.debt-balance
-   {:starting-debt  [:ending-debt :prev]
-    :debt-increases [:capital.closing/debt-drawdown]
-    :debt-decreases [:capital.exit/loan-repayment]
-    :ending-debt    '(- (+ [:starting-debt]
-                           [:debt-increases])
-                        [:debt-decreases])})
+  (SUT/corkscrew :debt.debt-balance
+                 :capital.closing/debt-drawdown
+                 :capital.exit/loan-repayment))
 
 (def volume
   #:volume
@@ -136,20 +133,18 @@
                         (* [:sale-proceeds] [:inputs/disposition-fee-rate])
                         0)
     :loan-repayment '(if [:time/financial-exit-period-flag]
-                       [:debt.debt-balance/starting-debt]
+                       [:debt.debt-balance/start]
                        0)
     :exit-cashflow '(- [:sale-proceeds] [:disposition-fee] [:loan-repayment])})
 
 (def cashflows
-  #:financial-statements.cashflows
-   {:aquisition [:capital.closing/closing-cashflow]
-    :disposition [:capital.exit/exit-cashflow]
-    :gross-profit '(* [:prices/profit] [:volume/harvest])
-    :expenses-paid '(- [:expenses/total])
-    :net-cashflow '(+ [:aquisition]
-                      [:disposition]
-                      [:gross-profit]
-                      [:expenses-paid])})
+  (SUT/add-total
+   :net-cashflow
+   #:financial-statements.cashflows
+    {:aquisition [:capital.closing/closing-cashflow]
+     :disposition [:capital.exit/exit-cashflow]
+     :gross-profit '(* [:prices/profit] [:volume/harvest])
+     :expenses-paid '(- [:expenses/total])}))
 
 (def model (SUT/build-model inputs [time-calcs prices expenses closing debt volume exit cashflows]))
 

@@ -188,8 +188,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 
 (defn add-total
-  ([calculation] (add-total calculation :total))
-  ([calculation total-name]
+  ([calculation] (add-total :total calculation))
+  ([total-name calculation]
    (if (qualified-keyword? total-name)
      (throw (ex-info "add-total: total name can't be qualified"
                      {:total-name total-name}))
@@ -197,11 +197,10 @@
             (reverse (into '(+) (map vector (map unqualify (keys calculation)))))))))
 
 (defn corkscrew [qualifier increase decrease]
-  (update-keys (add-total
-                {:start [:end :prev]
-                 :increase [increase]
-                 :decrease (cons '- (list [decrease]))}
-                :end)
+  (update-keys (add-total :end
+                          {:start [:end :prev]
+                           :increase [increase]
+                           :decrease (cons '- (list [decrease]))})
                (partial qualify qualifier)))
 
 ;; Table printing and model selection
