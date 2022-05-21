@@ -1,4 +1,7 @@
 # Dev Diary
+## 21st May 2022
+* Namespacing
+
 ## Todo
 * Make flags booleans rather than numbers
 * Introduce Corkscrew helper

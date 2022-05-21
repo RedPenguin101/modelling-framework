@@ -4,13 +4,8 @@
             [clojure.string :as str]
             [clojure.walk :as walk]
             [fmwk.utils :as u]
-            [portal.api :as p]
             [ubergraph.alg :as uber-alg]
             [ubergraph.core :as uber]))
-
-(comment
-  (def p (p/open {:launcher :vs-code}))
-  (add-tap #'p/submit))
 
 ;; utils
 ;;;;;;;;;;;;;;
@@ -34,7 +29,7 @@
 (defn- current-period-refs [refs]
   (keep #(when (refs-current-period? %) (first %)) refs))
 
-(defn- input-to-row
+(defn input-to-row
   "Inputs are are defined by the user using a different spec from calculation
    rows. However internally to the model they are simply rows where every period
    value is the constant provided. This function transforms an input spec to
@@ -46,6 +41,9 @@
                          :export true
                          :calculator [nm :prev])
                   :value)))
+
+(defn inputs->rows [inputs]
+  (update-vals inputs :value))
 
 ;; calculations helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
