@@ -3,7 +3,8 @@
 * Make flags booleans rather than numbers
 * Introduce Corkscrew helper
 * Change calc model to 'calculation name' and 'worksheet name'
-* Namespace rows by calulation and sheet
+* Namespace rows by calulation and sheet 
+  (Do I actually need the calcs abstraction at all then? It's doesn't add anything! maybe for comments?)
 * Model compilation should through if validations fail. Maybe with assertions?
 * 'add totals to calculation' function
 * Better display options!
