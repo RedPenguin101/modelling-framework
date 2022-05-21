@@ -89,16 +89,6 @@
 ;; model helpers
 ;;;;;;;;;;;;;;;;;;;;;
 
-
-;; Model building
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn de-localize-rows [rows]
-  (into {} (map (fn [[k v]] [k (qualify-local-references (namespace k) v)]) rows)))
-
-(defn build-model [inputs calculations]
-  (de-localize-rows (apply merge (inputs->rows inputs) calculations)))
-
 ;; Model dependecies
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -144,6 +134,15 @@
   (all-rows-qualified? {:hello 1 :world 2})
   (all-rows-qualified? #:test{:hello 1 :world 2})
   (all-rows-qualified? {:test1/hello 1 :test2/world 2}))
+
+;; Model building
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn de-localize-rows [rows]
+  (into {} (map (fn [[k v]] [k (qualify-local-references (namespace k) v)]) rows)))
+
+(defn build-model [inputs calculations]
+  (de-localize-rows (apply merge (inputs->rows inputs) calculations)))
 
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
