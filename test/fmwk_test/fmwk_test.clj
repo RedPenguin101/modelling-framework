@@ -15,7 +15,7 @@
   #:time
    {:model-column-number '(inc [:model-column-number :prev])
     :first-model-column-flag '(if (= 1 [:model-column-number]) 1 0)
-    :period-start-date '(if (= 1 [:inputs/first-model-column-flag])
+    :period-start-date '(if (= 1 [:first-model-column-flag])
                           [:inputs/model-start-date]
                           (add-days [:period-end-date :prev] 1))
     :period-end-date '(add-days (add-months [:period-start-date]
@@ -25,16 +25,16 @@
                                                [:period-start-date])
                                        (date<= [:inputs/aquisition-date]
                                                [:period-end-date]))
-    :financial-exit-period-flag '(and (date>= [:inputs/end-of-operating-period]
+    :financial-exit-period-flag '(and (date>= [:end-of-operating-period]
                                               [:period-start-date])
-                                      (date<= [:inputs/end-of-operating-period]
+                                      (date<= [:end-of-operating-period]
                                               [:period-end-date]))
     :end-of-operating-period '(end-of-month [:inputs/aquisition-date]
                                             (* 12 [:inputs/operating-years-remaining]))
     :operating-period-flag '(and (date> [:period-start-date]
                                         [:inputs/aquisition-date])
                                  (date<= [:period-end-date]
-                                         [:inputs/end-of-operating-period]))})
+                                         [:end-of-operating-period]))})
 
 ;; Inputs
 ;;;;;;;;;;;;;;;;;;;;
@@ -69,8 +69,8 @@
                                  [:inflation-period])
            :sale-price '(* [:compound-inflation]
                            [:inputs/starting-price])
-           :costs {:calculator '(* [:compound-inflation]
-                                   [:inputs/starting-price])}
+           :costs  '(* [:compound-inflation]
+                       [:inputs/starting-costs])
            :profit '(- [:sale-price] [:costs])})
 
 (def expenses
@@ -79,23 +79,23 @@
                         [:inputs/starting-tax])
                      0)
              :interest '(* [:inputs/interest-rate]
-                           [:debt/starting-debt])
-             :management-fee '(if [:inputs/operating-period-flag]
-                                (* [:debt/ending-value :prev]
+                           [:debt.debt-balance/starting-debt])
+             :management-fee '(if [:time/operating-period-flag]
+                                (* [:volume/ending-value :prev]
                                    [:inputs/management-fee-rate])
                                 0)
              :total '(+ [:management-fee] [:tax] [:interest])})
 
 (def closing
   #:capital.closing
-   {:aquisition-cashflow '(if [:financial-close-period-flag]
-                            [:purchase-price]
+   {:aquisition-cashflow '(if [:time/financial-close-period-flag]
+                            [:inputs/purchase-price]
                             0.0)
-    :debt-drawdown '(if [:financial-close-period-flag]
-                      (* [:ltv] [:ending-value])
+    :debt-drawdown '(if [:time/financial-close-period-flag]
+                      (* [:inputs/ltv] [:volume/ending-value])
                       0)
-    :origination-fee '(if [:financial-close-period-flag]
-                        (* [:origination-fee-rate] [:debt-drawdown])
+    :origination-fee '(if [:time/financial-close-period-flag]
+                        (* [:inputs/origination-fee-rate] [:debt-drawdown])
                         0)
     :closing-cashflow '(- [:debt-drawdown]
                           [:origination-fee]
@@ -105,54 +105,54 @@
 (def debt
   #:debt.debt-balance
    {:starting-debt  [:ending-debt :prev]
-    :debt-increases [:debt-drawdown]
-    :debt-decreases [:loan-repayment]
+    :debt-increases [:capital.closing/debt-drawdown]
+    :debt-decreases [:capital.exit/loan-repayment]
     :ending-debt    '(- (+ [:starting-debt]
                            [:debt-increases])
                         [:debt-decreases])})
 
 (def volume
-  #:volume.volume
+  #:volume
    {:starting-volume [:ending-volume :prev]
     :growth '(* [:starting-volume]
-                [:growth-rate])
-    :harvest '(if (and [:operating-period-flag]
-                       (not [:financial-exit-period-flag]))
-                (/ [:expenses] [:profit])
+                [:inputs/growth-rate])
+    :harvest '(if (and [:time/operating-period-flag]
+                       (not [:time/financial-exit-period-flag]))
+                (/ [:expenses/total] [:prices/profit])
                 0)
-    :ending-volume '(if [:financial-close-period-flag]
-                      [:volume-at-aquisition]
+    :ending-volume '(if [:time/financial-close-period-flag]
+                      [:inputs/volume-at-aquisition]
                       (- (+ [:starting-volume]
                             [:growth])
                          [:harvest]))
     :ending-value '(* [:ending-volume]
-                      [:profit])})
+                      [:prices/profit])})
 
 (def exit
   #:capital.exit
-   {:sale-proceeds '(if [:financial-exit-period-flag]
-                      [:ending-value]
+   {:sale-proceeds '(if [:time/financial-exit-period-flag]
+                      [:volume/ending-value]
                       0)
-    :disposition-fee '(if [:financial-exit-period-flag]
-                        (* [:sale-proceeds] [:disposition-fee-rate])
+    :disposition-fee '(if [:time/financial-exit-period-flag]
+                        (* [:sale-proceeds] [:inputs/disposition-fee-rate])
                         0)
-    :loan-repayment '(if [:financial-exit-period-flag]
-                       [:starting-debt]
+    :loan-repayment '(if [:time/financial-exit-period-flag]
+                       [:debt.debt-balance/starting-debt]
                        0)
     :exit-cashflow '(- [:sale-proceeds] [:disposition-fee] [:loan-repayment])})
 
 (def cashflows
   #:financial-statements.cashflows
-   {:aquisition [:closing-cashflow]
-    :disposition [:exit-cashflow]
-    :gross-profit '(* [:profit] [:harvest])
-    :expenses-paid '(- [:expenses])
-    :net-cashflow '(+ [:closing-cashflow]
+   {:aquisition [:capital.closing/closing-cashflow]
+    :disposition [:capital.exit/exit-cashflow]
+    :gross-profit '(* [:prices/profit] [:volume/harvest])
+    :expenses-paid '(- [:expenses/total])
+    :net-cashflow '(+ [:aquisition]
                       [:disposition]
                       [:gross-profit]
                       [:expenses-paid])})
 
-(def model (SUT/build-model inputs [time-calcs prices]))
+(def model (SUT/build-model inputs [time-calcs prices expenses closing debt volume exit cashflows]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TESTS
@@ -182,39 +182,7 @@
   (is (= (SUT/zero-period {:a [:constant 5]
                            :b [:placeholder 10]
                            :c '(+ [:a] [:b])})
-         {:a 5, :b 10, :c 0}))
-
-  (is (= (SUT/zero-period model)
-         {:prices/profit 0,
-          :time/period-end-date 0,
-          :time/financial-close-period-flag 0,
-          :time/first-model-column-flag 0,
-          :time/operating-period-flag 0,
-          :inputs/disposition-fee-rate 0.01,
-          :inputs/inflation-rate 1.02,
-          :inputs/purchase-price 2000000.0,
-          :time/model-column-number 0,
-          :prices/inflation-period 0,
-          :inputs/starting-costs 6.25,
-          :inputs/aquisition-date "2020-12-31",
-          :prices/sale-price 0,
-          :inputs/sale-date "2035-12-31",
-          :time/financial-exit-period-flag 0,
-          :inputs/starting-price 50.0,
-          :inputs/volume-at-aquisition 50000.0,
-          :inputs/model-start-date "2020-01-01",
-          :prices/costs 0,
-          :inputs/growth-rate 0.05,
-          :inputs/interest-rate 0.03,
-          :inputs/management-fee-rate 0.015,
-          :prices/compound-inflation 0,
-          :inputs/operating-years-remaining 15,
-          :inputs/starting-tax 1250,
-          :inputs/ltv 0.6,
-          :inputs/length-of-operating-period 12,
-          :time/end-of-operating-period 0,
-          :time/period-start-date 0,
-          :inputs/origination-fee-rate 0.01})))
+         {:a 5, :b 10, :c 0})))
 
 (deftest reference-extractions
   (is (= (SUT/extract-refs '(* [:compound-inflation]
@@ -228,7 +196,7 @@
          [[:financial-close-period-flag] [:ltv] [:ending-value :prev]]))
 
   (is (thrown-with-msg? Exception
-                        #"extract-refs: expression is a constant"
+                        #"extract-refs: not an expression"
                         (SUT/extract-refs 123))))
 
 (deftest replacing-locals
@@ -281,4 +249,3 @@
                                   [:b])}
                           [:a :b :c])
          {:a 4, :b 5, :c 8})))
-

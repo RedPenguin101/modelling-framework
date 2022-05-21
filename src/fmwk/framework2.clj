@@ -33,7 +33,7 @@
 (spec/def :framework.reference/placeholder (spec/tuple #(= :placeholder %) any?))
 
 (def atomic? (complement coll?))
-(def expr? list?)
+(def expression? list?)
 (defn constant-ref? [ref] (and (vector? ref) (#{:placeholder :constant} (first ref))))
 (def link? (every-pred vector? (complement constant-ref?)))
 (defn current-period-link? [ref] (and (link? ref) (= 1 (count ref))))
@@ -52,12 +52,12 @@
    will extract all of the references and return them as a vector"
   ([expr] (if (coll? expr)
             (extract-refs [] expr)
-            (throw (ex-info "extract-refs: expression is a constant" {:expr expr}))))
+            (throw (ex-info "extract-refs: not an expression" {:expr expr}))))
   ([found [fst & rst :as expr]]
-   (cond (link? expr) (conj found expr)
+   (cond (or (constant-ref? expr) (link? expr)) (conj found expr)
          (nil? fst) found
          (link? fst) (recur (conj found fst) rst)
-         (expr? fst) (recur (into found (extract-refs [] fst)) rst)
+         (expression? fst) (recur (into found (extract-refs [] fst)) rst)
          :else (recur found rst))))
 
 (defn qualify-local-references [qualifier expr]
@@ -115,6 +115,16 @@
 
 (defn circular? [rows] (not (uberalg/dag? (rows->graph rows))))
 
+(defn all-rows-are-exprs? [rows] (every? expression? (vals rows)))
+
+(defn bad-references [rows]
+  (let [permitted (set (keys rows))]
+    (into {} (remove (comp empty? val)
+                     (update-vals rows (comp (partial remove permitted)
+                                             (partial map first)
+                                             (partial filter link?)
+                                             extract-refs))))))
+
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -130,13 +140,29 @@
 (defn next-period [prv-recs rows calc-order]
   (reduce (fn [record row-name]
             (let [refs (extract-refs (row-name rows))]
-              (->> (map #(resolve-reference % record prv-recs) refs)
-                   (zipmap (map first refs))
-                   (replace-refs-in-expr (row-name rows))
-                   eval
-                   (assoc record row-name))))
+              (try
+                (->> (map #(resolve-reference % record prv-recs) refs)
+                     (zipmap (map first refs))
+                     (replace-refs-in-expr (row-name rows))
+                     eval
+                     (assoc record row-name))
+                (catch Exception _e
+                  (throw (ex-info (str "Error calculating " row-name)
+                                  {:name row-name
+                                   :calc (row-name rows)
+                                   :replaced-calc (replace-refs-in-expr (row-name rows) (zipmap (map first refs) (map #(resolve-reference % record prv-recs) refs)))}))))))
           {}
           calc-order))
+
+(defn roll-model [prvs rows order] (conj prvs (next-period prvs rows order)))
+
+(defn run-model [rows periods]
+  (let [order (calculate-order rows)]
+    (reverse (loop [records (list (zero-period rows))
+                    prd periods]
+               (if (zero? prd)
+                 records
+                 (recur (roll-model records rows order) (dec prd)))))))
 
 ;; Table printing and model selection
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
