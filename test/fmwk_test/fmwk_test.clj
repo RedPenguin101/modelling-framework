@@ -159,25 +159,30 @@
 
 (deftest input-test
   (is (= (SUT/inputs->rows inputs)
-         #:inputs{:disposition-fee-rate 0.01,
-                  :inflation-rate 1.02,
-                  :purchase-price 2000000.0,
-                  :starting-costs 6.25,
-                  :aquisition-date "2020-12-31",
-                  :sale-date "2035-12-31",
-                  :starting-price 50.0,
-                  :volume-at-aquisition 50000.0,
-                  :model-start-date "2020-01-01",
-                  :growth-rate 0.05,
-                  :interest-rate 0.03,
-                  :management-fee-rate 0.015,
-                  :operating-years-remaining 15,
-                  :starting-tax 1250,
-                  :ltv 0.6,
-                  :length-of-operating-period 12,
-                  :origination-fee-rate 0.01})))
+         #:inputs{:disposition-fee-rate       [:constant 0.01],
+                  :inflation-rate             [:constant 1.02],
+                  :purchase-price             [:constant 2000000.0],
+                  :starting-costs             [:constant 6.25],
+                  :aquisition-date            [:constant "2020-12-31"],
+                  :sale-date                  [:constant "2035-12-31"],
+                  :starting-price             [:constant 50.0],
+                  :volume-at-aquisition       [:constant 50000.0],
+                  :model-start-date           [:constant "2020-01-01"],
+                  :growth-rate                [:constant 0.05],
+                  :interest-rate              [:constant 0.03],
+                  :management-fee-rate        [:constant 0.015],
+                  :operating-years-remaining  [:constant 15],
+                  :starting-tax               [:constant 1250],
+                  :ltv                        [:constant 0.6],
+                  :length-of-operating-period [:constant 12],
+                  :origination-fee-rate       [:constant 0.01]})))
 
 (deftest zero-period-test
+  (is (= (SUT/zero-period {:a [:constant 5]
+                           :b [:placeholder 10]
+                           :c '(+ [:a] [:b])})
+         {:a 5, :b 10, :c 0}))
+
   (is (= (SUT/zero-period calculations)
          {:prices/profit 0,
           :time/period-end-date 0,

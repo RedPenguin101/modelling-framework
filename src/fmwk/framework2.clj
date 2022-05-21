@@ -68,9 +68,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn inputs->rows [inputs]
-  (update-vals inputs :value))
-
-
+  (update-vals inputs #(conj [:constant] (:value %))))
 
 ;; calculations helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -78,10 +76,14 @@
 ;; Calc validations
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn expression-is-atomic? [expr] (not (coll? expr)))
+
 (defn multiple-placeholders-in-expr? [expr]
   (> (count (filter #{:placeholder} (map first (extract-refs expr))))
      1))
 
+(expression-is-atomic? '(+ [:placeholder 10] [:placeholder 10]))
+(expression-is-atomic? 10)
 (multiple-placeholders-in-expr? '(+ [:placeholder 10] [:placeholder 10]))
 
 ;; model helpers
@@ -115,7 +117,7 @@
 
 (defn zero-period
   [rows]
-  (update-vals rows #(if (coll? %) 0 %)))
+  (update-vals rows #(if (constant? %) (second %) 0)))
 
 (defn resolve-reference [ref this-record [previous-record]]
   (cond (constant? ref)            (second ref)
