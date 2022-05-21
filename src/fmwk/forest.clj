@@ -8,113 +8,142 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 (def prices
-  #:prices{:inflation-period '(dec [:model-column-number])
-           :compound-inflation '(Math/pow
-                                 [:inflation-rate]
-                                 [:inflation-period])
-           :sale-price '(* [:compound-inflation]
-                           [:starting-price])
-           :costs {:calculator '(* [:compound-inflation]
-                                   [:starting-price])}
-           :profit '(- [:sale-price] [:costs])})
+  {:name :prices
+   :import []
+   :category :prices
+   :rows {:inflation-period {:calculator '(dec [:model-column-number])}
+          :compound-inflation {:export true
+                               :calculator '(Math/pow
+                                             [:inflation-rate]
+                                             [:inflation-period])}
+          :sale-price {:calculator '(* [:compound-inflation]
+                                       [:starting-price])}
+          :costs {:calculator '(* [:compound-inflation]
+                                  [:starting-costs])}
+          :profit {:export true
+                   :calculator '(- [:sale-price] [:costs])}}})
 
 ;;; EXPENSES
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 (def expenses
-  #:expenses{:tax '(if (flagged? [:operating-period-flag])
-                     (* [:compound-inflation]
-                        [:starting-tax])
-                     0)
-             :interest '(* [:interest-rate]
-                           [:starting-debt])
-             :management-fee '(if (flagged? [:operating-period-flag])
-                                (* [:ending-value :prev]
-                                   [:management-fee-rate])
-                                0)
-             :expenses '(+ [:management-fee]
-                           [:tax] [:interest])})
+  {:name :expenses
+   :import [:compound-inflation :starting-tax]
+   :category :expenses
+   :rows {:tax {:calculator '(if (flagged? [:operating-period-flag])
+                               (* [:compound-inflation]
+                                  [:starting-tax])
+                               0)}
+          :interest {:calculator '(* [:interest-rate]
+                                     [:starting-debt])}
+          :management-fee {:calculator '(if (flagged? [:operating-period-flag])
+                                          (* [:ending-value :prev]
+                                             [:management-fee-rate])
+                                          0)}
+          :expenses {:export true
+                     :calculator '(+ [:management-fee]
+                                     [:tax] [:interest])}}})
 
 ;;; CLOSING
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 (def closing
-  #:capital.closing
-   {:aquisition-cashflow '(if (flagged? [:financial-close-period-flag])
-                            [:purchase-price]
-                            0.0)
-    :debt-drawdown '(if (flagged? [:financial-close-period-flag])
-                      (* [:ltv] [:ending-value])
-                      0)
-    :origination-fee '(if (flagged? [:financial-close-period-flag])
-                        (* [:origination-fee-rate] [:debt-drawdown])
-                        0)
-    :closing-cashflow '(- [:debt-drawdown]
-                          [:origination-fee]
-                          [:aquisition-cashflow])})
+  {:name :closing
+   :category :capital
+   :rows {:aquisition-cashflow {:calculator '(if (flagged? [:financial-close-period-flag])
+                                               [:purchase-price]
+                                               0.0)}
+          :debt-drawdown {:export true
+                          :calculator '(if (flagged? [:financial-close-period-flag])
+                                         (* [:ltv] [:ending-value])
+                                         0)}
+          :origination-fee {:calculator '(if (flagged? [:financial-close-period-flag])
+                                           (* [:origination-fee-rate] [:debt-drawdown])
+                                           0)}
+          :closing-cashflow {:export true
+                             :calculator '(- [:debt-drawdown]
+                                             [:origination-fee]
+                                             [:aquisition-cashflow])}}})
 
 
 ;;; DEBT
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 (def debt
-  #:debt.debt-balance
-   {:starting-debt  [:ending-debt :prev]
-    :debt-increases [:debt-drawdown]
-    :debt-decreases [:loan-repayment]
-    :ending-debt    '(- (+ [:starting-debt]
-                           [:debt-increases])
-                        [:debt-decreases])})
+  {:name :debt-balance
+   :category :debt
+   :rows {:starting-debt {:export true
+                          :calculator [:ending-debt :prev]}
+          :debt-increases     {:calculator [:debt-drawdown]}
+          :debt-decreases     {:calculator [:loan-repayment]}
+          :ending-debt   {:export true
+                          :calculator '(- (+ [:starting-debt]
+                                             [:debt-increases])
+                                          [:debt-decreases])}}})
 
 ;;; VOLUME AND VALUE
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 (def volume
-  #:volume.volume
-   {:starting-volume [:ending-volume :prev]
-    :growth '(* [:starting-volume]
-                [:growth-rate])
-    :harvest '(if (and (flagged? [:operating-period-flag])
-                       (not (flagged? [:financial-exit-period-flag])))
-                (/ [:expenses] [:profit])
-                0)
-    :ending-volume '(if (flagged? [:financial-close-period-flag])
-                      [:volume-at-aquisition]
-                      (- (+ [:starting-volume]
-                            [:growth])
-                         [:harvest]))
-    {:ending-value '(* [:ending-volume]
-                       [:profit])}})
+  {:name :ending-volume
+   :category :volume
+   :import [:volume-at-aquisition :financial-close-period-flag]
+   :rows {:starting-volume {:calculator [:ending-volume :prev]}
+          :growth {:calculator '(* [:starting-volume]
+                                   [:growth-rate])}
+          :harvest {:export true
+                    :calculator '(if (and (flagged? [:operating-period-flag])
+                                          (not (flagged? [:financial-exit-period-flag])))
+                                   (/ [:expenses] [:profit])
+                                   0)}
+          :ending-volume {:export true
+                          :calculator '(if (flagged? [:financial-close-period-flag])
+                                         [:volume-at-aquisition]
+                                         (- (+ [:starting-volume]
+                                               [:growth])
+                                            [:harvest]))}}})
+
+(def value
+  {:name :value
+   :category :value
+   :import []
+   :rows {:ending-value {:export true
+                         :calculator '(* [:ending-volume]
+                                         [:profit])}}})
 
 ;; Sale
 ;;;;;;;;;;;;;;;;;;;
 
 (def exit
-  #:capital.exit
-   {:sale-proceeds '(if (flagged? [:financial-exit-period-flag])
-                      [:ending-value]
-                      0)
-    :disposition-fee '(if (flagged? [:financial-exit-period-flag])
-                        (* [:sale-proceeds] [:disposition-fee-rate])
-                        0)
-    :loan-repayment '(if (flagged? [:financial-exit-period-flag])
-                       [:starting-debt]
-                       0)
-    :exit-cashflow '(- [:sale-proceeds] [:disposition-fee] [:loan-repayment])})
+  {:name :exit
+   :category :capital
+   :rows {:sale-proceeds {:calculator '(if (flagged? [:financial-exit-period-flag])
+                                         [:ending-value]
+                                         0)}
+          :disposition-fee {:calculator '(if (flagged? [:financial-exit-period-flag])
+                                           (* [:sale-proceeds] [:disposition-fee-rate])
+                                           0)}
+          :loan-repayment {:export true
+                           :calculator '(if (flagged? [:financial-exit-period-flag])
+                                          [:starting-debt]
+                                          0)}
+          :exit-cashflow {:export true
+                          :calculator '(- [:sale-proceeds] [:disposition-fee] [:loan-repayment])}}})
 
 ;; Cashflows
 ;;;;;;;;;;;;;;;;;;;
 
 (def cashflows
-  #:financial-statements.cashflows
-   {:aquisition [:closing-cashflow]
-    :disposition [:exit-cashflow]
-    :gross-profit '(* [:profit] [:harvest])
-    :expenses-paid '(- [:expenses])
-    :net-cashflow '(+ [:closing-cashflow]
-                      [:disposition]
-                      [:gross-profit]
-                      [:expenses-paid])})
+  {:name :cashflows
+   :category :financial-statements
+   :rows {:aquisition {:calculator [:closing-cashflow]}
+          :disposition {:calculator [:exit-cashflow]}
+          :gross-profit {:calculator '(* [:profit] [:harvest])}
+          :expenses-paid {:calculator '(- [:expenses])}
+          :net-cashflow {:calculator '(+ [:closing-cashflow]
+                                         [:disposition]
+                                         [:gross-profit]
+                                         [:expenses-paid])}}})
 
 ;; Orchestration
 ;;;;;;;;;;;;;;;;;;;
@@ -125,15 +154,13 @@
             debt
             expenses
             cashflows
-            volume
+            volume value
             exit])
 
 (def model (fw/build-model calcs fmwk.forest.inputs/inputs))
 
-(comment
-  (fw/calculation-validation-halting calcs)
-
-  (fw/check-model-halting model))
+(fw/calculation-validation-halting calcs)
+(fw/check-model-halting model)
 
 (comment
   (ubergraph.core/viz-graph (:full-graph model)))
@@ -181,6 +208,4 @@
 
 (fw/print-results (fw/row-select results rows) [12 18])
 
-(comment
-  (keys model))
-
+(set (map :category (vals (:calculations model))))
