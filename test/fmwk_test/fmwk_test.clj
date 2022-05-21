@@ -82,7 +82,7 @@
               :interest '(* [:inputs/interest-rate]
                             [:debt.debt-balance/start])
               :management-fee '(if [:time/operating-period-flag]
-                                 (* [:volume/ending-value :prev]
+                                 (* [:value/end :prev]
                                     [:inputs/management-fee-rate])
                                  0)}))
 
@@ -92,7 +92,7 @@
                             [:inputs/purchase-price]
                             0.0)
     :debt-drawdown '(if [:time/financial-close-period-flag]
-                      (* [:inputs/ltv] [:volume/ending-value])
+                      (* [:inputs/ltv] [:value/end])
                       0)
     :origination-fee '(if [:time/financial-close-period-flag]
                         (* [:inputs/origination-fee-rate] [:debt-drawdown])
@@ -107,27 +107,36 @@
                  :capital.closing/debt-drawdown
                  :capital.exit/loan-repayment))
 
+(def growth
+  #:growth {:growth '(* [:volume/start]
+                        [:inputs/growth-rate])
+            :harvest '(if (and [:time/operating-period-flag]
+                               (not [:time/financial-exit-period-flag]))
+                        (/ [:expenses/total] [:prices/profit])
+                        0)})
+
+(def volume2
+  (SUT/corkscrew :volume
+                 :growth/growth
+                 :growth/harvest))
+
 (def volume
   #:volume
-   {:starting-volume [:ending-volume :prev]
-    :growth '(* [:starting-volume]
-                [:inputs/growth-rate])
-    :harvest '(if (and [:time/operating-period-flag]
-                       (not [:time/financial-exit-period-flag]))
-                (/ [:expenses/total] [:prices/profit])
-                0)
-    :ending-volume '(if [:time/financial-close-period-flag]
-                      [:inputs/volume-at-aquisition]
-                      (- (+ [:starting-volume]
-                            [:growth])
-                         [:harvest]))
-    :ending-value '(* [:ending-volume]
-                      [:prices/profit])})
+   {:start [:end :prev]
+    :increase [:growth/growth]
+    :decrease '(- [:growth/harvest])
+    :end '(if [:time/financial-close-period-flag]
+            [:inputs/volume-at-aquisition]
+            (+ [:start] [:increase] [:decrease]))})
+
+(def value
+  {:value/end '(* [:volume/end]
+                  [:prices/profit])})
 
 (def exit
   #:capital.exit
    {:sale-proceeds '(if [:time/financial-exit-period-flag]
-                      [:volume/ending-value]
+                      [:value/end]
                       0)
     :disposition-fee '(if [:time/financial-exit-period-flag]
                         (* [:sale-proceeds] [:inputs/disposition-fee-rate])
@@ -143,13 +152,20 @@
    #:financial-statements.cashflows
     {:aquisition [:capital.closing/closing-cashflow]
      :disposition [:capital.exit/exit-cashflow]
-     :gross-profit '(* [:prices/profit] [:volume/harvest])
+     :gross-profit '(* [:prices/profit] [:growth/harvest])
      :expenses-paid '(- [:expenses/total])}))
 
 (def model (SUT/build-and-validate-model
             inputs
             [time-calcs prices expenses closing
-             debt volume exit cashflows]))
+             debt volume value growth
+             exit cashflows]))
+
+(SUT/fail-catch (SUT/build-and-validate-model
+                 inputs
+                 [time-calcs prices expenses closing
+                  debt volume value growth
+                  exit cashflows]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TESTS

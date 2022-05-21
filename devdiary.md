@@ -1,19 +1,20 @@
 # Dev Diary
-## 21st May 2022
-* Namespacing
-
-Ideas:
-* Eliminate transients: like pure looks throughs.
-
 ## Todo
+* Better display options!
+* Compile model to function on arrays to increase performance?
+* Eliminate transients: like pure looks throughs.
+* Units and metadata
+
+## 21st May 2022
+
+
 * **DONE** Make flags booleans rather than numbers
 * **DONE** Introduce Corkscrew helper
 * **DONE** 'add totals to calculation' function
 * **NOT DONE** Change calc model to 'calculation name' and 'worksheet name'
 * **DONE** Namespace rows by calulation and sheet 
   (Do I actually need the calcs abstraction at all then? It's doesn't add anything! maybe for comments?)
-* Model compilation should through if validations fail. Maybe with assertions?
-* Better display options!
+* **DONE** Model compilation should through if validations fail. Maybe with assertions?
 
 ## 20th May 2022
 My stopping point yesterday was a working model for the Forest FMWC scenario. Some observations:
