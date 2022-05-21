@@ -33,16 +33,15 @@
 (spec/def :framework.reference/placeholder (spec/tuple #(= :placeholder %) any?))
 
 (def atomic? (complement coll?))
-(def link? vector?)
 (def expr? list?)
-(defn constant-ref? [ref] (and (link? ref) (#{:placeholder :constant} (first ref))))
-(defn current-period-ref? [ref] (and (link? ref) (= 1 (count ref))))
-(defn previous-period-ref? [ref] (and (link? ref) (= :prev (second ref))))
-(defn placeholder-ref? [ref] (and (link? ref) (= :placeholder (first ref))))
+(defn constant-ref? [ref] (and (vector? ref) (#{:placeholder :constant} (first ref))))
+(def link? (every-pred vector? (complement constant-ref?)))
+(defn current-period-link? [ref] (and (link? ref) (= 1 (count ref))))
+(defn previous-period-link? [ref] (and (link? ref) (= :prev (second ref))))
 
 ;; idea is to use this for better circularity detection later - i.e if it's circular,
 ;; but only because this is a link to previous, that's fine. But can't think it through now
-(def link-to-prv? (every-pred link? previous-period-ref?))
+(def link-to-prv? (every-pred link? previous-period-link?))
 
 (spec/valid? :framework.reference/current [:hello])
 (spec/valid? :framework.reference/previous [:hello :prev])
