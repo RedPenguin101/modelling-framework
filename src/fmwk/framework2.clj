@@ -218,11 +218,18 @@
      (assoc calculation (qualify (namespace (ffirst calculation)) total-name)
             (reverse (into '(+) (map vector (map unqualify (keys calculation)))))))))
 
-(defn corkscrew [qualifier increase decrease]
+(defn ref-sum [refs]
+  (if (= 1 (count refs))
+    (vec refs)
+    (cons '+ (map vector refs))))
+
+(ref-sum [:hello :world])
+
+(defn corkscrew [qualifier increases decreases]
   (update-keys (add-total :end
                           {:start [:end :prev]
-                           :increase [increase]
-                           :decrease (cons '- (list [decrease]))})
+                           :increase (ref-sum increases)
+                           :decrease (list '- (ref-sum decreases))})
                (partial qualify qualifier)))
 
 ;; Table printing and model selection

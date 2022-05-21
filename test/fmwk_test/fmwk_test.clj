@@ -104,8 +104,8 @@
 
 (def debt
   (SUT/corkscrew :debt.debt-balance
-                 :capital.closing/debt-drawdown
-                 :capital.exit/loan-repayment))
+                 [:capital.closing/debt-drawdown]
+                 [:capital.exit/loan-repayment]))
 
 (def growth
   #:growth {:growth '(* [:volume/start]
@@ -115,10 +115,10 @@
                         (/ [:expenses/total] [:prices/profit])
                         0)})
 
-(def volume2
-  (SUT/corkscrew :volume
-                 :growth/growth
-                 :growth/harvest))
+#_(def volume2
+    (SUT/corkscrew :volume.balance
+                   :growth/growth
+                   :growth/harvest))
 
 (def volume
   #:volume
@@ -289,10 +289,16 @@
           :decrease [:other-thing/down],
           :total '(+ [:start] [:increase] [:decrease])}))
 
-  (is (= (SUT/corkscrew "hello.world" :other-thing/up :other-thing/down)
+  (is (= (SUT/corkscrew "hello.world" [:other-thing/up] [:other-thing/down])
          #:hello.world{:start [:end :prev],
                        :increase [:other-thing/up],
                        :decrease '(- [:other-thing/down]),
+                       :end '(+ [:start] [:increase] [:decrease])}))
+
+  (is (= (SUT/corkscrew "hello.world" [:other-thing/up1 :other-thing/up2] [:other-thing/down1 :other-thing/down2])
+         #:hello.world{:start [:end :prev],
+                       :increase '(+ [:other-thing/up1] [:other-thing/up2]),
+                       :decrease '(- (+ [:other-thing/down1] [:other-thing/down2])),
                        :end '(+ [:start] [:increase] [:decrease])})))
 
 (deftest full-model-run
