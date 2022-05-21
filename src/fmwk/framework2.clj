@@ -7,6 +7,16 @@
 ;; utils
 ;;;;;;;;;;;;;;
 
+(defmacro fail-catch [expr]
+  (let [e 'e]
+    `(try ~expr (catch Exception ~e {:message (ex-message ~e)
+                                     :data (ex-data ~e)}))))
+
+(comment
+  (fail-catch (throw (ex-info "failed" {:foo :barr})))
+  ;; => {:message "failed", :data {:foo :barr}}
+  )
+
 (defn map-vals [f m] (update-vals m f))
 
 (defn qualify [qualifier-str kw]
