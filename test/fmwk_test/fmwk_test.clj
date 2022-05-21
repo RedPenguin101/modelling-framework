@@ -231,15 +231,15 @@
 
 (deftest replacing-locals
 
-  (is (= (SUT/replace-local-references "hello" [:placeholder 7])
+  (is (= (SUT/qualify-local-references "hello" [:placeholder 7])
          [:placeholder 7]))
-  (is (= (SUT/replace-local-references "hello" [:test 7])
+  (is (= (SUT/qualify-local-references "hello" [:test 7])
          [:hello/test 7]))
-  (is (= (SUT/replace-local-references "hello" [:already.qualled/test 7])
+  (is (= (SUT/qualify-local-references "hello" [:already.qualled/test 7])
          [:already.qualled/test 7]))
-  (is (= (SUT/replace-local-references "hello" 25)
+  (is (= (SUT/qualify-local-references "hello" 25)
          25))
-  (is (= (SUT/replace-local-references "hello"
+  (is (= (SUT/qualify-local-references "hello"
                                        '(Math/pow [:inputs/inflation-rate] [:inflation-period] [:placeholder 7]))
          '(Math/pow [:inputs/inflation-rate] [:hello/inflation-period] [:placeholder 7]))))
 
