@@ -166,6 +166,21 @@
         records
         (recur (roll-model records rows order) (dec prd))))))
 
+;; Model helpers
+;;;;;;;;;;;;;;;;;;;;;;
+
+(defn add-total
+  ([calculation] (add-total calculation :total))
+  ([calculation total-name]
+   (assoc calculation total-name (reverse (into '(+) (map vector (keys calculation)))))))
+
+(defn corkscrew [qualifier increase decrease]
+  (update-keys (add-total
+                {:start [:end :prev]
+                 :increase [increase]
+                 :decrease [decrease]}
+                :end)
+               (partial qualify qualifier)))
 
 ;; Table printing and model selection
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

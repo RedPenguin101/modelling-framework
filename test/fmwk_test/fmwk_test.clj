@@ -250,6 +250,21 @@
                           [:a :b :c])
          {:a 4, :b 5, :c 8})))
 
+(deftest helpers
+  (is (= (SUT/add-total {:start [:end :prev]
+                         :increase [:other-thing/up]
+                         :decrease [:other-thing/down]})
+         {:start [:end :prev],
+          :increase [:other-thing/up],
+          :decrease [:other-thing/down],
+          :total '(+ [:start] [:increase] [:decrease])}))
+
+  (is (= (SUT/corkscrew "hello.world" :other-thing/up :other-thing/down)
+         #:hello.world{:start [:end :prev],
+                       :increase [:other-thing/up],
+                       :decrease [:other-thing/down],
+                       :end '(+ [:start] [:increase] [:decrease])})))
+
 (deftest full-model-run
   (is (= (Math/round (:financial-statements.cashflows/net-cashflow (first (time (SUT/run-model model 16)))))
          2678047)))
