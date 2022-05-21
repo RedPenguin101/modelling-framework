@@ -152,9 +152,11 @@
                       [:gross-profit]
                       [:expenses-paid])})
 
-(def calculations (merge time-calcs
-                         prices
-                         (SUT/inputs->rows inputs)))
+(def model (SUT/build-model inputs [time-calcs prices]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TESTS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest input-test
   (is (= (SUT/inputs->rows inputs)
@@ -182,7 +184,7 @@
                            :c '(+ [:a] [:b])})
          {:a 5, :b 10, :c 0}))
 
-  (is (= (SUT/zero-period calculations)
+  (is (= (SUT/zero-period model)
          {:prices/profit 0,
           :time/period-end-date 0,
           :time/financial-close-period-flag 0,
@@ -230,7 +232,6 @@
                         (SUT/extract-refs 123))))
 
 (deftest replacing-locals
-
   (is (= (SUT/qualify-local-references "hello" [:placeholder 7])
          [:placeholder 7]))
   (is (= (SUT/qualify-local-references "hello" [:test 7])
@@ -241,7 +242,10 @@
          25))
   (is (= (SUT/qualify-local-references "hello"
                                        '(Math/pow [:inputs/inflation-rate] [:inflation-period] [:placeholder 7]))
-         '(Math/pow [:inputs/inflation-rate] [:hello/inflation-period] [:placeholder 7]))))
+         '(Math/pow [:inputs/inflation-rate] [:hello/inflation-period] [:placeholder 7])))
+
+  (is (= (SUT/de-localize-rows #:test-qual{:a [:b] :b [:other-qual/b :prev] :c [:placeholder 5]})
+         #:test-qual{:a [:test-qual/b], :b [:other-qual/b :prev], :c [:placeholder 5]})))
 
 (deftest replacing-references
   (is (= (SUT/replace-refs-in-expr [:hello] {:hello 5})
