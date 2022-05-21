@@ -60,7 +60,7 @@
          (expr? fst) (recur (into found (extract-refs [] fst)) rst)
          :else (recur found rst))))
 
-(defn replace-local-references [qualifier expr]
+(defn qualify-local-references [qualifier expr]
   (postwalk #(if (link? %) (update % 0 (partial qualify qualifier)) %)
             expr))
 
@@ -94,7 +94,7 @@
 
 (defn rows->graph [rows]
   (->> (map-vals extract-refs rows)
-       (map-vals #(filter current-period-ref? %))
+       (map-vals #(filter current-period-link? %))
        (map-vals #(map first %))
        (mapcat expand)
        (uber/add-directed-edges* (uber/digraph))))
@@ -118,8 +118,8 @@
 
 (defn resolve-reference [ref this-record [previous-record]]
   (cond (constant-ref? ref)        (second ref)
-        (previous-period-ref? ref) (get previous-record (first ref))
-        (current-period-ref? ref)  (get this-record (first ref))))
+        (previous-period-link? ref) (get previous-record (first ref))
+        (current-period-link? ref)  (get this-record (first ref))))
 
 (defn next-period [prv-recs rows calc-order]
   (reduce (fn [record row-name]
