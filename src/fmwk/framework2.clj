@@ -125,7 +125,6 @@
 (defn next-period [prv-recs rows calc-order]
   (reduce (fn [record row-name]
             (let [refs (extract-refs (row-name rows))]
-              (println refs)
               (->> (map #(resolve-reference % record prv-recs) refs)
                    (zipmap (map first refs))
                    (replace-refs-in-expr (row-name rows))
