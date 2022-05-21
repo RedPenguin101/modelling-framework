@@ -76,15 +76,6 @@
 ;; Calc validations
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn expression-is-atomic? [expr] (not (coll? expr)))
-
-(defn multiple-placeholders-in-expr? [expr]
-  (> (count (filter #{:placeholder} (map first (extract-refs expr))))
-     1))
-
-(expression-is-atomic? '(+ [:placeholder 10] [:placeholder 10]))
-(expression-is-atomic? 10)
-(multiple-placeholders-in-expr? '(+ [:placeholder 10] [:placeholder 10]))
 
 ;; model helpers
 ;;;;;;;;;;;;;;;;;;;;;
