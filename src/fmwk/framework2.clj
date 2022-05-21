@@ -13,6 +13,8 @@
   (if (or (= :placeholder kw) (qualified-keyword? kw)) kw
       (keyword qualifier-str (name kw))))
 
+(defn unqualify [kw] (keyword (name kw)))
+
 (defn- expand
   "Where the value in a kv pair is a sequence, this function
    will 'unpack' the value. So 
@@ -127,6 +129,22 @@
                                              (partial filter link?)
                                              extract-refs))))))
 
+(defn consistent-qualifier? [rows]
+  (apply = (map namespace (keys rows))))
+
+(comment
+  (consistent-qualifier? {:hello 1 :world 2})
+  (consistent-qualifier? #:test{:hello 1 :world 2})
+  (consistent-qualifier? {:test1/hello 1 :test2/world 2}))
+
+(defn all-rows-qualified? [rows]
+  (every? qualified-keyword? (keys rows)))
+
+(comment
+  (all-rows-qualified? {:hello 1 :world 2})
+  (all-rows-qualified? #:test{:hello 1 :world 2})
+  (all-rows-qualified? {:test1/hello 1 :test2/world 2}))
+
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -172,7 +190,11 @@
 (defn add-total
   ([calculation] (add-total calculation :total))
   ([calculation total-name]
-   (assoc calculation total-name (reverse (into '(+) (map vector (keys calculation)))))))
+   (if (qualified-keyword? total-name)
+     (throw (ex-info "add-total: total name can't be qualified"
+                     {:total-name total-name}))
+     (assoc calculation (qualify (namespace (ffirst calculation)) total-name)
+            (reverse (into '(+) (map vector (map unqualify (keys calculation)))))))))
 
 (defn corkscrew [qualifier increase decrease]
   (update-keys (add-total

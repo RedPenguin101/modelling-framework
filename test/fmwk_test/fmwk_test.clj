@@ -74,17 +74,16 @@
            :profit '(- [:sale-price] [:costs])})
 
 (def expenses
-  #:expenses{:tax '(if [:time/operating-period-flag]
-                     (* [:prices/compound-inflation]
-                        [:inputs/starting-tax])
-                     0)
-             :interest '(* [:inputs/interest-rate]
-                           [:debt.debt-balance/starting-debt])
-             :management-fee '(if [:time/operating-period-flag]
-                                (* [:volume/ending-value :prev]
-                                   [:inputs/management-fee-rate])
-                                0)
-             :total '(+ [:management-fee] [:tax] [:interest])})
+  (SUT/add-total #:expenses{:tax '(if [:time/operating-period-flag]
+                                    (* [:prices/compound-inflation]
+                                       [:inputs/starting-tax])
+                                    0)
+                            :interest '(* [:inputs/interest-rate]
+                                          [:debt.debt-balance/starting-debt])
+                            :management-fee '(if [:time/operating-period-flag]
+                                               (* [:volume/ending-value :prev]
+                                                  [:inputs/management-fee-rate])
+                                               0)}))
 
 (def closing
   #:capital.closing
