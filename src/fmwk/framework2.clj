@@ -32,10 +32,17 @@
 (spec/def :framework.reference/previous (spec/tuple keyword? #(= :prev %)))
 (spec/def :framework.reference/placeholder (spec/tuple #(= :placeholder %) any?))
 
-(defn placeholder-ref? [ref] (= :placeholder (first ref)))
-(defn previous-period-ref? [ref] (= :prev (second ref)))
-(defn current-period-ref? [ref] (= 1 (count ref)))
-(defn constant? [ref] (#{:placeholder :constant} (first ref)))
+(def atomic? (complement coll?))
+(def link? vector?)
+(def expr? list?)
+(defn constant-ref? [ref] (and (link? ref) (#{:placeholder :constant} (first ref))))
+(defn current-period-ref? [ref] (and (link? ref) (= 1 (count ref))))
+(defn previous-period-ref? [ref] (and (link? ref) (= :prev (second ref))))
+(defn placeholder-ref? [ref] (and (link? ref) (= :placeholder (first ref))))
+
+;; idea is to use this for better circularity detection later - i.e if it's circular,
+;; but only because this is a link to previous, that's fine. But can't think it through now
+(def link-to-prv? (every-pred link? previous-period-ref?))
 
 (spec/valid? :framework.reference/current [:hello])
 (spec/valid? :framework.reference/previous [:hello :prev])
@@ -48,19 +55,19 @@
             (extract-refs [] expr)
             (throw (ex-info "extract-refs: expression is a constant" {:expr expr}))))
   ([found [fst & rst :as expr]]
-   (cond (vector? expr) (conj found expr)
+   (cond (link? expr) (conj found expr)
          (nil? fst) found
-         (vector? fst) (recur (conj found fst) rst)
-         (coll? fst) (recur (into found (extract-refs [] fst)) rst)
+         (link? fst) (recur (conj found fst) rst)
+         (expr? fst) (recur (into found (extract-refs [] fst)) rst)
          :else (recur found rst))))
 
 (defn replace-local-references [qualifier expr]
-  (postwalk #(if (vector? %) (update % 0 (partial qualify qualifier)) %)
+  (postwalk #(if (link? %) (update % 0 (partial qualify qualifier)) %)
             expr))
 
 (defn replace-refs-in-expr [expr replacements]
-  (postwalk #(cond (and (vector? %) (= :placeholder (first %))) (second %)
-                   (vector? %) (replacements (first %))
+  (postwalk #(cond (constant-ref? %) (second %)
+                   (link? %) (replacements (first %))
                    :else %)
             expr))
 
@@ -75,7 +82,6 @@
 
 ;; Calc validations
 ;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 ;; model helpers
 ;;;;;;;;;;;;;;;;;;;;;
@@ -109,10 +115,10 @@
 
 (defn zero-period
   [rows]
-  (update-vals rows #(if (constant? %) (second %) 0)))
+  (update-vals rows #(if (constant-ref? %) (second %) 0)))
 
 (defn resolve-reference [ref this-record [previous-record]]
-  (cond (constant? ref)            (second ref)
+  (cond (constant-ref? ref)        (second ref)
         (previous-period-ref? ref) (get previous-record (first ref))
         (current-period-ref? ref)  (get this-record (first ref))))
 
