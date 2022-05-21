@@ -107,43 +107,33 @@
                  [:capital.closing/debt-drawdown]
                  [:capital.exit/loan-repayment]))
 
-(def growth
-  #:growth {:growth '(* [:volume/start]
-                        [:inputs/growth-rate])
-            :harvest '(if (and [:time/operating-period-flag]
-                               (not [:time/financial-exit-period-flag]))
-                        (/ [:expenses/total] [:prices/profit])
-                        0)})
-
-#_(def volume2
-    (SUT/corkscrew :volume.balance
-                   :growth/growth
-                   :growth/harvest))
-
 (def volume
-  #:volume
-   {:start [:end :prev]
-    :increase [:growth/growth]
-    :decrease '(- [:growth/harvest])
-    :end '(if [:time/financial-close-period-flag]
-            [:inputs/volume-at-aquisition]
-            (+ [:start] [:increase] [:decrease]))})
+  (merge
+   #:volume {:growth '(* [:volume.balance/start]
+                         [:inputs/growth-rate])
+             :harvest '(if (and [:time/operating-period-flag]
+                                (not [:time/financial-exit-period-flag]))
+                         (/ [:expenses/total] [:prices/profit])
+                         0)
+             :purchased '(if [:time/financial-close-period-flag]
+                           [:inputs/volume-at-aquisition] 0)}
+
+   (SUT/corkscrew :volume.balance
+                  [:volume/growth :volume/purchased]
+                  [:volume/harvest])))
 
 (def value
-  {:value/end '(* [:volume/end]
+  {:value/end '(* [:volume.balance/end]
                   [:prices/profit])})
 
 (def exit
   #:capital.exit
    {:sale-proceeds '(if [:time/financial-exit-period-flag]
-                      [:value/end]
-                      0)
+                      [:value/end] 0)
     :disposition-fee '(if [:time/financial-exit-period-flag]
-                        (* [:sale-proceeds] [:inputs/disposition-fee-rate])
-                        0)
+                        (* [:sale-proceeds] [:inputs/disposition-fee-rate]) 0)
     :loan-repayment '(if [:time/financial-exit-period-flag]
-                       [:debt.debt-balance/start]
-                       0)
+                       [:debt.debt-balance/start] 0)
     :exit-cashflow '(- [:sale-proceeds] [:disposition-fee] [:loan-repayment])})
 
 (def cashflows
@@ -152,26 +142,24 @@
    #:financial-statements.cashflows
     {:aquisition [:capital.closing/closing-cashflow]
      :disposition [:capital.exit/exit-cashflow]
-     :gross-profit '(* [:prices/profit] [:growth/harvest])
+     :gross-profit '(* [:prices/profit] [:volume/harvest])
      :expenses-paid '(- [:expenses/total])}))
 
 (def model (SUT/build-and-validate-model
             inputs
             [time-calcs prices expenses closing
-             debt volume value growth
+             debt volume value
              exit cashflows]))
 
 (SUT/fail-catch (SUT/build-and-validate-model
                  inputs
                  [time-calcs prices expenses closing
-                  debt volume value growth
+                  debt volume value
                   exit cashflows]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TESTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
 
 (deftest input-test
   (is (= (SUT/inputs->rows inputs)
