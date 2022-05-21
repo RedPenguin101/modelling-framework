@@ -259,6 +259,12 @@
                                :c [:placeholder 4]})
          [:c :a :b])))
 
+(deftest circular-test
+  (is      (SUT/circular? {:a [:a]}))
+  (is (not (SUT/circular? {:a [:b]})))
+  (is      (SUT/circular? {:a [:b] :b [:a]}))
+  (is (not (SUT/circular? {:a [:b] :b [:a :prev]}))))
+
 (deftest reference-resolution
   (is (= (SUT/resolve-reference [:b] {:b 6} [{}]) 6))
   (is (= (SUT/resolve-reference [:placeholder 7] {} [{}]) 7))

@@ -89,8 +89,6 @@
 ;; model helpers
 ;;;;;;;;;;;;;;;;;;;;;
 
-;; model validations
-;;;;;;;;;;;;;;;;;;;;;
 
 ;; Model building
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -98,19 +96,22 @@
 ;; Model dependecies
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn calculate-order [rows]
+(defn rows->graph [rows]
   (->> (map-vals extract-refs rows)
        (map-vals #(filter current-period-ref? %))
        (map-vals #(map first %))
        (mapcat expand)
-       (uber/add-directed-edges* (uber/digraph))
+       (uber/add-directed-edges* (uber/digraph))))
+
+(defn calculate-order [rows]
+  (->> (rows->graph rows)
        (uberalg/topsort)
        reverse))
 
-(calculate-order {:a '(inc [:c])
-                  :b '(+ [:b :prev]
-                         [:a])
-                  :c [:placeholder 4]})
+;; model validations
+;;;;;;;;;;;;;;;;;;;;;
+
+(defn circular? [rows] (not (uberalg/dag? (rows->graph rows))))
 
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
