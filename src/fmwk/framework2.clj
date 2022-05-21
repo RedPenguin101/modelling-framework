@@ -178,7 +178,7 @@
   (update-keys (add-total
                 {:start [:end :prev]
                  :increase [increase]
-                 :decrease [decrease]}
+                 :decrease (cons '- (list [decrease]))}
                 :end)
                (partial qualify qualifier)))
 

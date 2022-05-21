@@ -262,7 +262,7 @@
   (is (= (SUT/corkscrew "hello.world" :other-thing/up :other-thing/down)
          #:hello.world{:start [:end :prev],
                        :increase [:other-thing/up],
-                       :decrease [:other-thing/down],
+                       :decrease '(- [:other-thing/down]),
                        :end '(+ [:start] [:increase] [:decrease])})))
 
 (deftest full-model-run
