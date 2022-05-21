@@ -2,6 +2,9 @@
 ## 21st May 2022
 * Namespacing
 
+Ideas:
+* Eliminate transients: like pure looks throughs.
+
 ## Todo
 * Make flags booleans rather than numbers
 * Introduce Corkscrew helper

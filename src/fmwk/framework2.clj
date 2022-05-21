@@ -25,6 +25,8 @@
   (qualify "hello.world" :foo)
   (qualify "hello.world" :other.ns/foo))
 
+(defn select-keys-with-qualifier [qualifier ks] ((group-by namespace ks) qualifier))
+
 ;; References and calculation expressions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -158,11 +160,12 @@
 
 (defn run-model [rows periods]
   (let [order (calculate-order rows)]
-    (reverse (loop [records (list (zero-period rows))
-                    prd periods]
-               (if (zero? prd)
-                 records
-                 (recur (roll-model records rows order) (dec prd)))))))
+    (loop [records (list (zero-period rows))
+           prd periods]
+      (if (zero? prd)
+        records
+        (recur (roll-model records rows order) (dec prd))))))
+
 
 ;; Table printing and model selection
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

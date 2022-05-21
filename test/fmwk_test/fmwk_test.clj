@@ -249,3 +249,7 @@
                                   [:b])}
                           [:a :b :c])
          {:a 4, :b 5, :c 8})))
+
+(deftest full-model-run
+  (is (= (Math/round (:financial-statements.cashflows/net-cashflow (first (time (SUT/run-model model 16)))))
+         2678047)))
