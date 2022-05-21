@@ -10,8 +10,8 @@
 (defn map-vals [f m] (update-vals m f))
 
 (defn qualify [qualifier-str kw]
-  (if (or (= :placeholder kw) (qualified-keyword? kw)) kw
-      (keyword qualifier-str (name kw))))
+  (if (or (not qualifier-str) (= :placeholder kw) (qualified-keyword? kw)) kw
+      (keyword (name qualifier-str) (name kw))))
 
 (defn unqualify [kw] (keyword (name kw)))
 
