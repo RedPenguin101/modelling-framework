@@ -108,7 +108,8 @@
 
 (def fs
   (merge (fw/add-total :net-cashflow #:fs.cashflow{:cash-from-invoices [:revenue/revenue-from-generation]
-                                                   :dividends-paid [:placeholder 0]})
+                                                   :dividends-paid [:placeholder 0]
+                                                   :share-capital-redemptions '(- [:equity.share-capital/redemption])})
 
          (fw/add-total :profit-after-tax #:fs.income{:revenue [:revenue/revenue-from-generation]
                                                      :depreciation '(- [:depreciation/solar-asset-depreciation])})
@@ -116,7 +117,8 @@
          (fw/add-total :total-assets #:fs.balance-sheet.assets{:retained-cash [:equity.retained-cash/end]
                                                                :accounts-receivable [:placeholder 0]
                                                                :solar-asset-value [:asset-value/end]})
-         (fw/add-total :total-liabilities #:fs.balance-sheet.liabilities{:retained-earnings [:equity.retained-earnings/end]})
+         (fw/add-total :total-liabilities #:fs.balance-sheet.liabilities{:retained-earnings [:equity.retained-earnings/end]
+                                                                         :share-capital     [:equity.share-capital.balance/end]})
          {:fs.balance-sheet/balance-check '(- [:fs.balance-sheet.assets/total-assets] [:fs.balance-sheet.liabilities/total-liabilities])}))
 
 (def equity
@@ -125,7 +127,12 @@
                        [:fs.cashflow/dividends-paid])
          (fw/corkscrew "equity.retained-cash"
                        [:fs.cashflow/net-cashflow]
-                       [:fs.cashflow/dividends-paid])))
+                       [:fs.cashflow/dividends-paid])
+         #:equity.share-capital{:drawdown '(when-flag [:flags/financial-close-period] [:inputs/asset-value-at-start])
+                                :redemption '(when-flag [:flags/financial-exit-period] [:inputs/asset-value-at-start])}
+         (fw/corkscrew "equity.share-capital.balance"
+                       [:equity.share-capital/drawdown]
+                       [:equity.share-capital/redemption])))
 
 ;; Build and run
 
@@ -155,4 +162,9 @@
                  sheets
                  period-range)))
 
-(run-sheets model ["fs.income" "fs.balance-sheet" "depreciation" "asset-value"] [1 10])
+(run-sheets model ["fs.balance-sheet" "equity.share-capital.balance"] [1 10])
+
+(comment
+  (def results (time (fw/run-model model 120)))
+  (take 20 (drop 90 (map (comp fw/round :equity.retained-cash/end) results)))
+  (take 20 (drop 90 (map (comp fw/round :equity.retained-earnings/end) results))))
