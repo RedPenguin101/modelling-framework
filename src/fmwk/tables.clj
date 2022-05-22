@@ -78,9 +78,9 @@
                            transpose-table
                            records->column-wise-table))
 
-(def series->records (comp series->row-wise-table
+(def series->records (comp col-wise-table->records
                            transpose-table
-                           col-wise-table->records))
+                           series->row-wise-table))
 
 (transpose-table [[:a 1 4 7] [:b 2 5 8] [:c 3 6 9]])
 (records->series [{:a 1 :b 2 :c 3}
