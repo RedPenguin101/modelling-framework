@@ -10,10 +10,60 @@
   * Unused rows
 * flag optimizations: when you've calculated the flags, you can store them in a set, then if an expression depends on the flag you can just look it up and avoid evaluating if the flag isn't true
 * Circularity helpers, but only when it comes up
-* Table/array optimization?
+
+## 22nd May 2022
+### How could array compilation work?
+I have an intuition that a model (at least the boolean and numerics) can be compiled down to a sort of array language, which would be much more performant that the map/record based version. I want to explore how that would work
+
+1. You get the top-sort of the graph (x rows)
+2. You figure out the number of periods (y columns)
+3. You create a (transient, zero-intialized) x*y 2d array
+4. You turn the model calculations into array operations
+
+e.g. thing3 is `(+ [:thing1] [:thing2])` for period 10 becomes 
+
+```clojure
+(aset 2 10 
+  (+ (aget 0 10) 
+     (aget 1 10)))
+```
+
+I think you might be able to turn the (ordered) row definitions provided by the user into one giant function which calculates all the periods, like:
+
+```clojure
+(let [row-names [:model-period-number :first-period-flag
+                 :compound-inflation :sale-price]
+      num-periods (inc 10)
+      num-rows 5
+      rows (to-array-2d (repeat num-rows (repeat num-periods 0)))]
+  (doseq [period (range 1 num-periods)]
+    ;; 0 = model col num
+    (aset rows 0 period
+          (inc (aget rows 0 (dec period))))
+    ;; 1 = first preiod flag
+    (aset rows 1 period
+          (if (= 1 (aget rows 0 period)) 1 0))
+    ;; 2 = compound inflation
+    (aset rows 2 period
+          (Math/pow 1.02 (dec (aget rows 0 period))))
+    ;; 3 = sale-price
+    (aset rows 3 period (* (aget rows 2 period) 50)))
+  (zipmap row-names (map vec rows)))
+```
+
+Taking row 2 as an example, this would require the following transformation:
+
+```clojure
+{:prices/compound-inflation 
+  '(Math/pow [:inputs/inflation-rate]
+             (dec [:model-column-number]))}
+
+;; we get the row number 2 from the topsort
+(aset rows 2 period
+  (Math/pow 1.02 (dec (aget rows 0 period))))
+```
 
 ## 21st May 2022
-
 
 * **DONE** Make flags booleans rather than numbers
 * **DONE** Introduce Corkscrew helper
