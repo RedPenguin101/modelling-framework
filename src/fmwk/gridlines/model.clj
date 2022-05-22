@@ -17,7 +17,9 @@
     :year1-p50-yield            250
     :availability               0.97
     :power-tariff               0.065
-    :annual-real-om-cost        1500})
+    :annual-real-om-cost        1500
+    :asset-value-at-start       100000
+    :useful-life-of-asset       25})
 
 (def time-calcs
   (merge
@@ -82,14 +84,33 @@
                                                    (/ [:inputs/annual-real-om-cost]
                                                       [:inputs/periods-in-year])))})
 
+(def depreciaion
+  (merge #:depreciation{:starting-value            '(when-flag [:flags/financial-close-period :prev] ; TODO: should this be prev?
+                                                               [:inputs/asset-value-at-start])
+                        :end-of-useful-life        '(end-of-month [:inputs/aquisition-date]
+                                                                  (* 12 [:inputs/useful-life-of-asset]))
+                        :in-useful-life-flag       '(and (date> [:time.period/start-date]
+                                                                [:inputs/aquisition-date])
+                                                         (date<= [:time.period/end-date]
+                                                                 [:end-of-useful-life]))
+                        :solar-asset-depreciation  '(when-flag [:in-useful-life-flag]
+                                                               (/ [:inputs/asset-value-at-start]
+                                                                  [:inputs/useful-life-of-asset]
+                                                                  [:inputs/periods-in-year]))}
+         (fw/corkscrew :asset-value
+                       [:depreciation/starting-value]
+                       [:depreciation/solar-asset-depreciation])))
+
 (def fs
   (merge (fw/add-total :net-cashflow #:fs.cashflow{:cash-from-invoices [:revenue/revenue-from-generation]
                                                    :dividends-paid [:placeholder 0]})
 
-         (fw/add-total :profit-after-tax #:fs.income{:revenue [:revenue/revenue-from-generation]})
+         (fw/add-total :profit-after-tax #:fs.income{:revenue [:revenue/revenue-from-generation]
+                                                     :depreciation '(- [:depreciation/solar-asset-depreciation])})
 
          (fw/add-total :total-assets #:fs.balance-sheet.assets{:retained-cash [:equity.retained-cash/end]
-                                                               :accounts-receivable [:placeholder 0]})
+                                                               :accounts-receivable [:placeholder 0]
+                                                               :solar-asset-value [:asset-value/end]})
          (fw/add-total :total-liabilities #:fs.balance-sheet.liabilities{:retained-earnings [:equity.retained-earnings/end]})
          {:fs.balance-sheet/balance-check '(- [:fs.balance-sheet.assets/total-assets] [:fs.balance-sheet.liabilities/total-liabilities])}))
 
@@ -107,6 +128,7 @@
             inputs
             [time-calcs flags
              revenue costs
+             depreciaion
              fs equity]))
 
 (comment
@@ -122,9 +144,10 @@
   (doseq [q qualifiers]
     (fw/slice-results results q period-range)))
 
-(defn run-sheet [model sheet period-range]
-  (print-calcs (time (fw/run-model-for-rows model (last period-range) (fw/rows-in-sheet model sheet)))
-               [sheet]
-               period-range))
+(defn run-sheets [model sheets period-range]
+  (let [results (time (fw/run-model-for-rows model (last period-range) (mapcat #(fw/rows-in-sheet model %) sheets)))]
+    (print-calcs results
+                 sheets
+                 period-range)))
 
-(run-sheet model "fs.balance-sheet" [1 10])
+(run-sheets model ["fs.income" "fs.balance-sheet" "depreciation" "asset-value"] [1 10])
