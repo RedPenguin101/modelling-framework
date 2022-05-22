@@ -2,7 +2,9 @@
   (:require [clojure.walk :refer [postwalk]]
             [clojure.spec.alpha :as spec]
             [ubergraph.core :as uber]
-            [ubergraph.alg :as uberalg]))
+            [ubergraph.alg :as uberalg]
+            [clojure.pprint :as pp]
+            [fmwk.tables :refer [transpose-records records->series]]))
 
 ;; utils
 ;;;;;;;;;;;;;;
@@ -43,7 +45,13 @@
   (qualify "hello.world" :foo)
   (qualify "hello.world" :other.ns/foo))
 
-(defn select-keys-with-qualifier [qualifier ks] ((group-by namespace ks) qualifier))
+(defn select-keys-with-qualifier [qualifier ks]
+  ((group-by namespace ks) qualifier))
+
+(comment
+  (select-keys-with-qualifier "hello" [:hello/world :foo/bar :baz])
+  ;; => [:hello/world]
+  )
 
 ;; References and calculation expressions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -198,12 +206,13 @@
 (defn roll-model [prvs rows order] (conj prvs (next-period prvs rows order)))
 
 (defn run-model [rows periods]
-  (let [order (calculate-order rows)]
-    (loop [records (list (zero-period rows))
-           prd periods]
-      (if (zero? prd)
-        records
-        (recur (roll-model records rows order) (dec prd))))))
+  (reverse
+   (let [order (calculate-order rows)]
+     (loop [records (list (zero-period rows))
+            prd periods]
+       (if (zero? prd)
+         records
+         (recur (roll-model records rows order) (dec prd)))))))
 
 ;; Model helpers
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -233,3 +242,33 @@
 
 ;; Table printing and model selection
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn slice-period [sheet period]
+  (select-keys period (select-keys-with-qualifier sheet (keys period))))
+
+(defn print-results [results [start end]]
+  (pp/print-table (transpose-records (take (- end start) (drop start results)))))
+
+(defn slice-results [results sheet-name period-range]
+  (print-results (map #(slice-period sheet-name %)
+                      results) period-range))
+
+(comment
+  (require '[fmwk-test.test-forest-model :as mtest]
+           '[fmwk.utils :refer :all])
+  (def model mtest/model)
+  (def results (time (run-model model 25)))
+  (second results)
+  (select-keys (first results)
+               (select-keys-with-qualifier "flags" (keys model)))
+
+  (doall [(slice-results results "prices" [1 5])
+          (slice-results results "time" [1 5])
+          (slice-results results "cashflows" [1 5])])
+
+  (slice-results results "capital.closing" [1 5])
+  (slice-results results "debt.debt-balance" [1 5])
+
+  (map :cashflows/net-cashflow results)
+
+  (records->series results))
