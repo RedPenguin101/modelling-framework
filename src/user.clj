@@ -1,5 +1,5 @@
 (ns user
-  (:require [fmwk.framework :as fw]))
+  (:require [fmwk.framework2 :as fw]))
 
 
 (let [row-names [:model-period-number :first-period-flag
@@ -23,7 +23,7 @@
 
 (defn rewrite [expr row-num ref-repls]
   (list 'aset 'rows row-num 'period
-        (fmwk.framework2/replace-refs-in-expr expr ref-repls)))
+        (fw/replace-refs-in-expr expr ref-repls)))
 
 (rewrite '(Math/pow [:inputs/inflation-rate]
                     (dec [:model-column-number]))
@@ -54,4 +54,3 @@
                     {:inputs/inflation-rate 1.02
                      :prev-period '(aget rows 0 (dec period))
                      :model-column-number '(aget rows 0 period)}))
-
