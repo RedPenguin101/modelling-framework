@@ -117,9 +117,39 @@
        (mapcat expand)
        (uber/add-directed-edges* (uber/digraph))))
 
+(defn rows->graph-with-prevs [rows]
+  (->> (map-vals extract-refs rows)
+       (map-vals #(filter link? %))
+       (map-vals #(map first %))
+       (mapcat expand)
+       (uber/add-directed-edges* (uber/digraph))))
+
 (defn calculate-order [rows]
   (let [deps (reverse (uberalg/topsort (rows->graph rows)))]
     (into deps (set/difference (set (keys rows)) (set deps)))))
+
+(defn node-ancestors [graph node visited]
+  (let [s (set/difference (set (uber/successors graph node)) visited)]
+    (set (into s (mapcat #(node-ancestors graph % (set/union visited s)) s)))))
+
+(defn precendents [rows nodes]
+  (let [actual-scope (->> nodes
+                          (mapcat #(node-ancestors (rows->graph-with-prevs rows) % #{}))
+                          (into nodes)
+                          set)]
+    (keep actual-scope (calculate-order rows))))
+
+(comment
+  (def test-graph (uber/digraph [:a :b] [:a :c] [:c :d] [:e :b]))
+  (uber/pprint test-graph)
+  (node-ancestors test-graph :a #{})
+
+  (def test-graph-circ (uber/digraph [:a :b] [:a :c] [:c :d] [:e :b] [:d :a]))
+  (uber/viz-graph test-graph-circ)
+
+  (node-ancestors test-graph-circ :a #{})
+
+  (sort (precendents model [:debt/drawdown])))
 
 ;; model validations
 ;;;;;;;;;;;;;;;;;;;;;
@@ -213,6 +243,18 @@
        (if (zero? prd)
          records
          (recur (roll-model records rows order) (dec prd)))))))
+
+(defn run-model-for-rows [rows periods rows-to-run]
+  (reverse
+   (let [order (precendents rows rows-to-run)]
+     (loop [records (list (select-keys (zero-period rows) order))
+            prd periods]
+       (if (zero? prd)
+         records
+         (recur (roll-model records rows order) (dec prd)))))))
+
+(comment
+  (run-model-for-rows model 10 [:prices/sale-price]))
 
 ;; Model helpers
 ;;;;;;;;;;;;;;;;;;;;;;
