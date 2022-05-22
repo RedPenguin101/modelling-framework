@@ -8,6 +8,7 @@
   * **DONE** Print row and all its dependencies
   * Do something about order
   * Dump to CSV
+* Isolate and show circular dependencies
 * Check on print table where there are no rows, or you got the sheet name wrong
 * **DONE** Have what you're working on drive what's calculated. e.g. I'm working on O&M costs, so only calculate the descendents of those rows
 * Compile model to function on arrays to increase performance?
