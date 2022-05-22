@@ -117,9 +117,8 @@
        (uber/add-directed-edges* (uber/digraph))))
 
 (defn calculate-order [rows]
-  (->> (rows->graph rows)
-       (uberalg/topsort)
-       reverse))
+  (let [deps (reverse (uberalg/topsort (rows->graph rows)))]
+    (into deps (set/difference (set (keys rows)) (set deps)))))
 
 ;; model validations
 ;;;;;;;;;;;;;;;;;;;;;
