@@ -18,7 +18,7 @@
 (defn flagged? [x] (not (or (nil? x) (zero? x))))
 
 (defn when-flag [flag expr]
-  (if flag expr 0.0))
+  (if (true? flag) expr 0.0))
 
 (comment
   (when-flag [:hello] '(+ [:a] [:b] [:c])))
