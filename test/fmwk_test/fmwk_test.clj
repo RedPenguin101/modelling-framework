@@ -1,174 +1,17 @@
 (ns fmwk-test.fmwk-test
   (:require [clojure.test :refer [deftest is testing are]]
-            [clojure.spec.alpha :as spec]
             [fmwk.irr :refer [irr]]
             [fmwk.utils :refer :all]
+            [fmwk-test.test-forest-model :as mtest]
             [fmwk.framework2 :as SUT]))
 
-;;;;;;;;;;;;;;;;;;;;
-;; Testing Model
-;;;;;;;;;;;;;;;;;;;;
-
-;; Time
-;;;;;;;;;;;;;;;;;;;;
-
-(def time-calcs
-  #:time
-   {:model-column-number '(inc [:model-column-number :prev])
-    :period-start-date '(if (= 1 [:flags/first-model-column])
-                          [:inputs/model-start-date]
-                          (add-days [:period-end-date :prev] 1))
-    :period-end-date '(add-days (add-months [:period-start-date]
-                                            [:inputs/length-of-operating-period])
-                                -1)
-    :end-of-operating-period '(end-of-month [:inputs/aquisition-date]
-                                            (* 12 [:inputs/operating-years-remaining]))})
-
-(def flags
-  #:flags{:first-model-column '(if (= 1 [:time/model-column-number]) 1 0)
-          :financial-close-period '(and (date>= [:inputs/aquisition-date]
-                                                [:time/period-start-date])
-                                        (date<= [:inputs/aquisition-date]
-                                                [:time/period-end-date]))
-          :financial-exit-period '(and (date>= [:time/end-of-operating-period]
-                                               [:time/period-start-date])
-                                       (date<= [:time/end-of-operating-period]
-                                               [:time/period-end-date]))
-          :operating-period '(and (date> [:time/period-start-date]
-                                         [:inputs/aquisition-date])
-                                  (date<= [:time/period-end-date]
-                                          [:time/end-of-operating-period]))})
-
-;; Inputs
-;;;;;;;;;;;;;;;;;;;;
-
-(def inputs
-  #:inputs
-   {:model-start-date           {:value "2020-01-01"}
-    :inflation-rate             {:value 1.02}
-    :length-of-operating-period {:value 12}
-    :aquisition-date            {:value "2020-12-31"}
-    :operating-years-remaining  {:value 15}
-    :sale-date                  {:value "2035-12-31"}
-    :starting-price             {:value 50.0}
-    :starting-costs             {:value (+ 4.75 1.5)}
-    :starting-tax               {:value 1250}
-    :purchase-price             {:value 2000000.0}
-    :volume-at-aquisition       {:value 50000.0}
-    :management-fee-rate        {:value 0.015}
-    :ltv                        {:value 0.6}
-    :growth-rate                {:value 0.05}
-    :interest-rate              {:value 0.03}
-    :disposition-fee-rate       {:value 0.01}
-    :origination-fee-rate       {:value 0.01}})
-
-;; Model
-;;;;;;;;;;;;;;;;;;;;
-
-(def prices
-  #:prices{:inflation-period '(dec [:time/model-column-number])
-           :compound-inflation '(Math/pow
-                                 [:inputs/inflation-rate]
-                                 [:inflation-period])
-           :sale-price '(* [:compound-inflation]
-                           [:inputs/starting-price])
-           :costs  '(* [:compound-inflation]
-                       [:inputs/starting-costs])
-           :profit '(- [:sale-price] [:costs])})
-
-(def expenses
-  (SUT/add-total
-   #:expenses{:tax '(when-flag [:flags/operating-period]
-                               (* [:prices/compound-inflation]
-                                  [:inputs/starting-tax]))
-              :interest '(* [:inputs/interest-rate]
-                            [:debt.debt-balance/start])
-              :management-fee '(if [:flags/operating-period]
-                                 (* [:value/start]
-                                    [:inputs/management-fee-rate])
-                                 0)}))
-
-(def debt
-  (merge
-   #:debt{:drawdown '(when-flag [:flags/financial-close-period]
-                                (* [:inputs/ltv] [:value/end]))
-          :repayment '(when-flag
-                       [:flags/financial-exit-period]
-                       [:debt.debt-balance/start])}
-   (SUT/corkscrew :debt.debt-balance
-                  [:debt/drawdown]
-                  [:debt/repayment])))
-
-(def volume
-  (merge
-   #:volume {:growth '(* [:volume.balance/start]
-                         [:inputs/growth-rate])
-             :harvest '(when-flag (and [:flags/operating-period]
-                                       (not [:flags/financial-exit-period]))
-                                  (/ [:expenses/total] [:prices/profit]))
-             :purchased '(if [:flags/financial-close-period]
-                           [:inputs/volume-at-aquisition] 0)}
-
-   (SUT/corkscrew :volume.balance
-                  [:volume/growth :volume/purchased]
-                  [:volume/harvest])))
-
-(def value
-  {:value/start [:end :prev]
-   :value/end '(* [:volume.balance/end]
-                  [:prices/profit])})
-
-(def closing
-  #:capital.closing
-   {:aquisition-cashflow '(when-flag
-                           [:flags/financial-close-period]
-                           [:inputs/purchase-price])
-    :origination-fee '(when-flag
-                       [:flags/financial-close-period]
-                       (* [:inputs/origination-fee-rate]
-                          [:debt/drawdown]))})
-
-(def exit
-  #:capital.exit
-   {:sale-proceeds '(when-flag [:flags/financial-exit-period]
-                               [:value/end])
-    :disposition-fee '(when-flag
-                       [:flags/financial-exit-period]
-                       (* [:sale-proceeds] [:inputs/disposition-fee-rate]))})
-
-(def cashflows
-  (SUT/add-total
-   :net-cashflow
-   #:cashflows
-    {:aquisition '(- [:debt/drawdown]
-                     [:capital.closing/origination-fee]
-                     [:capital.closing/aquisition-cashflow])
-     :disposition '(- [:capital.exit/sale-proceeds]
-                      [:capital.exit/disposition-fee]
-                      [:debt/repayment])
-     :gross-profit '(* [:prices/profit] [:volume/harvest])
-     :expenses-paid '(- [:expenses/total])}))
-
-(def model (SUT/build-and-validate-model
-            inputs
-            [time-calcs flags
-             prices expenses closing
-             debt volume value
-             exit cashflows]))
-
-(SUT/fail-catch (SUT/build-and-validate-model
-                 inputs
-                 [time-calcs flags
-                  prices expenses closing
-                  debt volume value
-                  exit cashflows]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TESTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest input-test
-  (is (= (SUT/inputs->rows inputs)
+  (is (= (SUT/inputs->rows mtest/inputs)
          #:inputs{:disposition-fee-rate       [:constant 0.01],
                   :inflation-rate             [:constant 1.02],
                   :purchase-price             [:constant 2000000.0],
@@ -296,11 +139,11 @@
                        :end '(+ [:start] [:increase] [:decrease])})))
 
 (deftest full-model-run
-  (is (= (Math/round (:cashflows/net-cashflow (first (time (SUT/run-model model 16)))))
+  (is (= (Math/round (:cashflows/net-cashflow (last (time (SUT/run-model mtest/model 16)))))
          2678047)))
 
 (comment
-  (def results (reverse (SUT/run-model model 25)))
+  (def results (SUT/run-model mtest/model 25))
   (irr (map :cashflows/net-cashflow results))
 
   1)
