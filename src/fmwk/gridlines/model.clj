@@ -4,7 +4,8 @@
 
 (def inputs
   #:inputs
-   {:model-start-date           "2020-07-01"
+   {:dummy                      1
+    :model-start-date           "2020-07-01"
     :length-of-operating-period 3
     :operating-years-remaining  25
     :aquisition-date            "2021-03-31"
