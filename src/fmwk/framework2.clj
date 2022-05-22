@@ -285,6 +285,9 @@
 ;; Table printing and model selection
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn rows-in-sheet [rows sheet]
+  (select-keys-with-qualifier sheet (keys rows)))
+
 (defn round [x] (if (int? x) x (Math/round x)))
 
 (defn round-results [results]

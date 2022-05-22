@@ -109,17 +109,22 @@
              revenue costs
              fs equity]))
 
-(fw/fail-catch (fw/build-and-validate-model
-                inputs
-                [time-calcs flags
-                 fs equity]))
+(comment
+  (fw/fail-catch (fw/build-and-validate-model
+                  inputs
+                  [time-calcs flags
+                   fs equity]))
 
-(def results (time (fw/run-model model 10)))
 
-(fw/fail-catch (fw/run-model model 10))
+  (fw/fail-catch (fw/run-model model 10)))
 
 (defn print-calcs [results qualifiers period-range]
   (doseq [q qualifiers]
     (fw/slice-results results q period-range)))
 
-(print-calcs results ["om-costs"] [1 10])
+(defn run-sheet [model sheet period-range]
+  (print-calcs (time (fw/run-model-for-rows model (last period-range) (fw/rows-in-sheet model sheet)))
+               [sheet]
+               period-range))
+
+(run-sheet model "fs.balance-sheet" [1 10])
