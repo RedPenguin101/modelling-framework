@@ -9,6 +9,8 @@
   * number of evaluations per period
   * Unused rows
 * flag optimizations: when you've calculated the flags, you can store them in a set, then if an expression depends on the flag you can just look it up and avoid evaluating if the flag isn't true
+* Circularity helpers, but only when it comes up
+* Table/array optimization?
 
 ## 21st May 2022
 

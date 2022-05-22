@@ -7,21 +7,27 @@
 ;; utils
 ;;;;;;;;;;;;;;
 
-(defmacro fail-catch [expr]
+(defmacro fail-catch
+  "Wraps a try-catch for ex-info. Useful for debugging."
+  [expr]
   (let [e 'e]
-    `(try ~expr (catch Exception ~e {:message (ex-message ~e)
-                                     :data (ex-data ~e)}))))
-
-(comment
-  (fail-catch (throw (ex-info "failed" {:foo :barr})))
-  ;; => {:message "failed", :data {:foo :barr}}
-  )
+    `(try ~expr (catch clojure.lang.ExceptionInfo
+                       ~e {:message (ex-message ~e)
+                           :data (ex-data ~e)}))))
 
 (defn map-vals [f m] (update-vals m f))
 
-(defn qualify [qualifier-str kw]
-  (if (or (not qualifier-str) (= :placeholder kw) (qualified-keyword? kw)) kw
-      (keyword (name qualifier-str) (name kw))))
+(def unqualified-keyword?
+  (every-pred (complement qualified-keyword?) keyword?))
+
+(defn qualify [qualifier kw]
+  (if (or (not qualifier) (= :placeholder kw) (qualified-keyword? kw)) kw
+      (keyword (name qualifier) (name kw))))
+
+(spec/fdef qualify
+  :args (spec/cat :qualifier (spec/or :unqual-kw unqualified-keyword? :string string?)
+                  :keyword   unqualified-keyword?)
+  :ret qualified-keyword?)
 
 (defn unqualify [kw] (keyword (name kw)))
 
@@ -42,10 +48,7 @@
 ;; References and calculation expressions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(spec/def :framework.reference/current (spec/tuple keyword?))
-(spec/def :framework.reference/previous (spec/tuple keyword? #(= :prev %)))
-(spec/def :framework.reference/placeholder (spec/tuple #(= :placeholder %) any?))
-
+;; predicates for types of expression, for conditionals
 (def atomic? (complement coll?))
 (def expression? list?)
 (defn constant-ref? [ref] (and (vector? ref) (#{:placeholder :constant} (first ref))))
@@ -56,10 +59,6 @@
 ;; idea is to use this for better circularity detection later - i.e if it's circular,
 ;; but only because this is a link to previous, that's fine. But can't think it through now
 (def link-to-prv? (every-pred link? previous-period-link?))
-
-(spec/valid? :framework.reference/current [:hello])
-(spec/valid? :framework.reference/previous [:hello :prev])
-(spec/valid? :framework.reference/placeholder [:placeholder 6])
 
 (defn extract-refs
   "Given an expression containing references (defined as a vector), 
