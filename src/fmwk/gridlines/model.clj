@@ -57,7 +57,11 @@
           :operating-period '(and (date> [:time.period/start-date]
                                          [:inputs/aquisition-date])
                                   (date<= [:time.period/end-date]
-                                          [:time/end-of-operating-period]))})
+                                          [:time/end-of-operating-period]))
+          :first-operating-period  '(date= [:inputs/aquisition-date]
+                                           (add-days [:time.period/start-date] -1))
+          :last-operating-period  '(date= [:time/end-of-operating-period]
+                                          [:time.period/end-date])})
 
 (def revenue
   #:revenue{:compound-degradation '(when-flag [:flags/operating-period]
