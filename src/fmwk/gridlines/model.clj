@@ -108,10 +108,12 @@
 
 (def fs
   (merge (fw/add-total :net-cashflow #:fs.cashflow{:cash-from-invoices [:revenue/revenue-from-generation]
+                                                   :om-expense-paid    '(- [:om-costs/expense])
                                                    :dividends-paid [:placeholder 0]
                                                    :share-capital-redemptions '(- [:equity.share-capital/redemption])})
 
-         (fw/add-total :profit-after-tax #:fs.income{:revenue [:revenue/revenue-from-generation]
+         (fw/add-total :profit-after-tax #:fs.income{:revenue       [:revenue/revenue-from-generation]
+                                                     :om-expense    '(- [:om-costs/expense])
                                                      :depreciation '(- [:depreciation/solar-asset-depreciation])})
 
          (fw/add-total :total-assets #:fs.balance-sheet.assets{:retained-cash [:equity.retained-cash/end]
@@ -162,9 +164,11 @@
                  sheets
                  period-range)))
 
-(run-sheets model ["fs.balance-sheet" "equity.share-capital.balance"] [1 10])
+(run-sheets model ["fs.balance-sheet" "fs.balance-sheet.assets" "fs.balance-sheet.liabilities" "fs.income" "fs.cashflow"] [1 10])
 
 (comment
   (def results (time (fw/run-model model 120)))
   (take 20 (drop 90 (map (comp fw/round :equity.retained-cash/end) results)))
-  (take 20 (drop 90 (map (comp fw/round :equity.retained-earnings/end) results))))
+  (take 20 (drop 90 (map (comp fw/round :equity.retained-earnings/end) results)))
+
+  (fw/slice-results results "fs.income" [100 110]))
