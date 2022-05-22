@@ -106,15 +106,23 @@
                        [:depreciation/starting-value]
                        [:depreciation/solar-asset-depreciation])))
 
+
+
 (def fs
-  (merge (fw/add-total :net-cashflow #:fs.cashflow{:cash-from-invoices [:revenue/revenue-from-generation]
-                                                   :om-expense-paid    '(- [:om-costs/expense])
-                                                   :dividends-paid [:placeholder 0]
-                                                   :share-capital-redemptions '(- [:equity.share-capital/redemption])})
+  (merge (fw/add-total :cash-available-for-dividends
+                       #:fs.cashflow{:cash-from-invoices [:revenue/revenue-from-generation]
+                                     :om-expense-paid    '(- [:om-costs/expense])
+                                     :share-capital-redemptions '(- [:equity.share-capital/redemption])})
+
+         #:fs.cashflow{:dividends-paid '(- [:equity.dividends/dividend-paid])
+                       :net-cashflow   '(+ [:cash-available-for-dividends] [:dividends-paid])}
 
          (fw/add-total :profit-after-tax #:fs.income{:revenue       [:revenue/revenue-from-generation]
                                                      :om-expense    '(- [:om-costs/expense])
                                                      :depreciation '(- [:depreciation/solar-asset-depreciation])})
+
+         #:fs.income{:dividends-paid '(- [:equity.dividends/dividend-paid])
+                     :net-income     '(+ [:profit-after-tax] [:dividends-paid])}
 
          (fw/add-total :total-assets #:fs.balance-sheet.assets{:retained-cash [:equity.retained-cash/end]
                                                                :accounts-receivable [:placeholder 0]
@@ -126,15 +134,24 @@
 (def equity
   (merge (fw/corkscrew "equity.retained-earnings"
                        [:fs.income/profit-after-tax]
-                       [:fs.cashflow/dividends-paid])
+                       [:equity.dividends/dividend-paid])
+
          (fw/corkscrew "equity.retained-cash"
-                       [:fs.cashflow/net-cashflow]
-                       [:fs.cashflow/dividends-paid])
+                       [:fs.cashflow/cash-available-for-dividends]
+                       [:equity.dividends/dividend-paid])
+
          #:equity.share-capital{:drawdown '(when-flag [:flags/financial-close-period] [:inputs/asset-value-at-start])
                                 :redemption '(when-flag [:flags/financial-exit-period] [:inputs/asset-value-at-start])}
          (fw/corkscrew "equity.share-capital.balance"
                        [:equity.share-capital/drawdown]
-                       [:equity.share-capital/redemption])))
+                       [:equity.share-capital/redemption])
+
+         #:equity.dividends{:earnings-available '(max (+ [:equity.retained-earnings/end :prev]
+                                                         [:equity.retained-earnings/increase])
+                                                      0)
+                            :cash-available     '(+ [:equity.retained-cash/end :prev]
+                                                    [:equity.retained-cash/increase])
+                            :dividend-paid      '(min [:earnings-available] [:cash-available])}))
 
 ;; Build and run
 
@@ -146,10 +163,11 @@
              fs equity]))
 
 (comment
-  (fw/fail-catch (fw/build-and-validate-model
-                  inputs
-                  [time-calcs flags
-                   fs equity]))
+  (fw/deps-graph model)
+  (fw/deps-graph (:data (fw/fail-catch (fw/build-and-validate-model
+                                        inputs
+                                        [time-calcs flags
+                                         fs equity]))))
 
 
   (fw/fail-catch (fw/run-model model 10)))
@@ -164,20 +182,23 @@
                  sheets
                  period-range)))
 
-(run-sheets model ["fs.balance-sheet" "fs.balance-sheet.assets" "fs.balance-sheet.liabilities" "fs.income" "fs.cashflow"] [1 10])
+#_(run-sheets model ["equity.dividends"] [1 10])
+(run-sheets model ["equity.dividends" "fs.income" "fs.cashflow" "fs.balance-sheet"] [1 10])
 
 (comment
   (def results (time (fw/run-model model 120)))
   (take 20 (drop 90 (map (comp fw/round :equity.retained-cash/end) results)))
   (take 20 (drop 90 (map (comp fw/round :equity.retained-earnings/end) results)))
 
-  (fw/slice-results results "fs.income" [100 110])
+  (fw/slice-results results "equity.retained-cash" [1 10])
+
+  (drop 90 (map (comp fw/round :equity.retained-cash/end) results))
 
   (count model)
   (count (fw/precendents model [:revenue/revenue-from-generation]))
-  (count (fw/precendents model [:fs.cashflow/net-cashflow]))
+  (count (fw/precendents model [:fs.cashflow/cash-available-for-dividends]))
   (count (fw/precendents model [:fs.balance-sheet.assets/total-assets]))
   (count (fw/precendents model [:fs.balance-sheet.liabilities/total-liabilities]))
-  (count (fw/precendents model [:fs.cashflow/net-cashflow
+  (count (fw/precendents model [:fs.cashflow/cash-available-for-dividends
                                 :fs.balance-sheet.assets/total-assets
                                 :fs.balance-sheet.liabilities/total-liabilities])))
