@@ -24,7 +24,7 @@
 
 (def time-calcs
   (merge
-   #:time.period{:start-date '(if (= 1 [:flags/first-model-column])
+   #:time.period{:start-date '(if (true? [:flags/first-model-column])
                                 [:inputs/model-start-date]
                                 (add-days [:end-date :prev] 1))
                  :end-date   '(add-days (add-months [:start-date]
@@ -45,7 +45,7 @@
                                             0)}))
 
 (def flags
-  #:flags{:first-model-column '(if (= 1 [:time/model-column-number]) 1 0)
+  #:flags{:first-model-column '(= 1 [:time/model-column-number])
           :financial-close-period '(and (date>= [:inputs/aquisition-date]
                                                 [:time.period/start-date])
                                         (date<= [:inputs/aquisition-date]
