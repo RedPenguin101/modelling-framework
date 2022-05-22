@@ -90,7 +90,7 @@
                                                       [:inputs/periods-in-year])))})
 
 (def depreciaion
-  (merge #:depreciation{:starting-value            '(when-flag [:flags/financial-close-period :prev] ; TODO: should this be prev?
+  (merge #:depreciation{:starting-value            '(when-flag [:flags/financial-close-period]
                                                                [:inputs/asset-value-at-start])
                         :end-of-useful-life        '(end-of-month [:inputs/aquisition-date]
                                                                   (* 12 [:inputs/useful-life-of-asset]))
