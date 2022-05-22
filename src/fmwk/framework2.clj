@@ -282,6 +282,10 @@
                            :decrease (list '- (ref-sum decreases))})
                (partial qualify qualifier)))
 
+(defn deps-graph [model]
+  (uber/viz-graph (rows->graph model) {:auto-label true
+                                       :save {:filename "graph.png" :format :png}}))
+
 ;; Table printing and model selection
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
