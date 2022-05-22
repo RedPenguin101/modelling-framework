@@ -1,5 +1,5 @@
 (ns fmwk-test.fmwk-test
-  (:require [clojure.test :refer [deftest is testing are]]
+  (:require [clojure.test :refer [deftest is]]
             [fmwk.irr :refer [irr]]
             [fmwk.utils :refer :all]
             [fmwk-test.test-forest-model :as mtest]

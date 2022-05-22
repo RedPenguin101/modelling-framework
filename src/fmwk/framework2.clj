@@ -95,7 +95,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn inputs->rows [inputs]
-  (update-vals inputs #(conj [:constant] (:value %))))
+  (update-vals inputs #(conj [:constant] %)))
 
 ;; calculations helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
