@@ -196,10 +196,10 @@
     [:equity.share-capital/redemption])
 
    #:equity.dividends
-    {:earnings-available  '(max (+ [:equity.retained-earnings/end :prev]
+    {:earnings-available  '(max (+ [:equity.retained-earnings/start]
                                    [:equity.retained-earnings/increase])
                                 0)
-     :cash-available      '(+ [:equity.retained-cash/end :prev]
+     :cash-available      '(+ [:equity.retained-cash/start]
                               [:equity.retained-cash/increase])
      :dividend-paid       '(min [:earnings-available] [:cash-available])}))
 
