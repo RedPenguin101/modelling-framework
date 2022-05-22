@@ -171,4 +171,13 @@
   (take 20 (drop 90 (map (comp fw/round :equity.retained-cash/end) results)))
   (take 20 (drop 90 (map (comp fw/round :equity.retained-earnings/end) results)))
 
-  (fw/slice-results results "fs.income" [100 110]))
+  (fw/slice-results results "fs.income" [100 110])
+
+  (count model)
+  (count (fw/precendents model [:revenue/revenue-from-generation]))
+  (count (fw/precendents model [:fs.cashflow/net-cashflow]))
+  (count (fw/precendents model [:fs.balance-sheet.assets/total-assets]))
+  (count (fw/precendents model [:fs.balance-sheet.liabilities/total-liabilities]))
+  (count (fw/precendents model [:fs.cashflow/net-cashflow
+                                :fs.balance-sheet.assets/total-assets
+                                :fs.balance-sheet.liabilities/total-liabilities])))

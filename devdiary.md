@@ -5,12 +5,13 @@
   * Better selection of sheets, rather than calcs (i.e. select "fs" to select everything in the FS)
   * change print-calcs so it prints in a single table
   * line graphing
-  * Print row and all its dependencies
+  * **DONE** Print row and all its dependencies
   * Do something about order
+  * Dump to CSV
 * Check on print table where there are no rows, or you got the sheet name wrong
-* Have what you're working on drive what's calculated. e.g. I'm working on O&M costs, so only calculate the descendents of those rows
+* **DONE** Have what you're working on drive what's calculated. e.g. I'm working on O&M costs, so only calculate the descendents of those rows
 * Compile model to function on arrays to increase performance?
-* Eliminate transients: like pure looks throughs.
+* Eliminate transients: like pure looks throughs. (this is probably unnecessary because there's no eval, which is what takes the time)
 * Units and metadata
 * Model report: 
   * number of rows
