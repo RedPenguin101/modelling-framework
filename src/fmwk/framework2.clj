@@ -1,6 +1,7 @@
 (ns fmwk.framework2
   (:require [clojure.walk :refer [postwalk]]
             [clojure.spec.alpha :as spec]
+            [clojure.set :as set]
             [ubergraph.core :as uber]
             [ubergraph.alg :as uberalg]
             [clojure.pprint :as pp]
@@ -242,22 +243,36 @@
 ;; Table printing and model selection
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn round [x] (if (int? x) x (Math/round x)))
+
+(defn round-results [results]
+  (let [series (fmwk.tables/records->series results)]
+    (fmwk.tables/series->records (update-vals series #(if (number? (second %)) (mapv round %) %)))))
+
 (defn slice-period [sheet period]
   (select-keys period (select-keys-with-qualifier sheet (keys period))))
 
 (defn print-results [results [start end]]
-  (pp/print-table (transpose-records (take (- end start) (drop start results)))))
+  (pp/print-table (into [:name] (range start (inc end)))
+                  (transpose-records (round-results results))))
 
 (defn slice-results [results sheet-name period-range]
   (print-results (map #(slice-period sheet-name %)
                       results) period-range))
 
+
 (comment
   (require '[fmwk-test.test-forest-model :as mtest]
            '[fmwk.utils :refer :all])
   (def model mtest/model)
-  (def results (time (run-model model 25)))
+  (def results (time (run-model model 10)))
   (second results)
+
+  (round-results results)
+
+  (let [series (fmwk.tables/records->series results)]
+    (fmwk.tables/series->records (update-vals series #(if (number? (second %)) (map round %) %))))
+
   (select-keys (first results)
                (select-keys-with-qualifier "flags" (keys model)))
 
