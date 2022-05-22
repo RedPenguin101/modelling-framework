@@ -1,6 +1,13 @@
 # Dev Diary
 ## Todo
-* Better display options!
+* Better printing
+  * **DONE** Table rounding
+  * Better selection of sheets, rather than calcs (i.e. select "fs" to select everything in the FS)
+  * change print-calcs so it prints in a single table
+  * line graphing
+  * Print row and all its dependencies
+  * Do something about order
+* Have what you're working on drive what's calculated. e.g. I'm working on O&M costs, so only calculate the descendents of those rows
 * Compile model to function on arrays to increase performance?
 * Eliminate transients: like pure looks throughs.
 * Units and metadata
