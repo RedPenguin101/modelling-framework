@@ -1,4 +1,5 @@
 {:deps {org.clojure/clojure {:mvn/version "1.11.1"}
         djblue/portal {:mvn/version "0.25.0"}
-        ubergraph/ubergraph {:mvn/version "0.8.2"}}
+        ubergraph/ubergraph {:mvn/version "0.8.2"}
+        clojure2d/clojure2d {:mvn/version "1.4.4"}}
  :paths ["src" "resources" "test"]}

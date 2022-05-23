@@ -4,6 +4,7 @@
   * **DONE** Table rounding
   * Better selection of sheets, rather than calcs (i.e. select "fs" to select everything in the FS)
   * change print-calcs so it prints in a single table
+  * **DONE** scatter graphing
   * line graphing
   * **DONE** Print row and all its dependencies
   * Do something about order
