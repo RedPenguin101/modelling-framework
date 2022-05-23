@@ -1,6 +1,6 @@
 (ns fmwk.gridlines.model
   (:require [fmwk.framework2 :as fw]
-            [fmwk.simple-viz.main :refer [series-scatter series-line]]
+            [fmwk.simple-viz.main :refer [series-scatter series-line series-lines]]
             [fmwk.utils :refer :all]))
 
 (def inputs
@@ -237,7 +237,8 @@
 
 (comment
   #_(run-sheets model ["equity.dividends"] [1 10])
-  (run-sheets model ["equity.dividends" "fs.income" "fs.cashflow" "fs.balance-sheet"]
+  (run-sheets model ["equity.dividends" "fs.income" "fs.cashflow" "fs.balance-sheet"
+                     "fs.balance-sheet.assets"]
               [1 10]))
 
 (comment
@@ -249,6 +250,9 @@
 
   (series-scatter (map (comp fw/round :equity.retained-cash/end) results))
   (series-line (map (comp fw/round :equity.retained-cash/end) results))
+
+  (series-lines [(map (comp fw/round :fs.balance-sheet.assets/solar-asset-value) results)
+                 (map (comp fw/round :equity.retained-cash/end) results)])
 
   (count model)
   (count (fw/precendents model [:revenue/revenue-from-generation]))
