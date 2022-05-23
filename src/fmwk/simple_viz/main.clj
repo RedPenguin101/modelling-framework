@@ -47,9 +47,9 @@
 (comment
   (series-scatter '(0 0 0 0 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 11000 12000 13000 14000 15000 16000)))
 
-(defn- draw-lines [canvas lines]
+(defn- draw-lines [canvas lines color]
   (c2d/with-canvas [c canvas]
-    (c2d/set-color c :red)
+    (c2d/set-color c color)
     (doseq [[v1 v2] lines]
       (c2d/line c v1 v2))))
 
@@ -57,7 +57,37 @@
   (let [canvas (c2d/canvas 1000 1000)
         points (map-indexed vector values)]
     (draw-axis-lines canvas 1000 1000)
-    (draw-lines canvas (partition 2 (points->pix (mapcat vector points (rest points)) 1000 1000)))
+    (draw-lines canvas (partition 2 (points->pix (mapcat vector points (rest points)) 1000 1000))
+                :red)
+    (c2d/show-window canvas "Graph")))
+
+(defn scale-factors
+  ([values] (scale-factors values 1))
+  ([values scale-adjust]
+   [(- (apply min values))
+    (* scale-adjust (/ 1 (apply max values)))]))
+
+(defn scale [values [cst fct]]
+  (map #(float (* fct (+ cst %))) values))
+
+(defn calc-and-scale [values scale-adjust]
+  (scale values (scale-factors values scale-adjust)))
+
+(defn flip-vals [values]
+  (map #(* -1 (- % 1000)) values))
+
+(defn lines-from-points [points]
+  (map vector points (rest points)))
+
+(def colors [:red :blue :green])
+
+(defn series-lines [series]
+  (let [canvas (c2d/canvas 1000 1000)
+        y-scale (scale-factors (apply concat series) 900)
+        x-vals (map #(+ 50 %) (calc-and-scale (range 0 (apply max (map count series))) 900))]
+    (doseq [[s c] (map vector series colors)]
+      (draw-lines canvas (lines-from-points (map vector x-vals (flip-vals (map #(+ 50 %) (scale s y-scale)))))
+                  c))
     (c2d/show-window canvas "Graph")))
 
 (comment
