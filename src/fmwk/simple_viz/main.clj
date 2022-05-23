@@ -47,6 +47,24 @@
 (comment
   (series-scatter '(0 0 0 0 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 11000 12000 13000 14000 15000 16000)))
 
+(defn- draw-lines [canvas lines]
+  (c2d/with-canvas [c canvas]
+    (c2d/set-color c :red)
+    (doseq [[v1 v2] lines]
+      (c2d/line c v1 v2))))
+
+(defn series-line [values]
+  (let [canvas (c2d/canvas 1000 1000)
+        points (map-indexed vector values)]
+    (draw-axis-lines canvas 1000 1000)
+    (draw-lines canvas (partition 2 (points->pix (mapcat vector points (rest points)) 1000 1000)))
+    (c2d/show-window canvas "Graph")))
+
+(comment
+  (let [points (map-indexed vector '(0 0 0 0 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 11000 12000 13000 14000 15000 16000))]
+    (partition 2 (points->pix (mapcat vector points (rest points)) 1000 1000)))
+  (series-line '(0 0 0 0 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 11000 12000 13000 14000 15000 16000)))
+
 (defn function [f start end x-size y-size]
   (scatter (map (juxt identity f) (range start end (/ (- end start) 1000)))
            x-size y-size))

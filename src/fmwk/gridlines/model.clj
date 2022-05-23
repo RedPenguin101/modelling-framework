@@ -1,6 +1,6 @@
 (ns fmwk.gridlines.model
   (:require [fmwk.framework2 :as fw]
-            [fmwk.simple-viz.main :refer [series-scatter]]
+            [fmwk.simple-viz.main :refer [series-scatter series-line]]
             [fmwk.utils :refer :all]))
 
 (def inputs
@@ -248,6 +248,7 @@
   (fw/slice-results results "equity.retained-cash" [1 10])
 
   (series-scatter (map (comp fw/round :equity.retained-cash/end) results))
+  (series-line (map (comp fw/round :equity.retained-cash/end) results))
 
   (count model)
   (count (fw/precendents model [:revenue/revenue-from-generation]))
