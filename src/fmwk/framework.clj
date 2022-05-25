@@ -5,7 +5,7 @@
             [clojure.string :as str]
             [ubergraph.alg :as uberalg]
             [clojure.pprint :as pp]
-            [fmwk.tables :refer [transpose-records records->series]]
+            [fmwk.tables :refer [series->row-wise-table transpose-records records->series series->records]]
             [fmwk.table-runner :as tr]))
 
 ;; utils
@@ -42,17 +42,22 @@
   (qualify "hello.world" :foo)
   (qualify "hello.world" :other.ns/foo))
 
-(defn calculation-hierarchy [k] (vec (str/split (namespace k) #"\.")))
-(defn sheet [k] (first (calculation-hierarchy k)))
-(defn calc [k] (second (calculation-hierarchy k)))
-(defn sub-calc [k] (nth (calculation-hierarchy k) 2))
-(def row name)
+(defn calculation-hierarchy [k]
+  (if (qualified-keyword? k)
+    (vec (str/split (namespace k) #"\."))
+    []))
 
-(defn rows-in-hierarchy [qualifier ks]
-  ((group-by namespace ks) qualifier))
+(defn rows-in-hierarchy [hierarchy rows]
+  (let [ch (str/split hierarchy #"\.")
+        depth (count ch)]
+    (filter #(= ch (take depth (calculation-hierarchy %))) rows)))
 
 (comment
-  (rows-in-hierarchy "hello" [:hello/world :foo/bar :baz])
+  (calculation-hierarchy :hello/world)
+  (calculation-hierarchy :hello.hi/world)
+  (calculation-hierarchy :world)
+
+  (rows-in-hierarchy "hello" [:hello/world :hello.hi/world :foo/bar :baz])
   ;; => [:hello/world]
   )
 
@@ -206,7 +211,7 @@
   (uber/viz-graph (rows->graph model) {:auto-label true
                                        :save {:filename "graph.png" :format :png}}))
 
-;; Model building
+;; Model compiliation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn de-localize-rows [rows]
@@ -227,8 +232,58 @@
       (throw (ex-info "Some model rows are not qualified" {:unqualified-kw (remove qualified-keyword? (keys model))})))
     model))
 
+(defn build-model2 [inputs calculations]
+  (let [rows (build-and-validate-model inputs calculations)
+        calc-order (calculate-order rows)]
+    {:display-order (mapcat keys calculations)
+     :rows rows
+     :calculation-order calc-order
+     :runner (eval (tr/make-runner calc-order rows))}))
+
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn run-model [model periods]
-  (tr/run-model-table (calculate-order model) model periods))
+(defn run-model [{:keys [display-order calculation-order runner]} periods]
+  (let [array (to-array-2d (vec (repeat (count calculation-order)
+                                        (vec (repeat periods 0)))))
+        results (runner array calculation-order periods)]
+    (map (juxt identity results) display-order)))
+
+
+;; Result selection and printing
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(rows-in-hierarchy "debt" (:display-order model))
+
+(defn select-rows [results rows]
+  (filter #((set rows) (first %)) results))
+
+(defn select-periods [results from to]
+  (map #(vector (first %) (take (- to from) (drop from (second %)))) results))
+
+(defn print-table [results]
+  (let [[hdr & rows] (series->row-wise-table results)]
+    (pp/print-table hdr (map #(zipmap hdr %) rows))))
+
+(defn print-category [results header category from to]
+  (-> results
+      (select-rows (conj (rows-in-hierarchy category (map first results)) header))
+      (select-periods from to)
+      print-table))
+
+(comment
+  (require '[fmwk-test.test-forest-model :as f]
+           '[fmwk.utils :refer :all])
+  (def model (build-model2  f/inputs
+                            [f/time-calcs f/flags f/prices
+                             f/expenses f/debt f/volume
+                             f/value f/closing f/exit f/cashflows]))
+
+  (def results (time (run-model model 25)))
+  (let [ks (into [:name] (range 0 10))]
+    (pp/print-table ks (map #(zipmap ks %) (series->row-wise-table (select-rows results "debt")))))
+
+  (-> results
+      (select-rows (conj (rows-in-hierarchy "debt" (map first results)) :time/period-end-date))
+      (select-periods 5 10)
+      print-table))

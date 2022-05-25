@@ -54,21 +54,18 @@
    {:a   15}))
 
 
-(defn model->array-calc2 [ordered-rows model periods]
+(defn make-runner [ordered-rows model]
   (let [row->num (into {} (map-indexed #(vector %2 %1) ordered-rows))
         expressions (map #(rewrite-expression % (model %) row->num) ordered-rows)]
-    (list 'fn '[rows row-names]
-          (list 'let ['num-periods periods]
-                (into expressions '([period (range 1 num-periods)] doseq))
-                '(zipmap row-names (map vec rows))))))
+    (list 'fn '[rows row-names periods]
+          (into expressions '([period (range 1 periods)] doseq))
+          '(zipmap row-names (map vec rows)))))
 
 (defn run-model-table [ordered-rows model periods]
   (let [array (to-array-2d (vec (repeat (count ordered-rows)
                                         (vec (repeat periods 0)))))]
-    ((eval (model->array-calc2 ordered-rows
-                               model
-                               periods))
-     array ordered-rows)))
+    ((eval (make-runner ordered-rows model))
+     array ordered-rows periods)))
 
 (comment
   (run-model-table [:a :b :c] {:a [:constant 4]
@@ -82,10 +79,8 @@
            '[fmwk.framework :as fw])
   (def model m/model)
   (def order (fw/calculate-order model))
-  (time (map :cashflows/net-cashflow (fw/run-model model 25)))
   (time (:cashflows/net-cashflow (run-model-table order model 25)))
 
   (def model2 m2/model)
   (def order2 (fw/calculate-order model2))
-  (time (map :fs.cashflow/dividends-paid (fw/run-model model2 183)))
   (time (:fs.cashflow/dividends-paid (run-model-table order2 model2 183))))

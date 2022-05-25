@@ -171,62 +171,66 @@
     {:balance-check              '(- [:fs.balance-sheet.assets/total-assets]
                                      [:fs.balance-sheet.liabilities/total-liabilities])}))
 
-(def equity
-  (merge
-   (fw/corkscrew
-    "equity.retained-earnings"
-    [:fs.income/profit-after-tax]
-    [:equity.dividends/dividend-paid])
 
-   (fw/corkscrew
-    "equity.retained-cash"
-    [:fs.cashflow/cash-available-for-dividends]
-    [:equity.dividends/dividend-paid])
+(def retained-earnings
+  (fw/corkscrew
+   "equity.retained-earnings"
+   [:fs.income/profit-after-tax]
+   [:equity.dividends/dividend-paid]))
 
-   #:equity.share-capital
-    {:drawdown            '(when-flag
-                            [:time.period/financial-close-flag]
-                            [:inputs/asset-value-at-start])
+(def retained-cash
+  (fw/corkscrew
+   "equity.retained-cash"
+   [:fs.cashflow/cash-available-for-dividends]
+   [:equity.dividends/dividend-paid]))
 
-     :redemption          '(when-flag
-                            [:time.period/financial-exit-flag]
-                            [:inputs/asset-value-at-start])}
+(def share-cap-balance
+  (fw/corkscrew
+   "equity.share-capital.balance"
+   [:equity.share-capital/drawdown]
+   [:equity.share-capital/redemption]))
 
-   (fw/corkscrew
-    "equity.share-capital.balance"
-    [:equity.share-capital/drawdown]
-    [:equity.share-capital/redemption])
+(def share-cap
+  #:equity.share-capital
+   {:drawdown            '(when-flag
+                           [:time.period/financial-close-flag]
+                           [:inputs/asset-value-at-start])
 
-   #:equity.dividends
-    {:earnings-available  '(max (+ [:equity.retained-earnings/start]
-                                   [:equity.retained-earnings/increase])
-                                0)
-     :cash-available      '(+ [:equity.retained-cash/start]
-                              [:equity.retained-cash/increase])
-     :dividend-paid       '(min [:earnings-available] [:cash-available])}))
+    :redemption          '(when-flag
+                           [:time.period/financial-exit-flag]
+                           [:inputs/asset-value-at-start])})
+
+(def dividends
+  #:equity.dividends
+   {:earnings-available  '(max (+ [:equity.retained-earnings/start]
+                                  [:equity.retained-earnings/increase])
+                               0)
+    :cash-available      '(+ [:equity.retained-cash/start]
+                             [:equity.retained-cash/increase])
+    :dividend-paid       '(min [:earnings-available] [:cash-available])})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Build and run
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def model (fw/build-and-validate-model
+(def model (fw/build-model2
             inputs
             [time-calcs
              revenue costs
              depreciation
-             fs equity]))
+             retained-earnings retained-cash
+             share-cap share-cap-balance
+             dividends
+             fs]))
 
 (comment
-  (fw/deps-graph model)
-  (fw/deps-graph (:data (fw/fail-catch (fw/build-and-validate-model
-                                        inputs
-                                        [time-calcs flags
-                                         fs equity]))))
-
+  (fw/deps-graph model) ;; need to update fn
 
   (fw/fail-catch (fw/run-model model 10)))
 
 
 (comment
-  (def results2 (time (tr/run-model-table (fw/calculate-order model) model 120)))
-  results2)
+  (def header :time.period/end-date)
+  (def results (time (fw/run-model model 120)))
+  (take 2 results)
+  (fw/print-slice results header "equity" 0 10))
