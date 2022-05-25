@@ -79,7 +79,7 @@
   (require '[fmwk.utils :refer :all]
            '[fmwk-test.test-forest-model :as m]
            '[fmwk.gridlines.model :as m2]
-           '[fmwk.framework2 :as fw])
+           '[fmwk.framework :as fw])
   (def model m/model)
   (def order (fw/calculate-order model))
   (time (map :cashflows/net-cashflow (fw/run-model model 25)))

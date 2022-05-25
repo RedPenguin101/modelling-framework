@@ -1,5 +1,5 @@
 (ns user
-  (:require [fmwk.framework2 :as fw]))
+  (:require [fmwk.framework :as fw]))
 
 
 (let [row-names [:model-period-number :first-period-flag

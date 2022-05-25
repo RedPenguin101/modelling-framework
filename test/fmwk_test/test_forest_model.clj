@@ -1,5 +1,5 @@
 (ns fmwk-test.test-forest-model
-  (:require [fmwk.framework2 :as fw]))
+  (:require [fmwk.framework :as fw]))
 
 
 ;;;;;;;;;;;;;;;;;;;;

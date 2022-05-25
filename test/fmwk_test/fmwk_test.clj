@@ -3,7 +3,7 @@
             [fmwk.irr :refer [irr]]
             [fmwk.utils :refer :all]
             [fmwk-test.test-forest-model :as mtest]
-            [fmwk.framework2 :as SUT]))
+            [fmwk.framework :as SUT]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

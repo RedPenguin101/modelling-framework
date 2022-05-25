@@ -1,5 +1,5 @@
 (ns fmwk.gridlines.model
-  (:require [fmwk.framework2 :as fw]
+  (:require [fmwk.framework :as fw]
             [fmwk.simple-viz.main :refer [series-scatter series-line series-lines]]
             [fmwk.utils :refer :all]
             [fmwk.table-runner :as tr]))

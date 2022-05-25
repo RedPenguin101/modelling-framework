@@ -1,6 +1,6 @@
 (ns fmwk.old-model-run
   (:require [clojure.walk :refer [postwalk]]
-            [fmwk.framework2 :refer [extract-refs calculate-order]]))
+            [fmwk.framework :refer [extract-refs calculate-order]]))
 
 ;; predicates for types of expression, for conditionals
 (def atomic? (complement coll?))

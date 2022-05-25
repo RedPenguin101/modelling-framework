@@ -1,14 +1,39 @@
 (ns fmwk.framework
-  (:require [clojure.pprint :as pp]
+  (:require [clojure.walk :refer [postwalk]]
+            [clojure.spec.alpha :as spec]
             [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.walk :as walk]
-            [fmwk.utils :as u]
-            [ubergraph.alg :as uber-alg]
-            [ubergraph.core :as uber]))
+            [ubergraph.core :as uber]
+            [ubergraph.alg :as uberalg]
+            [clojure.pprint :as pp]
+            [fmwk.tables :refer [transpose-records records->series]]
+            [fmwk.table-runner :as tr]))
 
 ;; utils
 ;;;;;;;;;;;;;;
+
+(defmacro fail-catch
+  "Wraps a try-catch for ex-info. Useful for debugging."
+  [expr]
+  (let [e 'e]
+    `(try ~expr (catch clojure.lang.ExceptionInfo
+                       ~e {:message (ex-message ~e)
+                           :data (ex-data ~e)}))))
+
+(defn map-vals [f m] (update-vals m f))
+
+(def unqualified-keyword?
+  (every-pred (complement qualified-keyword?) keyword?))
+
+(defn qualify [qualifier kw]
+  (if (or (not qualifier) (= :placeholder kw) (qualified-keyword? kw)) kw
+      (keyword (name qualifier) (name kw))))
+
+(spec/fdef qualify
+  :args (spec/cat :qualifier (spec/or :unqual-kw unqualified-keyword? :string string?)
+                  :keyword   unqualified-keyword?)
+  :ret qualified-keyword?)
+
+(defn unqualify [kw] (keyword (name kw)))
 
 (defn- expand
   "Where the value in a kv pair is a sequence, this function
@@ -18,294 +43,215 @@
      [[:a :b] [:a :c] [:a :d]]"
   [[k vs]] (map #(vector k %) vs))
 
+(comment
+  (qualify "hello.world" :foo)
+  (qualify "hello.world" :other.ns/foo))
+
+(defn select-keys-with-qualifier [qualifier ks]
+  ((group-by namespace ks) qualifier))
+
+(comment
+  (select-keys-with-qualifier "hello" [:hello/world :foo/bar :baz])
+  ;; => [:hello/world]
+  )
+
+;; References and calculation expressions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; predicates for types of expression, for conditionals
+(def atomic? (complement coll?))
+(def expression? list?)
+(defn constant-ref? [ref] (and (vector? ref) (#{:placeholder :constant} (first ref))))
+(def link? (every-pred vector? (complement constant-ref?)))
+(defn current-period-link? [ref] (and (link? ref) (= 1 (count ref))))
+(defn previous-period-link? [ref] (and (link? ref) (= :prev (second ref))))
+
+
+(defn extract-refs
+  "Given an expression containing references (defined as a vector), 
+   will extract all of the references and return them as a vector"
+  ([expr] (if (coll? expr)
+            (extract-refs [] expr)
+            (throw (ex-info "extract-refs: not an expression" {:expr expr}))))
+  ([found [fst & rst :as expr]]
+   (cond (or (constant-ref? expr) (link? expr)) (conj found expr)
+         (nil? fst) found
+         (link? fst) (recur (conj found fst) rst)
+         (expression? fst) (recur (into found (extract-refs [] fst)) rst)
+         :else (recur found rst))))
+
+(defn qualify-local-references [qualifier expr]
+  (postwalk #(if (link? %) (update % 0 (partial qualify qualifier)) %)
+            expr))
 
 ;; Row and calculation helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- refs-previous-period? [row-ref] (= :prev (second row-ref)))
-(defn- placeholder? [row-ref] (= :placeholder (first row-ref)))
-(def refs-current-period? (complement (some-fn placeholder? refs-previous-period?)))
-
-(defn- current-period-refs [refs]
-  (keep #(when (refs-current-period? %) (first %)) refs))
-
-(defn input-to-row
-  "Inputs are are defined by the user using a different spec from calculation
-   rows. However internally to the model they are simply rows where every period
-   value is the constant provided. This function transforms an input spec to
-   a row spec for storing in the model"
-  [[nm input]]
-  (vector nm
-          (dissoc (assoc input
-                         :starter (:value input)
-                         :export true
-                         :calculator [nm :prev])
-                  :value)))
-
 (defn inputs->rows [inputs]
-  (update-vals inputs :value))
+  (update-vals inputs #(conj [:constant] %)))
 
 ;; calculations helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- extract-refs
-  "Given an expression containing references (defined as a vector), 
-   will extract all of the references and return them"
-  ([expr] (extract-refs [] expr))
-  ([found [fst & rst :as expr]]
-   (cond (vector? expr) (conj found expr)
-         (nil? fst) found
-         (vector? fst) (recur (conj found fst) rst)
-         (coll? fst) (recur (into found (extract-refs [] fst)) rst)
-         :else (recur found rst))))
-
-(defn- exported-measures [calc]
-  (keep #(when (:export (second %)) (first %)) (:rows calc)))
-
-(defn- calc-imports
-  "Given a calculation, will determine which of the references to other rows
-   are references to things outside the calculation."
-  [calc]
-  (let [internal-calcs (set (keys (:rows calc)))
-        deps (->> (vals (:rows calc))
-                  (mapcat (comp extract-refs :calculator))
-                  (map first)
-                  set)]
-    (disj (set/difference deps internal-calcs) :placeholder)))
-
-(defn- calculation-edges
-  "Given a calculation, will return the edges of the graph of dependencies
-   between the rows, including imports. Excludes reference to previous periods
-   and placeholders"
-  [calc]
-  (->> (:rows calc)
-       (u/map-vals (comp current-period-refs extract-refs :calculator))
-       (mapcat expand)))
-
-(comment
-  (= (calculation-edges fmwk.forest/expenses)
-     '([:tax :operating-period-flag]
-       [:tax :compound-inflation]
-       [:tax :starting-tax]
-       [:interest :interest-rate]
-       [:interest :starting-debt]
-       [:management-fee :operating-period-flag]
-       [:management-fee :management-fee-rate]
-       [:expenses :management-fee]
-       [:expenses :tax]
-       [:expenses :interest])))
-
-(comment
-  "Playing with name qualification"
-  (defn- qualify-row-name [sheet calc row]
-    (keyword (str (name sheet) "." (name calc)) (name row)))
-
-
-  (qualify-row-name :hello :world :foo)
-
-  (defn- split-row-name
-    "Given a qualified row name, returns a tuple of [sheet calc row]"
-    [quali-row-name]
-    (conj (mapv keyword (str/split (namespace quali-row-name) #"\."))
-          (keyword (name quali-row-name))))
-
-  (split-row-name :hello.world/foo)
-
-  (defn qualify-row-names [calc]
-    (let [qualifier (partial qualify-row-name (:sheet calc) (:calculation-name calc))]
-      (update calc :rows #(update-keys % qualifier))))
-
-  (qualify-row-names {:sheet :hello
-                      :calculation-name :world
-                      :rows {:foo {}
-                             :bar {}}}))
-
 ;; Calc validations
 ;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn- calc-has-required-keys? [calc]
-  (if (empty? (set/difference
-               #{:name :category :rows}
-               (set (keys calc))))
-    true
-    (throw (ex-info "Calc failed keyspec"
-                    {:calc calc
-                     :missing-keys (set/difference
-                                    #{:name :category}
-                                    (set (keys calc)))}))))
-
-(defn- every-row-has-calculator? [calc]
-  (if (every? :calculator (vals (:rows calc)))
-    true
-    (throw (ex-info (str "Calc " (:name calc) "is missing a calculator")
-                    {:calc calc}))))
-
-;; TODO: Once rows are calc-qualified, this won't be necessary
-
-(defn calculation-validation-halting [calcs]
-  (if (not= (count calcs) (count (set (map :name calcs))))
-    (let [dups ((group-by #(= 1 (val %)) (frequencies (map :name calcs))) false)]
-      (throw (ex-info (str "Duplicate names " (mapv first dups))
-                      {:dups dups})))
-    (map (every-pred calc-has-required-keys?
-                     every-row-has-calculator?)
-         calcs)))
 
 ;; model helpers
 ;;;;;;;;;;;;;;;;;;;;;
 
-(defn- records->map
-  "Given a sequence of records (maps) and a key which is in those records,
-   (and should have a unique value, like a name) will return a map 
-   of the keys to the records"
-  [records ky]
-  (into {} (map #(vector (ky %) %) records)))
+;; Model dependecies
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn rows->graph [rows]
+  (->> (map-vals extract-refs rows)
+       (map-vals #(filter current-period-link? %))
+       (map-vals #(map first %))
+       (mapcat expand)
+       (uber/add-directed-edges* (uber/digraph))))
+
+(defn rows->graph-with-prevs [rows]
+  (->> (map-vals extract-refs rows)
+       (map-vals #(filter link? %))
+       (map-vals #(map first %))
+       (mapcat expand)
+       (uber/add-directed-edges* (uber/digraph))))
+
+(defn calculate-order [rows]
+  (let [deps (reverse (uberalg/topsort (rows->graph rows)))]
+    (into deps (set/difference (set (keys rows)) (set deps)))))
+
+(defn node-ancestors [graph node visited]
+  (let [s (set/difference (set (uber/successors graph node)) visited)]
+    (set (into s (mapcat #(node-ancestors graph % (set/union visited s)) s)))))
+
+(defn precendents [rows nodes]
+  (let [actual-scope (->> nodes
+                          (mapcat #(node-ancestors (rows->graph-with-prevs rows) % #{}))
+                          (into nodes)
+                          set)]
+    (keep actual-scope (calculate-order rows))))
 
 (comment
-  (records->map [{:name :name1 :a 1 :b 2 :c 3}
-                 {:name :name2 :a 4 :b 5 :c 6}]
-                :name)
-  {:name1 {:name :name1, :a 1, :b 2, :c 3},
-   :name2 {:name :name2, :a 4, :b 5, :c 6}})
+  (def test-graph (uber/digraph [:a :b] [:a :c] [:c :d] [:e :b]))
+  (uber/pprint test-graph)
+  (node-ancestors test-graph :a #{})
 
-(defn- exports [model]
-  (mapcat exported-measures (vals (:calculations model))))
+  (def test-graph-circ (uber/digraph [:a :b] [:a :c] [:c :d] [:e :b] [:d :a]))
+  (uber/viz-graph test-graph-circ)
 
-(defn- imports [model]
-  (update-vals (:calculations model) calc-imports))
+  (node-ancestors test-graph-circ :a #{})
 
-;; maybe change this to work on rows?
-(defn- full-dependency-graph [model]
-  (->> (vals (:calculations model))
-       (mapcat calculation-edges)
-       (uber/add-directed-edges* (uber/digraph))))
+  (sort (precendents model [:debt/drawdown])))
 
 ;; model validations
 ;;;;;;;;;;;;;;;;;;;;;
 
-(defn- import-export-mismatch?
-  [model]
-  (let [permissable (set (concat (keys (:inputs model)) (exports model)))]
-    (for [[nm is] (imports model)]
-      (if (empty? (set/difference (set is) permissable))
-        true
-        (throw (ex-info (str nm " contains import of unexported or undefined row " (set/difference (set is) permissable))
-                        {:name nm}))))))
+(defn circular? [rows] (not (uberalg/dag? (rows->graph rows))))
 
-(defn- circular-deps? [model]
-  (if (uber-alg/dag? (:full-graph model))
-    true
-    (throw (ex-info (str "Model contains circular dependencies")
-                    (:full-graph model)))))
+(defn all-rows-are-exprs? [rows]
+  (every? coll? (vals rows)))
 
-(defn check-model-halting [model]
-  (doall [(import-export-mismatch? model)
-          (circular-deps? model)]))
+(defn bad-references [rows]
+  (let [permitted (set (keys rows))]
+    (into {} (remove (comp empty? val)
+                     (update-vals rows (comp (partial remove permitted)
+                                             (partial map first)
+                                             (partial filter link?)
+                                             extract-refs))))))
 
+(defn consistent-qualifier? [rows]
+  (apply = (map namespace (keys rows))))
+
+(comment
+  (consistent-qualifier? {:hello 1 :world 2})
+  (consistent-qualifier? #:test{:hello 1 :world 2})
+  (consistent-qualifier? {:test1/hello 1 :test2/world 2}))
+
+(defn all-rows-qualified? [rows]
+  (every? qualified-keyword? (keys rows)))
+
+(comment
+  (all-rows-qualified? {:hello 1 :world 2})
+  (all-rows-qualified? #:test{:hello 1 :world 2})
+  (all-rows-qualified? {:test1/hello 1 :test2/world 2}))
 
 ;; Model building
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- basic-model [calculations inputs]
-  (hash-map :calculations (records->map calculations :name)
-            :inputs inputs))
+(defn de-localize-rows [rows]
+  (into {} (map (fn [[k v]] [k (qualify-local-references (namespace k) v)]) rows)))
 
-(defn model->rows
-  "Turns a model definition (calculations and inputs)
-   into a map of rows"
-  [model]
-  (merge (into {} (mapcat :rows (vals (:calculations model))))
-         (into {} (map input-to-row (:inputs model)))))
+(defn build-model [inputs calculations]
+  (de-localize-rows (apply merge (inputs->rows inputs) calculations)))
 
-(defn- enrich-model [model]
-  (let [fg (full-dependency-graph model)]
-    (assoc model
-           :full-graph fg
-           :rows (model->rows model)
-           :calc-order (reverse (uber-alg/topsort fg)))))
-
-(defn build-model [calculations inputs]
-  (enrich-model (basic-model calculations inputs)))
+(defn build-and-validate-model [inputs calculations]
+  (when (not (all-rows-are-exprs? (apply merge calculations)))
+    (throw (ex-info "Not all rows are expressions" {})))
+  (let [model (build-model inputs calculations)]
+    (when (circular? model)
+      (throw (ex-info "Circular dependencies in model" model)))
+    (when (not-empty (bad-references model))
+      (throw (ex-info "References to non-existant rows" (bad-references model))))
+    (when (not (all-rows-qualified? model))
+      (throw (ex-info "Some model rows are not qualified" {:unqualified-kw (remove qualified-keyword? (keys model))})))
+    model))
 
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn zero-period
-  "Creates the 'zeroeth period', aka the 'starter'
-   period. Uses the row starter value (or the input value),
-   or zero if there is none."
-  [model]
-  (update-vals (:rows model) #(or (:starter %) 0)))
+(defn run-model2 [model periods]
+  (tr/run-model-table (calculate-order model) model periods))
 
-(defn- replace-refs-in-calc [calc replacements]
-  (if (vector? calc)
-    (if (= :placeholder (first calc)) (second calc)
-        (replacements (first calc)))
-    (walk/postwalk
-     #(if (vector? %) (replacements (first %)) %)
-     calc)))
+;; Model helpers
+;;;;;;;;;;;;;;;;;;;;;;
 
-;; Yikes! Todo: clean this up
-(defn next-period [[prv-rec] model]
-  (reduce (fn [record row-name]
-            (assoc record row-name
-                   (let [calc (get-in model [:rows row-name :calculator])
-                         reps (into {} (for [[t r] (extract-refs calc)]
-                                         [t (if (= :prev r)
-                                              (get prv-rec t)
-                                              (get record t))]))]
-                     #_(println "ROW:" row-name
-                                "\ncalc:" calc
-                                "\nreps:" reps
-                                "\nnew-calc:" (replace-refs-in-calc calc reps))
-                     (try (eval (replace-refs-in-calc calc reps))
-                          (catch Exception _e (throw (ex-info (str "Error calculating " row-name)
-                                                              {:name row-name
-                                                               :calc calc
-                                                               :replaced-calc (replace-refs-in-calc calc reps)})))))))
-          {}
-          (:calc-order model)))
+(defn add-total
+  ([calculation] (add-total :total calculation))
+  ([total-name calculation]
+   (if (qualified-keyword? total-name)
+     (throw (ex-info "add-total: total name can't be qualified"
+                     {:total-name total-name}))
+     (assoc calculation (qualify (namespace (ffirst calculation)) total-name)
+            (reverse (into '(+) (map vector (map unqualify (keys calculation)))))))))
 
-(defn- roll-model [prvs model] (conj prvs (next-period prvs model)))
+(defn ref-sum [refs]
+  (if (= 1 (count refs))
+    (vec refs)
+    (cons '+ (map vector refs))))
 
-(defn run-model [model periods]
-  (reverse (loop [prv (list (zero-period model))
-                  prd periods]
-             (if (zero? prd)
-               prv
-               (recur (roll-model prv model) (dec prd))))))
+(ref-sum [:hello :world])
+
+(defn corkscrew [qualifier increases decreases]
+  (update-keys (add-total :end
+                          {:start [:end :prev]
+                           :increase (ref-sum increases)
+                           :decrease (list '- (ref-sum decreases))})
+               (partial qualify qualifier)))
+
+(defn deps-graph [model]
+  (uber/viz-graph (rows->graph model) {:auto-label true
+                                       :save {:filename "graph.png" :format :png}}))
 
 ;; Table printing and model selection
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn rows-in
-  "Given a model, and a category or calcluation name, will return the name of all the rows
-   in that category or calculation"
-  [model typ nm]
-  (case typ
-    :category (mapcat (comp keys :rows) (filter #(= (:category %) nm) (vals (:calculations model))))
-    :calculation (mapcat (comp keys :rows) (filter #(= (:name %) nm) (vals (:calculations model))))
-    :special (if (= :exports nm)
-               (exports model)
-               (throw (ex-info (str "Rows in Not implemented for " typ " " nm)
-                               model)))
-    (throw (ex-info (str "Rows in Not implemented for " typ " " nm)
-                    model))))
+(defn rows-in-sheet [rows sheet]
+  (select-keys-with-qualifier sheet (keys rows)))
 
+(defn round [x] (if (int? x) x (Math/round x)))
 
-(defn transpose-records [records]
-  (map #(zipmap (into [:name :starter] (map (fn [x] (str "period " x)) (range 1 (count records)))) %)
-       (map flatten
-            (reduce (fn [rs r]
-                      (reduce #(update %1 (first %2) conj (second %2))
-                              rs r))
-                    (zipmap (keys (first records)) (repeat []))
-                    records))))
+(defn round-results [results]
+  (let [series (fmwk.tables/records->series results)]
+    (fmwk.tables/series->records (update-vals series #(if (number? (second %)) (mapv round %) %)))))
 
-(defn row-select [results row-names]
-  (map #(select-keys % row-names) results))
+(defn slice-period [sheet period]
+  (select-keys period (select-keys-with-qualifier sheet (keys period))))
 
 (defn print-results [results [start end]]
-  (pp/print-table
-   (into [:name :starter] (map #(str "period " %) (range start (inc end))))
-   (transpose-records results)))
+  (pp/print-table (into [:name] (range start (inc end)))
+                  (transpose-records (round-results results))))
+
+(defn slice-results [results sheet-name period-range]
+  (print-results (map #(slice-period sheet-name %)
+                      results) period-range))
