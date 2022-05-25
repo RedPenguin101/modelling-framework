@@ -1,8 +1,8 @@
 (ns fmwk.framework
   (:require [clojure.walk :refer [postwalk]]
-            [clojure.spec.alpha :as spec]
             [clojure.set :as set]
             [ubergraph.core :as uber]
+            [clojure.string :as str]
             [ubergraph.alg :as uberalg]
             [clojure.pprint :as pp]
             [fmwk.tables :refer [transpose-records records->series]]
@@ -21,20 +21,6 @@
 
 (defn map-vals [f m] (update-vals m f))
 
-(def unqualified-keyword?
-  (every-pred (complement qualified-keyword?) keyword?))
-
-(defn qualify [qualifier kw]
-  (if (or (not qualifier) (= :placeholder kw) (qualified-keyword? kw)) kw
-      (keyword (name qualifier) (name kw))))
-
-(spec/fdef qualify
-  :args (spec/cat :qualifier (spec/or :unqual-kw unqualified-keyword? :string string?)
-                  :keyword   unqualified-keyword?)
-  :ret qualified-keyword?)
-
-(defn unqualify [kw] (keyword (name kw)))
-
 (defn- expand
   "Where the value in a kv pair is a sequence, this function
    will 'unpack' the value. So 
@@ -43,9 +29,32 @@
      [[:a :b] [:a :c] [:a :d]]"
   [[k vs]] (map #(vector k %) vs))
 
+;; Calculation hierarchy
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn qualify [qualifier kw]
+  (if (or (not qualifier) (= :placeholder kw) (qualified-keyword? kw)) kw
+      (keyword (name qualifier) (name kw))))
+
+(defn unqualify [kw] (keyword (name kw)))
+
 (comment
   (qualify "hello.world" :foo)
   (qualify "hello.world" :other.ns/foo))
+
+(defn calculation-hierarchy [k] (vec (str/split (namespace k) #"\.")))
+(defn sheet [k] (first (calculation-hierarchy k)))
+(defn calc [k] (second (calculation-hierarchy k)))
+(defn sub-calc [k] (nth (calculation-hierarchy k) 2))
+(def row name)
+
+(defn rows-in-hierarchy [qualifier ks]
+  ((group-by namespace ks) qualifier))
+
+(comment
+  (rows-in-hierarchy "hello" [:hello/world :foo/bar :baz])
+  ;; => [:hello/world]
+  )
 
 ;; References and calculation expressions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
