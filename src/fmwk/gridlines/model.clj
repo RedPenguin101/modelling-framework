@@ -1,8 +1,7 @@
 (ns fmwk.gridlines.model
   (:require [fmwk.framework :as fw]
             [fmwk.simple-viz.main :refer [series-scatter series-line series-lines]]
-            [fmwk.utils :refer :all]
-            [fmwk.table-runner :as tr]))
+            [fmwk.utils :refer :all]))
 
 (def inputs
   #:inputs
@@ -223,14 +222,14 @@
              dividends
              fs]))
 
+(def header :time.period/end-date)
+
 (comment
   (fw/deps-graph model) ;; need to update fn
 
   (fw/fail-catch (fw/run-model model 10)))
 
-
 (comment
-  (def header :time.period/end-date)
   (def results (time (fw/run-model model 120)))
   (take 2 results)
-  (fw/print-slice results header "equity" 0 10))
+  (fw/print-category results header "equity.retained-earnings" 0 10))

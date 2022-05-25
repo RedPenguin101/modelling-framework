@@ -5,7 +5,7 @@
             [clojure.string :as str]
             [ubergraph.alg :as uberalg]
             [clojure.pprint :as pp]
-            [fmwk.tables :refer [series->row-wise-table transpose-records records->series series->records]]
+            [fmwk.tables :refer [series->row-wise-table]]
             [fmwk.table-runner :as tr]))
 
 ;; utils
@@ -261,6 +261,14 @@
 (defn select-periods [results from to]
   (map #(vector (first %) (take (- to from) (drop from (second %)))) results))
 
+(defn round-collection [xs]
+  (if (every? float? xs)
+    (map #(Math/round %) xs)
+    xs))
+
+(defn round-results [results]
+  (map #(update % 1 round-collection) results))
+
 (defn print-table [results]
   (let [[hdr & rows] (series->row-wise-table results)]
     (pp/print-table hdr (map #(zipmap hdr %) rows))))
@@ -269,6 +277,7 @@
   (-> results
       (select-rows (conj (rows-in-hierarchy category (map first results)) header))
       (select-periods from to)
+      round-results
       print-table))
 
 (comment
