@@ -200,7 +200,7 @@
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn run-model2 [model periods]
+(defn run-model [model periods]
   (tr/run-model-table (calculate-order model) model periods))
 
 ;; Model helpers

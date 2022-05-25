@@ -30,11 +30,12 @@
                   :length-of-operating-period [:constant 12],
                   :origination-fee-rate       [:constant 0.01]})))
 
-(deftest zero-period-test
-  (is (= (SUT/zero-period {:a [:constant 5]
-                           :b [:placeholder 10]
-                           :c '(+ [:a] [:b])})
-         {:a 5, :b 10, :c 0})))
+;; removed concept of zero period
+#_(deftest zero-period-test
+    (is (= (SUT/zero-period {:a [:constant 5]
+                             :b [:placeholder 10]
+                             :c '(+ [:a] [:b])})
+           {:a 5, :b 10, :c 0})))
 
 (deftest reference-extractions
   (is (= (SUT/extract-refs '(* [:compound-inflation]
@@ -67,13 +68,14 @@
   (is (= (SUT/de-localize-rows #:test-qual{:a [:b] :b [:other-qual/b :prev] :c [:placeholder 5]})
          #:test-qual{:a [:test-qual/b], :b [:other-qual/b :prev], :c [:placeholder 5]})))
 
-(deftest replacing-references
-  (is (= (SUT/replace-refs-in-expr [:hello] {:hello 5})
-         5))
-  (is (= (SUT/replace-refs-in-expr [:placeholder 10] {:hello 5})
-         10))
-  (is (= (SUT/replace-refs-in-expr '(+ [:foo] [:bar]) {:foo 5 :bar 10})
-         '(+ 5 10))))
+;; No longer used
+#_(deftest replacing-references
+    (is (= (SUT/replace-refs-in-expr [:hello] {:hello 5})
+           5))
+    (is (= (SUT/replace-refs-in-expr [:placeholder 10] {:hello 5})
+           10))
+    (is (= (SUT/replace-refs-in-expr '(+ [:foo] [:bar]) {:foo 5 :bar 10})
+           '(+ 5 10))))
 
 (deftest order-calc-test
   (is (= (SUT/calculate-order {:a '(inc [:c])
@@ -103,19 +105,20 @@
                         #"Some model rows are not qualified"
                         (SUT/build-and-validate-model {} [{:a [:constant 1] :b [:a]}]))))
 
-(deftest reference-resolution
-  (is (= (SUT/resolve-reference [:b] {:b 6} [{}]) 6))
-  (is (= (SUT/resolve-reference [:placeholder 7] {} [{}]) 7))
-  (is (= (SUT/resolve-reference [:b :prev] {:b 0} [{:b 8}]) 8)))
+;; No longer used
+#_(deftest reference-resolution
+    (is (= (SUT/resolve-reference [:b] {:b 6} [{}]) 6))
+    (is (= (SUT/resolve-reference [:placeholder 7] {} [{}]) 7))
+    (is (= (SUT/resolve-reference [:b :prev] {:b 0} [{:b 8}]) 8)))
 
-(deftest next-period-test
-  (is (= (SUT/next-period [{:a 1 :b 2 :c 3}]
-                          {:a [:placeholder 4]
-                           :b '(inc [:a])
-                           :c '(+ [:c :prev]
-                                  [:b])}
-                          [:a :b :c])
-         {:a 4, :b 5, :c 8})))
+#_(deftest next-period-test
+    (is (= (SUT/next-period [{:a 1 :b 2 :c 3}]
+                            {:a [:placeholder 4]
+                             :b '(inc [:a])
+                             :c '(+ [:c :prev]
+                                    [:b])}
+                            [:a :b :c])
+           {:a 4, :b 5, :c 8})))
 
 (deftest helpers
   (is (= (SUT/add-total {:start [:end :prev]
@@ -139,14 +142,11 @@
                        :end '(+ [:start] [:increase] [:decrease])})))
 
 (deftest full-model-run
-  (is (= (Math/round (last (:cashflows/net-cashflow (time (SUT/run-model2 mtest/model 17)))))
+  (is (= (Math/round (last (:cashflows/net-cashflow (time (SUT/run-model mtest/model 17)))))
          2678047)))
 
 (comment
-  (def results (SUT/run-model mtest/model 25))
-  (irr (map :cashflows/net-cashflow results))
-
-  (def results2 (SUT/run-model2 mtest/model 25))
+  (def results2 (SUT/run-model mtest/model 25))
   (irr (:cashflows/net-cashflow results2))
 
   1)
