@@ -19,6 +19,14 @@
 * Some sort of limited "sheet" recalculation. Everything in the ns is recalculated, but any external references are looked up in a cache
 
 ## 23rd May 2022
+The model process
+* Define maps of (qualified) "row-names" to formula (which themselves reference rows)
+* The definitions must retain order, but this is only 'display order' for users.
+* Generate the dependency graph of the rows, do a top sort on it. This is the second, much more important order, the calculation order
+* To generate a "period", the runner iterate through each row in the calculation order, generating the value for that period.
+* Rinse and repeat, for as many periods as required. 
+
+
 * **DONE** Have what you're working on drive what's calculated. e.g. I'm working on O&M costs, so only calculate the descendents of those rows
 * **DONE** scatter graphing
 * **DONE** line graphing

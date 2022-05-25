@@ -139,11 +139,14 @@
                        :end '(+ [:start] [:increase] [:decrease])})))
 
 (deftest full-model-run
-  (is (= (Math/round (:cashflows/net-cashflow (last (time (SUT/run-model mtest/model 16)))))
+  (is (= (Math/round (last (:cashflows/net-cashflow (time (SUT/run-model2 mtest/model 17)))))
          2678047)))
 
 (comment
   (def results (SUT/run-model mtest/model 25))
   (irr (map :cashflows/net-cashflow results))
+
+  (def results2 (SUT/run-model2 mtest/model 25))
+  (irr (:cashflows/net-cashflow results2))
 
   1)

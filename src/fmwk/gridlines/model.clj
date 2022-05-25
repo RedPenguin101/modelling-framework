@@ -1,7 +1,8 @@
 (ns fmwk.gridlines.model
   (:require [fmwk.framework2 :as fw]
             [fmwk.simple-viz.main :refer [series-scatter series-line series-lines]]
-            [fmwk.utils :refer :all]))
+            [fmwk.utils :refer :all]
+            [fmwk.table-runner :as tr]))
 
 (def inputs
   #:inputs
@@ -225,40 +226,7 @@
 
   (fw/fail-catch (fw/run-model model 10)))
 
-(defn print-calcs [results qualifiers period-range]
-  (doseq [q qualifiers]
-    (fw/slice-results results q period-range)))
-
-(defn run-sheets [model sheets period-range]
-  (let [results (time (fw/run-model-for-rows model (last period-range) (mapcat #(fw/rows-in-sheet model %) sheets)))]
-    (print-calcs results
-                 sheets
-                 period-range)))
 
 (comment
-  #_(run-sheets model ["equity.dividends"] [1 10])
-  (run-sheets model ["equity.dividends" "fs.income" "fs.cashflow" "fs.balance-sheet"
-                     "fs.balance-sheet.assets"]
-              [1 10]))
-
-(comment
-  (def results (time (fw/run-model model 120)))
-  (take 20 (drop 90 (map (comp fw/round :equity.retained-cash/end) results)))
-  (take 20 (drop 90 (map (comp fw/round :equity.retained-earnings/end) results)))
-
-  (fw/slice-results results "equity.retained-cash" [1 10])
-
-  (series-scatter (map (comp fw/round :equity.retained-cash/end) results))
-  (series-line (map (comp fw/round :equity.retained-cash/end) results))
-
-  (series-lines [(map (comp fw/round :fs.balance-sheet.assets/solar-asset-value) results)
-                 (map (comp fw/round :equity.retained-cash/end) results)])
-
-  (count model)
-  (count (fw/precendents model [:revenue/revenue-from-generation]))
-  (count (fw/precendents model [:fs.cashflow/cash-available-for-dividends]))
-  (count (fw/precendents model [:fs.balance-sheet.assets/total-assets]))
-  (count (fw/precendents model [:fs.balance-sheet.liabilities/total-liabilities]))
-  (count (fw/precendents model [:fs.cashflow/cash-available-for-dividends
-                                :fs.balance-sheet.assets/total-assets
-                                :fs.balance-sheet.liabilities/total-liabilities])))
+  (def results2 (time (tr/run-model-table (fw/calculate-order model) model 120)))
+  results2)

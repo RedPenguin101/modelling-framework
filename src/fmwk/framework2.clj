@@ -5,7 +5,8 @@
             [ubergraph.core :as uber]
             [ubergraph.alg :as uberalg]
             [clojure.pprint :as pp]
-            [fmwk.tables :refer [transpose-records records->series]]))
+            [fmwk.tables :refer [transpose-records records->series]]
+            [fmwk.table-runner :as tr]))
 
 ;; utils
 ;;;;;;;;;;;;;;
@@ -57,6 +58,7 @@
 ;; References and calculation expressions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
 ;; predicates for types of expression, for conditionals
 (def atomic? (complement coll?))
 (def expression? list?)
@@ -65,9 +67,6 @@
 (defn current-period-link? [ref] (and (link? ref) (= 1 (count ref))))
 (defn previous-period-link? [ref] (and (link? ref) (= :prev (second ref))))
 
-;; idea is to use this for better circularity detection later - i.e if it's circular,
-;; but only because this is a link to previous, that's fine. But can't think it through now
-(def link-to-prv? (every-pred link? previous-period-link?))
 
 (defn extract-refs
   "Given an expression containing references (defined as a vector), 
@@ -84,12 +83,6 @@
 
 (defn qualify-local-references [qualifier expr]
   (postwalk #(if (link? %) (update % 0 (partial qualify qualifier)) %)
-            expr))
-
-(defn replace-refs-in-expr [expr replacements]
-  (postwalk #(cond (constant-ref? %) (second %)
-                   (link? %) (replacements (first %))
-                   :else %)
             expr))
 
 ;; Row and calculation helpers
@@ -207,54 +200,8 @@
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn zero-period
-  [rows]
-  (update-vals rows #(if (constant-ref? %) (second %) 0)))
-
-(defn resolve-reference [ref this-record [previous-record]]
-  (cond (constant-ref? ref)        (second ref)
-        (previous-period-link? ref) (get previous-record (first ref))
-        (current-period-link? ref)  (get this-record (first ref))))
-
-(defn next-period [prv-recs rows calc-order]
-  (reduce (fn [record row-name]
-            (let [refs (extract-refs (row-name rows))]
-              (try
-                (->> (map #(resolve-reference % record prv-recs) refs)
-                     (zipmap (map first refs))
-                     (replace-refs-in-expr (row-name rows))
-                     eval
-                     (assoc record row-name))
-                (catch Exception _e
-                  (throw (ex-info (str "Error calculating " row-name)
-                                  {:name row-name
-                                   :calc (row-name rows)
-                                   :replaced-calc (replace-refs-in-expr (row-name rows) (zipmap (map first refs) (map #(resolve-reference % record prv-recs) refs)))}))))))
-          {}
-          calc-order))
-
-(defn roll-model [prvs rows order] (conj prvs (next-period prvs rows order)))
-
-(defn run-model [rows periods]
-  (reverse
-   (let [order (calculate-order rows)]
-     (loop [records (list (zero-period rows))
-            prd periods]
-       (if (zero? prd)
-         records
-         (recur (roll-model records rows order) (dec prd)))))))
-
-(defn run-model-for-rows [rows periods rows-to-run]
-  (reverse
-   (let [order (precendents rows rows-to-run)]
-     (loop [records (list (select-keys (zero-period rows) order))
-            prd periods]
-       (if (zero? prd)
-         records
-         (recur (roll-model records rows order) (dec prd)))))))
-
-(comment
-  (run-model-for-rows model 10 [:prices/sale-price]))
+(defn run-model2 [model periods]
+  (tr/run-model-table (calculate-order model) model periods))
 
 ;; Model helpers
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -308,30 +255,3 @@
 (defn slice-results [results sheet-name period-range]
   (print-results (map #(slice-period sheet-name %)
                       results) period-range))
-
-
-(comment
-  (require '[fmwk-test.test-forest-model :as mtest]
-           '[fmwk.utils :refer :all])
-  (def model mtest/model)
-  (def results (time (run-model model 10)))
-  (second results)
-
-  (round-results results)
-
-  (let [series (fmwk.tables/records->series results)]
-    (fmwk.tables/series->records (update-vals series #(if (number? (second %)) (map round %) %))))
-
-  (select-keys (first results)
-               (select-keys-with-qualifier "flags" (keys model)))
-
-  (doall [(slice-results results "prices" [1 5])
-          (slice-results results "time" [1 5])
-          (slice-results results "cashflows" [1 5])])
-
-  (slice-results results "capital.closing" [1 5])
-  (slice-results results "debt.debt-balance" [1 5])
-
-  (map :cashflows/net-cashflow results)
-
-  (records->series results))
