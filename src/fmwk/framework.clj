@@ -47,17 +47,8 @@
   (qualify "hello.world" :foo)
   (qualify "hello.world" :other.ns/foo))
 
-(defn select-keys-with-qualifier [qualifier ks]
-  ((group-by namespace ks) qualifier))
-
-(comment
-  (select-keys-with-qualifier "hello" [:hello/world :foo/bar :baz])
-  ;; => [:hello/world]
-  )
-
 ;; References and calculation expressions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 ;; predicates for types of expression, for conditionals
 (def atomic? (complement coll?))
@@ -176,33 +167,6 @@
   (all-rows-qualified? #:test{:hello 1 :world 2})
   (all-rows-qualified? {:test1/hello 1 :test2/world 2}))
 
-;; Model building
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn de-localize-rows [rows]
-  (into {} (map (fn [[k v]] [k (qualify-local-references (namespace k) v)]) rows)))
-
-(defn build-model [inputs calculations]
-  (de-localize-rows (apply merge (inputs->rows inputs) calculations)))
-
-(defn build-and-validate-model [inputs calculations]
-  (when (not (all-rows-are-exprs? (apply merge calculations)))
-    (throw (ex-info "Not all rows are expressions" {})))
-  (let [model (build-model inputs calculations)]
-    (when (circular? model)
-      (throw (ex-info "Circular dependencies in model" model)))
-    (when (not-empty (bad-references model))
-      (throw (ex-info "References to non-existant rows" (bad-references model))))
-    (when (not (all-rows-qualified? model))
-      (throw (ex-info "Some model rows are not qualified" {:unqualified-kw (remove qualified-keyword? (keys model))})))
-    model))
-
-;; Model running
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn run-model [model periods]
-  (tr/run-model-table (calculate-order model) model periods))
-
 ;; Model helpers
 ;;;;;;;;;;;;;;;;;;;;;;
 
@@ -233,25 +197,29 @@
   (uber/viz-graph (rows->graph model) {:auto-label true
                                        :save {:filename "graph.png" :format :png}}))
 
-;; Table printing and model selection
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Model building
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn rows-in-sheet [rows sheet]
-  (select-keys-with-qualifier sheet (keys rows)))
+(defn de-localize-rows [rows]
+  (into {} (map (fn [[k v]] [k (qualify-local-references (namespace k) v)]) rows)))
 
-(defn round [x] (if (int? x) x (Math/round x)))
+(defn build-model [inputs calculations]
+  (de-localize-rows (apply merge (inputs->rows inputs) calculations)))
 
-(defn round-results [results]
-  (let [series (fmwk.tables/records->series results)]
-    (fmwk.tables/series->records (update-vals series #(if (number? (second %)) (mapv round %) %)))))
+(defn build-and-validate-model [inputs calculations]
+  (when (not (all-rows-are-exprs? (apply merge calculations)))
+    (throw (ex-info "Not all rows are expressions" {})))
+  (let [model (build-model inputs calculations)]
+    (when (circular? model)
+      (throw (ex-info "Circular dependencies in model" model)))
+    (when (not-empty (bad-references model))
+      (throw (ex-info "References to non-existant rows" (bad-references model))))
+    (when (not (all-rows-qualified? model))
+      (throw (ex-info "Some model rows are not qualified" {:unqualified-kw (remove qualified-keyword? (keys model))})))
+    model))
 
-(defn slice-period [sheet period]
-  (select-keys period (select-keys-with-qualifier sheet (keys period))))
+;; Model running
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn print-results [results [start end]]
-  (pp/print-table (into [:name] (range start (inc end)))
-                  (transpose-records (round-results results))))
-
-(defn slice-results [results sheet-name period-range]
-  (print-results (map #(slice-period sheet-name %)
-                      results) period-range))
+(defn run-model [model periods]
+  (tr/run-model-table (calculate-order model) model periods))
