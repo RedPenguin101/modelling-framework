@@ -253,8 +253,6 @@
 ;; Result selection and printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(rows-in-hierarchy "debt" (:display-order model))
-
 (defn select-rows [results rows]
   (filter #((set rows) (first %)) results))
 
