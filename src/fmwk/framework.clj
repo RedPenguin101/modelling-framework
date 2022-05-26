@@ -261,9 +261,11 @@
 (defn select-periods [results from to]
   (map #(vector (first %) (take (- to from) (drop from (second %)))) results))
 
+(defn round [x] (if (float? x) (Math/round x) x))
+
 (defn round-collection [xs]
-  (if (every? float? xs)
-    (map #(Math/round %) xs)
+  (if (every? number? xs)
+    (map round xs)
     xs))
 
 (defn round-results [results]
