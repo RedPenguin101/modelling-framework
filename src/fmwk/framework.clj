@@ -207,6 +207,9 @@
                            :decrease (list '- (ref-sum decreases))})
                (partial qualify qualifier)))
 
+(defn add-meta [calc meta-map]
+  (into {} (map vector (keys calc) (repeat meta-map))))
+
 (defn deps-graph [model]
   (uber/viz-graph (rows->graph model) {:auto-label true
                                        :save {:filename "graph.png" :format :png}}))
@@ -232,13 +235,16 @@
       (throw (ex-info "Some model rows are not qualified" {:unqualified-kw (remove qualified-keyword? (keys model))})))
     model))
 
-(defn build-model2 [inputs calculations]
-  (let [rows (build-and-validate-model inputs calculations)
-        calc-order (calculate-order rows)]
-    {:display-order (mapcat keys calculations)
-     :rows rows
-     :calculation-order calc-order
-     :runner (eval (tr/make-runner calc-order rows))}))
+(defn build-model2
+  ([inputs calculations] (build-model2 inputs calculations nil))
+  ([inputs calculations meta]
+   (let [rows (build-and-validate-model inputs calculations)
+         calc-order (calculate-order rows)]
+     {:display-order (mapcat keys calculations)
+      :rows rows
+      :calculation-order calc-order
+      :runner (eval (tr/make-runner calc-order rows))
+      :meta (apply merge meta)})))
 
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -259,26 +265,49 @@
 (defn select-periods [results from to]
   (map #(vector (first %) (take (- to from) (drop from (second %)))) results))
 
-(defn round [x] (if (float? x) (Math/round x) x))
+(def ccy-format (java.text.DecimalFormat. "###,##0.00"))
+
+(defn format-ccy [x]
+  (if (= (int x) 0)
+    "- "
+    (.format ccy-format x)))
+
+(defn format-ccy-thousands [x]
+  (format-ccy (float (/ x 1000))))
+
+(defn format-percent [x] (format "%.2f%%" (* 100 x)))
 
 (defn round-collection [xs]
   (if (every? number? xs)
-    (map round xs)
+    (map format-ccy xs)
     xs))
 
-(defn round-results [results]
-  (map #(update % 1 round-collection) results))
+(defn display-format-series [xs unit]
+  (case unit
+    :currency           (map format-ccy xs)
+    :currency-thousands (map format-ccy-thousands xs)
+    :percent            (map format-percent xs)
+    (round-collection xs)))
+
+(defn format-results [results metadata]
+  (map #(update % 1
+                display-format-series
+                (get-in metadata [(first %) :units]))
+       results))
 
 (defn print-table [results]
   (let [[hdr & rows] (series->row-wise-table results)]
     (pp/print-table hdr (map #(zipmap hdr %) rows))))
 
-(defn print-category [results header category from to]
-  (-> results
-      (select-rows (conj (rows-in-hierarchy category (map first results)) header))
-      (select-periods from to)
-      round-results
-      print-table))
+(defn print-category
+  ([results header category from to]
+   (print-category results nil header category from to))
+  ([results metadata header category from to]
+   (-> results
+       (select-rows (conj (rows-in-hierarchy category (map first results)) header))
+       (select-periods from to)
+       (format-results metadata)
+       print-table)))
 
 (comment
   (require '[fmwk-test.test-forest-model :as f]
