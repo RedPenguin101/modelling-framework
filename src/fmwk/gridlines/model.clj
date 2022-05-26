@@ -21,7 +21,11 @@
     :power-tariff               0.065
     :annual-real-om-cost        1500
     :asset-value-at-start       100000
-    :useful-life-of-asset       25})
+    :useful-life-of-asset       25
+    :senior-debt-gearing        0.7
+    :senior-debt-repayment-term 10
+    :senior-debt-swap-rate      0.025
+    :senior-debt-margin         0.04})
 
 (def time-calcs
   (merge
@@ -69,6 +73,9 @@
      :quarter-number          '(if [:time.operating-period/in-flag]
                                  (inc (mod [:quarter-number :prev] 4))
                                  0)}))
+
+;; REVENUE
+;;;;;;;;;;;;;;;;;;;;
 
 (def revenue
   #:revenue
@@ -127,39 +134,37 @@
     [:depreciation/starting-value]
     [:depreciation/solar-asset-depreciation])))
 
+(def fs-cashflow
+  #:fs.cashflow
+   {:cash-from-invoices        [:revenue/revenue-from-generation]
+    :om-expense-paid           '(- [:om-costs/expense])
+    :share-capital-redemptions '(- [:equity.share-capital/redemption])
+    :cash-available-for-dividends '(+ [:cash-from-invoices]
+                                      [:om-expense-paid]
 
+                                      [:share-capital-redemptions])
+    :dividends-paid             '(- [:equity.dividends/dividend-paid])
+    :net-cashflow               '(+ [:cash-available-for-dividends] [:dividends-paid])})
+
+(def fs-income
+  #:fs.income
+   {:revenue               [:revenue/revenue-from-generation]
+    :om-expense            '(- [:om-costs/expense])
+    :depreciation          '(- [:depreciation/solar-asset-depreciation])
+    :profit-after-tax      '(+ [:revenue] [:om-expense] [:depreciation])
+    :dividends-paid        '(- [:equity.dividends/dividend-paid])
+    :net-income            '(+ [:profit-after-tax] [:dividends-paid])})
+
+(def fs-balance-sheet-assets
+  (fw/add-total
+   :total-assets
+   #:fs.balance-sheet.assets
+    {:retained-cash             [:equity.retained-cash/end]
+     :accounts-receivable       [:placeholder 0]
+     :solar-asset-value         [:asset-value/end]}))
 
 (def fs
   (merge
-   (fw/add-total
-    :cash-available-for-dividends
-    #:fs.cashflow
-     {:cash-from-invoices        [:revenue/revenue-from-generation]
-      :om-expense-paid           '(- [:om-costs/expense])
-      :share-capital-redemptions '(- [:equity.share-capital/redemption])})
-
-   #:fs.cashflow
-    {:dividends-paid             '(- [:equity.dividends/dividend-paid])
-     :net-cashflow               '(+ [:cash-available-for-dividends] [:dividends-paid])}
-
-   (fw/add-total
-    :profit-after-tax
-    #:fs.income
-     {:revenue                   [:revenue/revenue-from-generation]
-      :om-expense                '(- [:om-costs/expense])
-      :depreciation              '(- [:depreciation/solar-asset-depreciation])})
-
-   #:fs.income
-    {:dividends-paid             '(- [:equity.dividends/dividend-paid])
-     :net-income                 '(+ [:profit-after-tax] [:dividends-paid])}
-
-   (fw/add-total
-    :total-assets
-    #:fs.balance-sheet.assets
-     {:retained-cash             [:equity.retained-cash/end]
-      :accounts-receivable       [:placeholder 0]
-      :solar-asset-value         [:asset-value/end]})
-
    (fw/add-total
     :total-liabilities
     #:fs.balance-sheet.liabilities
@@ -208,25 +213,62 @@
                              [:equity.retained-cash/increase])
     :dividend-paid       '(min [:earnings-available] [:cash-available])})
 
+;; Debt
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def sdd
+  #:debt.senior
+   {:drawdown-amount             '(* [:inputs/senior-debt-gearing]
+                                     [:inputs/asset-value-at-start])
+    :initial-drawdown            '(when-flag [:time.period/financial-close-flag]
+                                             [:drawdown-amount])
+    :additional-drawdown         [:placeholder 0]
+    :repayment-date              '(end-of-month [:inputs/aquisition-date]
+                                                (* [:inputs/senior-debt-repayment-term]
+                                                   12))
+    :repayment-period-flag       '(and (date> [:time.period/start-date]
+                                              [:inputs/aquisition-date])
+                                       (date<= [:time.period/end-date]
+                                               [:repayment-date]))
+    :level-principal-repayment   '(when-flag
+                                   [:repayment-period-flag]
+                                   (* (/ [:drawdown-amount]
+                                         [:inputs/senior-debt-repayment-term]
+                                         [:inputs/periods-in-year])))})
+
+(def sdc
+  (fw/corkscrew "debt.senior.balance"
+                [:debt.senior/initial-drawdown :debt.senior/additional-drawdown]
+                [:debt.senior/level-principal-repayment]))
+
+(def sdi
+  #:debt.senior.interest
+   {:all-in-rate '(+ [:inputs/senior-debt-margin]
+                     [:inputs/senior-debt-swap-rate])
+    :charge      '(* [:debt.senior.balance/start]
+                     (/ [:all-in-rate] [:inputs/periods-in-year]))})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Build and run
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def model (fw/build-model2
-            inputs
-            [time-calcs
-             revenue costs
-             depreciation
-             retained-earnings retained-cash
-             share-cap share-cap-balance
-             dividends
-             fs]))
+(def calcs [time-calcs
+            revenue costs
+            depreciation
+            retained-earnings retained-cash
+            share-cap share-cap-balance
+            dividends
+            fs-cashflow fs-income fs-balance-sheet-assets fs
+            sdd sdi sdc])
+
+(def model (fw/build-model2 inputs calcs))
 
 (def header :time.period/end-date)
+(fw/print-category (time (fw/run-model model 20)) header "debt" 10 20)
 
 (comment
   (fw/deps-graph model) ;; need to update fn
-
+  (fw/fail-catch (fw/build-model2 inputs calcs))
   (fw/fail-catch (fw/run-model model 10)))
 
 (comment

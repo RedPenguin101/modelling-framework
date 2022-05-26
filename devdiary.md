@@ -1,22 +1,30 @@
 # Dev Diary
 ## Todo
-* Better printing
-  * Better selection of sheets, rather than calcs (i.e. select "fs" to select everything in the FS, including fs.assets)
-  * change print-calcs so it prints in a single table
-  * Do something about order
-  * Dump to CSV
-  * Dump to HTML?
+* Inputs, base cases, scenarios
+* Units and metadata
+* Printing of Percent
+* Totals, Outputs, output comparison
+* Dump to CSV
+* Dump to HTML?
+* Only-dependencies recalculation? Need to recompile model function
 * Isolate and show circular dependencies
 * Check on print table where there are no rows, or you got the sheet name wrong
-* Compile model to function on arrays to increase performance?
-* Units and metadata
 * Model report: 
   * number of rows
   * number of evaluations per period
   * Unused rows
+  * Placeholders that need to be replaced
 * flag optimizations: when you've calculated the flags, you can store them in a set, then if an expression depends on the flag you can just look it up and avoid evaluating if the flag isn't true
 * Circularity helpers, but only when it comes up
 * Some sort of limited "sheet" recalculation. Everything in the ns is recalculated, but any external references are looked up in a cache
+* Empty inputs in corkscrews
+
+## 25th May
+* **DONE** Better printing
+  * **DONE** Better selection of sheets, rather than calcs (i.e. select "fs" to select everything in the FS, including fs.assets)
+  * **DONE** change print-calcs so it prints in a single table
+  * **DONE** (badly) Do something about order
+* **DONE** Compile model to function on arrays to increase performance?
 
 ## 23rd May 2022
 The model process
