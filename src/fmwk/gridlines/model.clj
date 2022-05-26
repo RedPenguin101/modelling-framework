@@ -139,9 +139,12 @@
    {:cash-from-invoices        [:revenue/revenue-from-generation]
     :om-expense-paid           '(- [:om-costs/expense])
     :share-capital-redemptions '(- [:equity.share-capital/redemption])
+    :debt-principal            '(+ [:debt.senior.balance/increase]
+                                   [:debt.senior.balance/decrease])
+    :debt-interest              '(- [:debt.senior.interest/charge])
     :cash-available-for-dividends '(+ [:cash-from-invoices]
                                       [:om-expense-paid]
-
+                                      [:debt-principal] [:debt-interest]
                                       [:share-capital-redemptions])
     :dividends-paid             '(- [:equity.dividends/dividend-paid])
     :net-cashflow               '(+ [:cash-available-for-dividends] [:dividends-paid])})
@@ -150,8 +153,10 @@
   #:fs.income
    {:revenue               [:revenue/revenue-from-generation]
     :om-expense            '(- [:om-costs/expense])
+    :interest              '(- [:debt.senior.interest/charge])
     :depreciation          '(- [:depreciation/solar-asset-depreciation])
-    :profit-after-tax      '(+ [:revenue] [:om-expense] [:depreciation])
+    :profit-after-tax      '(+ [:revenue] [:om-expense] [:depreciation]
+                               [:interest])
     :dividends-paid        '(- [:equity.dividends/dividend-paid])
     :net-income            '(+ [:profit-after-tax] [:dividends-paid])})
 
@@ -169,6 +174,7 @@
     :total-liabilities
     #:fs.balance-sheet.liabilities
      {:retained-earnings         [:equity.retained-earnings/end]
+      :senior-debt               [:debt.senior.balance/end]
       :share-capital             [:equity.share-capital.balance/end]})
 
    #:fs.balance-sheet
@@ -264,7 +270,7 @@
 (def model (fw/build-model2 inputs calcs))
 
 (def header :time.period/end-date)
-(fw/print-category (time (fw/run-model model 20)) header "debt" 10 20)
+(fw/print-category (time (fw/run-model model 20)) header "fs.balance-sheet" 0 10)
 
 (comment
   (fw/deps-graph model) ;; need to update fn
