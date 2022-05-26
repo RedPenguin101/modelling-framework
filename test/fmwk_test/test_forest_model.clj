@@ -1,5 +1,6 @@
 (ns fmwk-test.test-forest-model
-  (:require [fmwk.framework :as fw]))
+  (:require [fmwk.framework :as fw]
+            [fmwk.utils :refer :all]))
 
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -143,9 +144,12 @@
      :gross-profit '(* [:prices/profit] [:volume/harvest])
      :expenses-paid '(- [:expenses/total])}))
 
-(def model (fw/build-and-validate-model
+(def model (fw/build-model2
             inputs
             [time-calcs flags
              prices expenses closing
              debt volume value
              exit cashflows]))
+
+(def header :time/period-end-date)
+(fw/print-category (fw/run-model model 20) header "cashflows" 10 20)
