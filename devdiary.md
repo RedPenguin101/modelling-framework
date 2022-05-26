@@ -1,9 +1,10 @@
 # Dev Diary
 ## Todo
 * Inputs, base cases, scenarios
-* Units and metadata
-* Printing of Percent
-* Totals, Outputs, output comparison
+* **DONE** Units and metadata
+* **DONE** Printing of Percent
+* **DONE** Totals
+* Outputs, output comparison
 * Dump to CSV
 * Dump to HTML?
 * Only-dependencies recalculation? Need to recompile model function

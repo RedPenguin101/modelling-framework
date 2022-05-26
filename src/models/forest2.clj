@@ -156,15 +156,14 @@
 
 (def metadata [prices-meta
                (fw/add-meta income {:units :currency-thousands})
-               (fw/add-meta cashflow {:units :currency})])
+               (fw/add-meta cashflow {:units :currency-thousands :total true})])
 
-(apply merge nil)
 (def model (fw/build-model2 inputs calcs metadata))
 (comment (fw/fail-catch (fw/build-model2 inputs calcs)))
 (def header :period/end-date)
 
 (def results (fw/run-model model 20))
 #_(fw/print-category results header "prices" 0 10)
-(fw/print-category results (:meta model) header "income" 1 10)
+(fw/print-category results (:meta model) header "cashflow" 1 10)
 
-(irr (:cashflow/net-cashflow (into {} results)))
+#_(irr (:cashflow/net-cashflow (into {} results)))

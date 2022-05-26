@@ -265,6 +265,18 @@
 (defn select-periods [results from to]
   (map #(vector (first %) (take (- to from) (drop from (second %)))) results))
 
+(defn get-total-rows [metadata]
+  (set (filter #(get-in metadata [% :total]) (keys metadata))))
+
+(defn totals [results total-rows]
+  (into {}
+        (for [[r xs] results]
+          [r (if (total-rows r) (apply + xs) 0)])))
+
+(defn add-totals [results totals]
+  (for [[nm xs] results]
+    [nm (into [(get totals nm 0)] xs)]))
+
 (def ccy-format (java.text.DecimalFormat. "###,##0.00"))
 
 (defn format-ccy [x]
@@ -295,19 +307,23 @@
                 (get-in metadata [(first %) :units]))
        results))
 
-(defn print-table [results]
-  (let [[hdr & rows] (series->row-wise-table results)]
+(defn print-table [table]
+  (let [[hdr & rows] table
+        hdr (assoc hdr 1 "total")]
     (pp/print-table hdr (map #(zipmap hdr %) rows))))
 
 (defn print-category
   ([results header category from to]
    (print-category results nil header category from to))
   ([results metadata header category from to]
-   (-> results
-       (select-rows (conj (rows-in-hierarchy category (map first results)) header))
-       (select-periods from to)
-       (format-results metadata)
-       print-table)))
+   (let [tot (totals results (get-total-rows metadata))]
+     (-> results
+         (select-rows (conj (rows-in-hierarchy category (map first results)) header))
+         (select-periods from to)
+         (add-totals tot)
+         (format-results metadata)
+         (series->row-wise-table)
+         print-table))))
 
 (comment
   (require '[fmwk-test.test-forest-model :as f]
