@@ -213,6 +213,15 @@
                            :decrease (list '- (ref-sum decreases))})
                (partial qualify qualifier)))
 
+(defn corkscrew-with-start [qualifier start start-flag increases decreases]
+  (update-keys (add-total :end
+                          {:start (list 'if start-flag
+                                        start
+                                        [:end :prev])
+                           :increase (ref-sum increases)
+                           :decrease (list '- (ref-sum decreases))})
+               (partial qualify qualifier)))
+
 (defn add-meta [calc meta-map]
   (into {} (map vector (keys calc) (repeat meta-map))))
 
