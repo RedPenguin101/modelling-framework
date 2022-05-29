@@ -207,13 +207,13 @@
   (fw/add-total :net-profit
                 #:income
                  {:EBITDA       [:income.EBITDA/EBITDA]
-                  :depreciation [:placeholder 0]
+                  :depreciation [:ppe.balance/decrease]
                   :interest     [:placeholder 0]}))
 
-(def cashflow
+(def cashflow-ops
   (fw/add-total
-   :from-operations
-   #:cashflows
+   :total
+   #:cashflows.operations
     {:advances          [:contracts.advances/total]
      :contract-revenue  [:contracts.accounting/cash-from-invoices]
      :contract-expenses '(- (+ [:contracts.salary-expense/total] [:contracts.material-expense/total]))
@@ -223,11 +223,20 @@
                            [:inputs/holdback-release-amount]
                            0)}))
 
+(def cashflow-capital
+  (fw/add-total :total
+                #:cashflows.capital
+                 {:capex '(- [:ppe.capex/spend])}))
+
+(def cashflow-total
+  {:cashflows/total '(+ [:cashflows.operations/total]
+                        [:cashflows.capital/total])})
+
 (def bs-assets
   (fw/add-total
    :total-assets
    #:balance-sheet.assets
-    {:cash                '(+ [:cash :prev] [:cashflows/from-operations])
+    {:cash                '(+ [:cash :prev] [:cashflows/total])
      :inventory           [:placeholder 0]
      :accounts-receivable '(+ [:accounts-receivable :prev]
                               [:contracts.accounting/accounts-receivable]
@@ -236,8 +245,8 @@
                              [:inputs/starting-holdback]
                              (+ [:holdbacks :prev]
                                 [:contracts.accounting/holdback-accrual]
-                                (- [:cashflows/holdbacks])))
-     :ppe                 [:placeholder 3600000]}))
+                                (- [:cashflows.operations/holdbacks])))
+     :ppe                 [:ppe.balance/end]}))
 
 (def bs-liabs
   (fw/add-total
@@ -262,10 +271,12 @@
 (def bs-meta (fw/add-meta (merge bs-assets bs-liabs) {:units :currency-thousands}))
 
 (def calcs [periods bs-assets bs-liabs bs-check
-            ebitda net-profit cashflow
+            ebitda net-profit
+            cashflow-ops cashflow-capital cashflow-total
             contract-revenue contract-advances contract-accounting
             contract-expenses-salary contract-expenses-materials
-            capex new-ppe-depreciation old-ppe-depreciation ppe-balance])
+            capex new-ppe-depreciation old-ppe-depreciation
+            total-depr ppe-balance])
 (fw/fail-catch (fw/build-model2 inputs calcs))
 
 (def model (fw/build-model2 inputs calcs [bs-meta]))
@@ -273,4 +284,6 @@
 (def header :period/end-date)
 (def results (time (fw/run-model model 20)))
 
-(fw/print-category results (:meta model) header "ppe.balance" 1 13)
+(fw/print-category results (:meta model) header "income" 1 13)
+(fw/print-category results (:meta model) header "balance-sheet" 1 13)
+(fw/print-category results (:meta model) header "cashflows" 1 13)
