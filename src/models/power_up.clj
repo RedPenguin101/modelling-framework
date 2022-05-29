@@ -163,7 +163,7 @@
   #:debt.rcf
    {:interest '(/ (* [:inputs/rcf-rate] [:debt.rcf.balance/start])
                   12) ;; TODO: Proper Act/365
-    :sweep [:placeholder 0]})
+    :sweep '(- [:cashflows/before-rcf-sweep])})
 
 (def rcf-balance
   (fw/corkscrew-with-start "debt.rcf.balance"
@@ -281,7 +281,9 @@
                                    [:cashflows.capital/total])})
 
 (def cashflow-total
-  {:cashflows/total '(+ [:cashflows/before-rcf-sweep])})
+  {:cashflows/rcf-sweep [:debt.rcf/sweep]
+   :cashflows/total     '(+ [:cashflows/before-rcf-sweep]
+                            [:rcf-sweep])})
 
 (def bs-assets
   (fw/add-total
@@ -307,7 +309,7 @@
      :advances          '(+ [:advances :prev]
                             [:contracts.advances/total]
                             (- [:contracts.accounting/advance-release]))
-     :rcf               [:placeholder 2500000]
+     :rcf               [:debt.rcf.balance/end]
      :leasing           [:debt.lease.balance/end]
      :share-capital     [:placeholder 1000000]
      :retained-earnings '(if [:period/first-model-column]
@@ -316,8 +318,12 @@
                            (+ [:retained-earnings :prev]
                               [:income/net-profit]))}))
 
-(def bs-check {:balance-sheet/check '(- [:balance-sheet.assets/total-assets]
-                                        [:balance-sheet.liabilities/total-liabilities])})
+(def bs-check #:balance-sheet.checks
+               {:balance
+                '(- [:balance-sheet.assets/total-assets]
+                    [:balance-sheet.liabilities/total-liabilities])
+                :cash-on-hand [:balance-sheet.assets/cash]
+                :solvent '(>= [:cash-on-hand] 0)})
 
 (def bs-meta (fw/add-meta (merge bs-assets bs-liabs) {:units :currency-thousands}))
 
@@ -338,4 +344,4 @@
 (def results (time (fw/run-model model 20)))
 
 (fw/print-category results (:meta model) header "debt.rcf" 1 13)
-(fw/print-category results (:meta model) header "cashflows" 1 13)
+(fw/print-category results (:meta model) header "balance-sheet.checks" 1 13)
