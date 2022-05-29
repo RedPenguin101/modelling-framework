@@ -3,7 +3,7 @@
             [fmwk.utils :refer :all]))
 
 (def contract-activity
-  [:moonshine :titan])
+  [:moonshine :titan :evergreen :sky])
 
 (def contracts
   {:moonshine {:materials  2890976
@@ -20,7 +20,12 @@
                :salaries 6821887
                :ovh-profit 2884417
                :total 16785225
-               :completion [0	0	0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0	0]}})
+               :completion [0	0	0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0	0]}
+   :sky {:materials  9543584
+         :salaries   12290519
+         :ovh-profit 4530576
+         :total      26364679
+         :completion [0	0	0	0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0]}})
 
 (defn contract-input [[contract-name contract]]
   (into (array-map)
