@@ -102,7 +102,7 @@
                  {:revenues  [:contracts.accounting/revenue]
                   :materials [:placeholder 0]
                   :labor     [:placeholder 0]
-                  :overhead  [:placeholder 0]}))
+                  :overhead  '(- [:inputs/overhead-per-month])}))
 
 (def net-profit
   (fw/add-total :net-profit
@@ -117,6 +117,7 @@
    #:cashflows
     {:advances         [:contracts.advances/total]
      :contract-revenue [:contracts.accounting/cash-from-invoices]
+     :overhead         '(- [:inputs/overhead-per-month])
      :holdbacks        '(if (date= [:inputs/holdback-release-date]
                                    [:period/end-date])
                           [:inputs/holdback-release-amount]
@@ -150,7 +151,8 @@
      :leasing           [:placeholder 0]
      :share-capital     [:placeholder 1000000]
      :retained-earnings '(if [:period/first-model-column]
-                           [:inputs/starting-re]
+                           (+ [:inputs/starting-re]
+                              [:income/net-profit])
                            (+ [:retained-earnings :prev]
                               [:income/net-profit]))}))
 
