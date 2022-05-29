@@ -20,6 +20,7 @@
 
     :ltv                        0.8
     :interest-rate              0.03
+    :repayment-start-date       "2022-01-31"
     :repayment-schedule         9 ;;years
 
     :initial-cars               1000
@@ -106,6 +107,38 @@
     :land-purchase               {:units :currency :total true}
     :total-construction-payments {:units :currency :total true}})
 
+;; DEBT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def debt
+  #:debt
+   {:construction-payments [:construction/total-construction-payments]
+    :drawdown              '(* [:inputs/ltv] [:construction-payments])
+    :year-frac             '(year-frac-act-365 (add-days [:period/start-date] -1) [:period/end-date])
+    :interest              '(* [:debt.balance/start] [:inputs/interest-rate] [:year-frac])
+    :last-repayment-date   '(add-months [:inputs/repayment-start-date] (dec (* 12 [:inputs/repayment-schedule])))
+    :total-loan-amount     '(* [:inputs/ltv] (+ [:inputs/construction-cost] [:inputs/cost-of-land] [:inputs/cost-of-equipment]))
+    :repayment-period-flag '(and (date>= [:period/end-date] [:inputs/repayment-start-date])
+                                 (date<= [:period/end-date] [:last-repayment-date]))
+    :repayment             '(when-flag [:repayment-period-flag]
+                                       (/ [:total-loan-amount]
+                                          (* 12 [:inputs/repayment-schedule])))})
+
+(def debt-balance
+  (fw/corkscrew "debt.balance"
+                [:debt/drawdown]
+                [:debt/repayment]))
+
+(def debt-meta
+  (merge #:debt{:construction-payments {:units :currency :total true}
+                :debt/drawdown         {:units :currency :total true}
+                :repayment             {:units :currency :total true}
+                :year-frac             {:units :percent}}
+         #:debt.balance{:start    {:units :currency}
+                        :increase {:units :currency :total true}
+                        :decrease {:units :currency :total true}
+                        :end      {:units :currency}}))
+
 ;; FINANCIAL STATEMENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -164,14 +197,14 @@
 (def bs-meta (fw/add-meta (merge bs-assets bs-liabs) {:units :currency}))
 
 (def calcs [periods op-period income cashflow bs-assets bs-liabs bs-check
-            construction-costs])
+            construction-costs debt debt-balance])
 (def metadata [income-meta cashflow-meta bs-meta
-               construction-meta])
+               construction-meta debt-meta])
 
 (fw/fail-catch (fw/build-model2 inputs calcs metadata))
 (def model (fw/build-model2 inputs calcs metadata))
 (def header :period/end-date)
 
-(def results (fw/run-model model 15))
+(def results (time (fw/run-model model (* 12 11))))
 
-(fw/print-category results (:meta model) header "construction" 1 15)
+(fw/print-category results (:meta model) header "debt" 1 15)
