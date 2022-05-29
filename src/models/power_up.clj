@@ -75,6 +75,10 @@
      :existing-ppe-depreciation 3.0 ;years
      :new-ppe-depreciation      5.0 ;years
 
+     :rcf-cap 12500000
+     :rcf-rate 0.03
+     :starting-rcf 2500000
+
      :starting-ppe      3600000
      :starting-holdback 5000000
      :starting-re       5100000}))
@@ -152,6 +156,22 @@
                 [:debt.lease/drawdown]
                 [:debt.lease/repayment-amount]))
 
+;; RCF
+;;;;;;;;;;;;;;;;;;;;;;
+
+(def rcf
+  #:debt.rcf
+   {:interest '(/ (* [:inputs/rcf-rate] [:debt.rcf.balance/start])
+                  12) ;; TODO: Proper Act/365
+    :sweep [:placeholder 0]})
+
+(def rcf-balance
+  (fw/corkscrew-with-start "debt.rcf.balance"
+                           [:inputs/starting-rcf]
+                           [:period/first-model-column]
+                           [:debt.rcf/sweep]
+                           []))
+
 ;; Contracts
 ;;;;;;;;;;;;;;;;;;;;;;
 
@@ -226,7 +246,8 @@
                 #:income
                  {:EBITDA       [:income.EBITDA/EBITDA]
                   :depreciation [:ppe.balance/decrease]
-                  :interest     '(- [:debt.lease/interest])}))
+                  :interest     '(- (+ [:debt.lease/interest]
+                                       [:debt.rcf/interest]))}))
 
 (def cashflow-ops
   (fw/add-total
@@ -249,14 +270,18 @@
 (def cashflow-finance
   (fw/add-total :total
                 #:cashflows.finance
-                 {:interest-paid '(- [:debt.lease/interest])
+                 {:interest-paid '(- (+ [:debt.lease/interest]
+                                        [:debt.rcf/interest]))
                   :drawdown      '(+ [:debt.lease/drawdown])
                   :repayment     '(- [:debt.lease/repayment-amount])}))
 
+(def cashflow-before-rcf-sweep
+  {:cashflows/before-rcf-sweep '(+ [:cashflows.operations/total]
+                                   [:cashflows.finance/total]
+                                   [:cashflows.capital/total])})
+
 (def cashflow-total
-  {:cashflows/total '(+ [:cashflows.operations/total]
-                        [:cashflows.finance/total]
-                        [:cashflows.capital/total])})
+  {:cashflows/total '(+ [:cashflows/before-rcf-sweep])})
 
 (def bs-assets
   (fw/add-total
@@ -298,12 +323,13 @@
 
 (def calcs [periods bs-assets bs-liabs bs-check
             ebitda net-profit
-            cashflow-ops cashflow-capital cashflow-finance cashflow-total
+            cashflow-ops cashflow-capital cashflow-finance cashflow-before-rcf-sweep cashflow-total
             contract-revenue contract-advances contract-accounting
             contract-expenses-salary contract-expenses-materials
             capex new-ppe-depreciation old-ppe-depreciation
             ppe-lease lease-corkscrew
-            total-depr ppe-balance])
+            total-depr ppe-balance
+            rcf rcf-balance])
 (fw/fail-catch (fw/build-model2 inputs calcs))
 
 (def model (fw/build-model2 inputs calcs [bs-meta]))
@@ -311,6 +337,5 @@
 (def header :period/end-date)
 (def results (time (fw/run-model model 20)))
 
-(fw/print-category results (:meta model) header "balance-sheet" 1 13)
-(fw/print-category results (:meta model) header "income" 1 13)
+(fw/print-category results (:meta model) header "debt.rcf" 1 13)
 (fw/print-category results (:meta model) header "cashflows" 1 13)
