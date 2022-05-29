@@ -96,13 +96,15 @@
                                           [:inputs/aquisition-date])
                                    (date<= [:period/end-date]
                                            [:construction-end-date]))
-    :construction-payment    '(when-flag [:construction-flag] (/ [:inputs/construction-cost] [:inputs/construction-length]))})
+    :construction-payment    '(when-flag [:construction-flag] (/ [:inputs/construction-cost] [:inputs/construction-length]))
+    :total-construction-payments '(+ [:land-purchase] [:construction-payment] [:installation-payment])})
 
 (def construction-meta
   #:construction
-   {:installation-payment {:units :currency :total true}
-    :construction-payment {:units :currency :total true}
-    :land-purchase        {:units :currency :total true}})
+   {:installation-payment        {:units :currency :total true}
+    :construction-payment        {:units :currency :total true}
+    :land-purchase               {:units :currency :total true}
+    :total-construction-payments {:units :currency :total true}})
 
 ;; FINANCIAL STATEMENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
