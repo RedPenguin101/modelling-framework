@@ -104,19 +104,23 @@
 
 (def capex
   #:ppe.capex
-   {:total-vol               [:inputs/total-contract-volume]
-    :total                   '(cond (<= [:inputs/total-contract-volume] [:inputs/capex-vol-1]) [:inputs/capex-1]
-                                    (<= [:inputs/total-contract-volume] [:inputs/capex-vol-2]) [:inputs/capex-2]
-                                    (<= [:inputs/total-contract-volume] [:inputs/capex-vol-3]) [:inputs/capex-3]
-                                    :else [:inputs/capex-4])
+   {:contract-vol            [:inputs/total-contract-volume]
+    :for-year                '(cond (<= [:contract-vol] [:inputs/capex-vol-1])
+                                    [:inputs/capex-1]
+                                    (<= [:contract-vol] [:inputs/capex-vol-2])
+                                    [:inputs/capex-2]
+                                    (<= [:contract-vol] [:inputs/capex-vol-3])
+                                    [:inputs/capex-3]
+                                    :else
+                                    [:inputs/capex-4])
     :capex-spend-period-flag '(date= [:period/end-date] [:inputs/capex-date])
-    :spend                   '(when-flag [:capex-spend-period-flag] [:total])})
+    :spend                   '(when-flag [:capex-spend-period-flag] [:for-year])})
 
 (def new-ppe-depreciation
   #:ppe.new
    {:depreciation-term-months '(* 12 [:inputs/new-ppe-depreciation])
     :in-depreciation-flag     '(date> [:period/start-date] [:inputs/capex-date])
-    :new-capex                [:ppe.capex/total]
+    :new-capex                [:ppe.capex/for-year]
     :charge                   '(when-flag
                                 [:in-depreciation-flag]
                                 (/ [:new-capex]
@@ -146,8 +150,10 @@
 
 (def ppe-lease
   #:debt.lease
-   {:amount                  '(* [:inputs/capex-facility-ltv] [:ppe.capex/total])
-    :drawdown                '(* [:ppe.capex/spend] [:inputs/capex-facility-ltv])
+   {:amount                  '(* [:inputs/capex-facility-ltv]
+                                 [:ppe.capex/for-year])
+    :drawdown                '(* [:ppe.capex/spend]
+                                 [:inputs/capex-facility-ltv])
     :interest                '(/ (* [:inputs/capex-facility-rate]
                                     [:debt.lease.balance/start])
                                  12) ;; TODO: Proper Act/365
@@ -166,11 +172,12 @@
 
 (def rcf
   #:debt.rcf
-   {:interest '(/ (* [:inputs/rcf-rate] [:debt.rcf.balance/start])
-                  12) ;; TODO: Proper Act/365
-    :cap      [:inputs/rcf-cap]
-    :capacity '(- [:cap] [:debt.rcf.balance/start])
-    :sweep    '(min [:capacity] (- [:cashflows/before-rcf-sweep]))})
+   {:interest       '(/ (* [:inputs/rcf-rate] [:debt.rcf.balance/start])
+                        12) ;; TODO: Proper Act/365
+    :rcf-balance-bf [:debt.rcf.balance/start]
+    :cap            [:inputs/rcf-cap]
+    :draw-capacity  '(- [:cap] [:rcf-balance-bf])
+    :sweep          '(min [:draw-capacity] (- [:cashflows/before-rcf-sweep]))})
 
 (def rcf-balance
   (fw/corkscrew-with-start
