@@ -3,7 +3,7 @@
             [fmwk.utils :refer :all]))
 
 (def contract-activity
-  [:moonshine :titan :evergreen])
+  [:moonshine :titan])
 
 (def contracts
   {:moonshine {:materials  2890976
@@ -31,20 +31,38 @@
            [(keyword qualifier "revenue") (:total contract)]
            [(keyword qualifier "advance-month") (- 12 (count (drop-while zero? (:completion contract))))]])))
 
+(def contract-inputs
+  (let [inputs (apply merge (map contract-input (select-keys contracts contract-activity)))]
+    (assoc inputs :inputs/total-contract-volume
+           (reduce #(+ %1 (second %2))
+                   0
+                   (filter #(= "revenue" (name (first %))) inputs)))))
+
 (def inputs
   (merge
-   (apply merge (map contract-input contracts))
+   contract-inputs
    #:inputs
     {:model-start-date "2021-01-01"
      :aquisition-date "2020-12-31"
      :sale-date "2035-12-31"
      :length-of-operating-period 1
+
      :overhead-per-month 500000
      :advance-payment 0.1
      :holdback 0.1
      :invoice-percent 0.8
      :holdback-release-amount 2500000
      :holdback-release-date "2021-06-30"
+
+     :capex-vol-1 50000000
+     :capex-1     0
+     :capex-vol-2 100000000
+     :capex-2     5000000
+     :capex-vol-3 150000000
+     :capex-3     10000000
+     :capex-4     20000000
+     :capex-date  "2021-02-28"
+
      :existing-ppe-depreciation 3 ;years
      :new-ppe-depreciation      5 ;years
 
