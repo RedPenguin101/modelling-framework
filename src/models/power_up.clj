@@ -70,14 +70,17 @@
 
      :capex-facility-ltv   0.8
      :capex-facility-rate  0.025
-     :capex-repayment-term 60 ;months
+     :capex-repayment-term 60.0 ;months
 
-     :existing-ppe-depreciation 3 ;years
-     :new-ppe-depreciation      5 ;years
+     :existing-ppe-depreciation 3.0 ;years
+     :new-ppe-depreciation      5.0 ;years
 
      :starting-ppe      3600000
      :starting-holdback 5000000
      :starting-re       5100000}))
+
+;; TIME
+;;;;;;;;;;;;;;;;;;;;;;
 
 (def periods
   #:period
@@ -90,6 +93,9 @@
                                 -1)
     :number                   '(inc [:number :prev])
     :first-model-column       '(= 1 [:number])})
+
+;; Capex and PP&E
+;;;;;;;;;;;;;;;;;;;;;
 
 (def capex
   #:ppe.capex{:total-vol [:inputs/total-contract-volume]
@@ -121,6 +127,8 @@
                 [:ppe.capex/spend :ppe.old/ppe-bf]
                 [:ppe.new/depreciation-charge
                  :ppe.old/old-depreciation-charge]))
+;; Contracts
+;;;;;;;;;;;;;;;;;;;;;;
 
 (def contract-revenue
   (fw/add-total
@@ -176,6 +184,9 @@
                              [:inputs/invoice-percent])
     :acc-bal-check       '(- [:revenue] [:advance-release] [:holdback-accrual] [:accounts-receivable])
     :cash-from-invoices  [:accounts-receivable :prev]})
+
+;; Financial Statements
+;;;;;;;;;;;;;;;;;;;;;;
 
 (def ebitda
   (fw/add-total :EBITDA
