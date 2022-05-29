@@ -34,6 +34,16 @@
 (defn date>= [a b] (or (date> a b) (date= a b)))
 (defn month-of [d] (.getMonthValue (str->date d)))
 (defn year-of [d] (.getYear (str->date d)))
+(defn days-between [a b]
+  (let [a (str->date a) b (str->date b)]
+    (.until a b java.time.temporal.ChronoUnit/DAYS)))
+
+(defn year-frac-act-365 [from-date to-date]
+  (float (/ (days-between from-date to-date) 365)))
+
+(year-frac-act-365 "2021-01-01" "2021-06-30")
+
+(days-between "2021-01-01" "2021-01-31")
 
 (defn add-months [date months]
   (when date
