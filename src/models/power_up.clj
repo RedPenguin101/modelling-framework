@@ -111,22 +111,29 @@
   #:ppe.new{:depreciation-term-months '(* 12 [:inputs/new-ppe-depreciation])
             :in-depreciation-flag '(date> [:period/start-date] [:inputs/capex-date])
             :new-capex [:ppe.capex/total]
-            :depreciation-charge '(when-flag
-                                   [:in-depreciation-flag]
-                                   (/ [:new-capex] [:depreciation-term-months]))})
+            :charge '(when-flag
+                      [:in-depreciation-flag]
+                      (/ [:new-capex]
+                         [:depreciation-term-months]))})
 
 (def old-ppe-depreciation
   #:ppe.old{:depreciation-term-months '(* 12 [:inputs/existing-ppe-depreciation])
             :old-ppe-start [:inputs/starting-ppe]
             :ppe-bf '(when-flag [:period/first-model-column]
                                 [:inputs/starting-ppe])
-            :old-depreciation-charge '(/ [:old-ppe-start] [:depreciation-term-months])})
+            :charge '(/ [:old-ppe-start]
+                        [:depreciation-term-months])})
+
+;; hack - multiple decreases not working?
+(def total-depr
+  #:ppe.total-depr{:charge '(+ [:ppe.old/charge] [:ppe.new/charge])})
 
 (def ppe-balance
-  (fw/corkscrew "ppe.balance"
-                [:ppe.capex/spend :ppe.old/ppe-bf]
-                [:ppe.new/depreciation-charge
-                 :ppe.old/old-depreciation-charge]))
+  (fw/corkscrew
+   "ppe.balance"
+   [:ppe.capex/spend :ppe.old/ppe-bf]
+   [:ppe.total-depr/charge]))
+
 ;; Contracts
 ;;;;;;;;;;;;;;;;;;;;;;
 
