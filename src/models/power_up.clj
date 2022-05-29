@@ -10,22 +10,22 @@
                :salaries   3395956
                :ovh-profit 1304539
                :total      7591471
-               :completion [0 0 0 0 0 0 0 0.1 0.2 0.25 0.25 0.2 0]}
+               :completion [0 0 0 0 0 0 0.1 0.2 0.25 0.25 0.2 0]}
    :titan     {:materials 8436341
                :salaries 8916972
                :ovh-profit 3600813
                :total 20954126
-               :completion [0 0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0	0	0	0]}
+               :completion [0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0	0	0	0]}
    :evergreen {:materials 7078921
                :salaries 6821887
                :ovh-profit 2884417
                :total 16785225
-               :completion [0 0	0	0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0	0]}})
+               :completion [0	0	0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0	0]}})
 
 (defn contract-input [[contract-name contract]]
   (into (array-map)
         (let [qualifier (str "inputs.contracts." (name contract-name))]
-          [[(keyword qualifier "completion") (into [:row-literal] (:completion contract))]
+          [[(keyword qualifier "completion") (into [:row-literal 0] (:completion contract))]
            [(keyword qualifier "materials") (:materials contract)]
            [(keyword qualifier "salaries") (:salaries contract)]
            [(keyword qualifier "revenue") (:total contract)]
@@ -193,7 +193,7 @@
 (def model (fw/build-model2 inputs calcs [bs-meta]))
 
 (def header :period/end-date)
-(def results (fw/run-model model 20))
+(def results (time (fw/run-model model 20)))
 
 (fw/print-category results (:meta model) header "balance-sheet" 1 13)
 (fw/print-category results (:meta model) header "cashflows" 1 13)
