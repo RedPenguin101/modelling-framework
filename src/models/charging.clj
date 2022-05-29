@@ -1,13 +1,47 @@
-(ns models.template
+(ns models.charging
   (:require [fmwk.framework :as fw]
             [fmwk.utils :refer :all]))
 
 (def inputs
   #:inputs
-   {:model-start-date           "2020-01-01"
+   {:model-start-date           "2020-12-01"
     :aquisition-date            "2020-12-31"
     :sale-date                  "2035-12-31"
-    :length-of-operating-period 12})
+    :length-of-operating-period 1
+
+    :cost-of-land               50000
+    :construction-cost          360000
+    :construction-length        12
+    :cost-of-equipment          150000
+    :first-installment-amount   0.5
+    :first-installment-date     "2021-06-30"
+    :second-installment-amount  0.5
+    :second-installment-date    "2021-12-31"
+
+    :ltv                        0.8
+    :interest-rate              0.03
+    :repayment-schedule         9 ;;years
+
+    :initial-cars               1000
+    :mini-initial-share         0.1
+    :regular-initial-share      0.5
+    :premium-initial-share      0.4
+    :mini-growth                0.02
+    :regular-growth             0.02
+    :premium-growth             0.02
+    :post-2026-growth           0.005
+
+    :mini-battery-capacity       25
+    :mini-battery-pct-charged    0.65
+    :regular-battery-capacity    50
+    :regular-battery-pct-charged 0.55
+    :premium-battery-capacity    100
+    :premium-battery-pct-charged 0.40
+
+    :initial-sale-price          0.35
+    :initial-cost                0.15
+    :inflation-electricity       0.03
+    :inflation-store             0.03})
 
 ;; TIME
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -45,6 +79,30 @@
     :last-flag         '(date= [:end]
                                [:period/end-date])})
 
+
+;; Construction
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def construction-costs
+  #:construction
+   {:first-installment-flag  '(date= [:period/end-date] [:inputs/first-installment-date])
+    :second-installment-flag '(date= [:period/end-date] [:inputs/second-installment-date])
+    :installation-payment    '(cond [:first-installment-flag]  (* [:inputs/cost-of-equipment] [:inputs/first-installment-amount])
+                                    [:second-installment-flag] (* [:inputs/cost-of-equipment] [:inputs/second-installment-amount])
+                                    :else 0)
+    :land-purchase           '(when-flag [:period/first-model-column] [:inputs/cost-of-land])
+    :construction-end-date   '(add-months [:inputs/aquisition-date] [:inputs/construction-length])
+    :construction-flag       '(and (date> [:period/start-date]
+                                          [:inputs/aquisition-date])
+                                   (date<= [:period/end-date]
+                                           [:construction-end-date]))
+    :construction-payment    '(when-flag [:construction-flag] (/ [:inputs/construction-cost] [:inputs/construction-length]))})
+
+(def construction-meta
+  #:construction
+   {:installation-payment {:units :currency :total true}
+    :construction-payment {:units :currency :total true}
+    :land-purchase        {:units :currency :total true}})
 
 ;; FINANCIAL STATEMENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -103,14 +161,15 @@
 
 (def bs-meta (fw/add-meta (merge bs-assets bs-liabs) {:units :currency}))
 
-(def calcs [periods op-period income cashflow bs-assets bs-liabs bs-check])
-(def metadata [income-meta cashflow-meta bs-meta])
+(def calcs [periods op-period income cashflow bs-assets bs-liabs bs-check
+            construction-costs])
+(def metadata [income-meta cashflow-meta bs-meta
+               construction-meta])
 
 (fw/fail-catch (fw/build-model2 inputs calcs metadata))
 (def model (fw/build-model2 inputs calcs metadata))
 (def header :period/end-date)
 
-(def results (fw/run-model model 10))
+(def results (fw/run-model model 15))
 
-(fw/print-category results (:meta model) header "cashflows" 1 10)
-(fw/print-category results (:meta model) header "income" 1 10)
+(fw/print-category results (:meta model) header "construction" 1 15)
