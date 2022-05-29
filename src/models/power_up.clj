@@ -1,31 +1,63 @@
 (ns models.power-up
   (:require [fmwk.framework :as fw]
+            [fmwk.tables :refer [series->records]]
             [fmwk.utils :refer :all]))
 
 (def contract-activity
-  [:moonshine :titan :evergreen :sky])
+  [:moonshine :titan :evergreen :sky
+   :one-foot :sputnik :evergreen2 :olympic :wildlife :planetarium])
 
 (def contracts
-  {:moonshine {:materials  2890976
-               :salaries   3395956
-               :ovh-profit 1304539
-               :total      7591471
-               :completion [0 0 0 0 0 0 0.1 0.2 0.25 0.25 0.2 0]}
-   :titan     {:materials 8436341
-               :salaries 8916972
-               :ovh-profit 3600813
-               :total 20954126
-               :completion [0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0	0	0	0]}
-   :evergreen {:materials 7078921
-               :salaries 6821887
-               :ovh-profit 2884417
-               :total 16785225
-               :completion [0	0	0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0	0]}
-   :sky       {:materials  9543584
-               :salaries   12290519
-               :ovh-profit 4530576
-               :total      26364679
-               :completion [0	0	0	0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0]}})
+  {:moonshine  {:materials  2890976
+                :salaries   3395956
+                :ovh-profit 1304539
+                :total      7591471
+                :completion [0 0 0 0 0 0 0.1 0.2 0.25 0.25 0.2 0]}
+   :titan      {:materials 8436341
+                :salaries 8916972
+                :ovh-profit 3600813
+                :total 20954126
+                :completion [0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0	0	0	0]}
+   :evergreen  {:materials 7078921
+                :salaries 6821887
+                :ovh-profit 2884417
+                :total 16785225
+                :completion [0	0	0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0	0]}
+   :sky        {:materials  9543584
+                :salaries   12290519
+                :ovh-profit 4530576
+                :total      26364679
+                :completion [0	0	0	0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0]}
+   :one-foot   {:materials 10637867
+                :salaries 11845677
+                :ovh-profit 4665336
+                :total 27148880
+                :completion [0	0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0	0	0]}
+   :sputnik    {:materials 16935098
+                :salaries 19125335
+                :ovh-profit 7482540
+                :total 43542973
+                :completion [0	0.05	0.08	0.1	0.15	0.15	0.15	0.15	0.15	0.02	0	0]}
+   :evergreen2 {:materials 4193313
+                :salaries 5262673
+                :ovh-profit 1962117
+                :total 11418103
+                :completion [0	0	0	0	0	0	0.1	0.2	0.25	0.25	0.2	0]}
+   :olympic    {:materials 9373739
+                :salaries 5521378
+                :ovh-profit 3090737
+                :total 17985854
+                :completion [0	0	0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0	0]}
+   :wildlife   {:materials 6011073
+                :salaries 7906117
+                :ovh-profit 2887817
+                :total 16805007
+                :completion [0	0	0	0	0.05	0.1	0.15	0.2	0.2	0.2	0.1	0]}
+   :planetarium {:materials 3928424
+                 :salaries 3068321
+                 :ovh-profit 1451825
+                 :total 8448570
+                 :completion [0	0.1	0.2	0.25	0.25	0.2	0	0	0	0	0	0]}})
 
 (defn contract-input [[contract-name contract]]
   (into (array-map)
@@ -358,8 +390,59 @@
 (def model (fw/build-model2 inputs calcs [bs-meta]))
 
 (def header :period/end-date)
-(def results (time (fw/run-model model 20)))
+(def results (time (fw/run-model model 13)))
 
-(fw/print-category results (:meta model) header "debt.rcf" 1 13)
-(fw/print-category results (:meta model) header "cashflows" 1 13)
-(fw/print-category results (:meta model) header "balance-sheet.checks" 1 13)
+(fw/print-category results (:meta model) header "income" 1 13)
+
+(comment
+  "Questions"
+  "What are the PUBs projected revenues in July 2021?"
+  (let [results (into {} results)]
+    (nth (series->records (select-keys results [:income.EBITDA/revenues :period/end-date]))
+         7))
+  ;; => {:income.EBITDA/revenues 31482673.25, 
+  ;;     :period/end-date "2021-07-31"}
+
+  "2. What are the PUBs total overhead expenses in 2021?"
+  (let [results (into {} results)]
+    (apply + (:income.EBITDA/overhead results)))
+
+  "3. What is the PUBs projected total EBITDA for 2021?"
+  (let [results (into {} results)]
+    (int (apply + (:income.EBITDA/EBITDA results))))
+  ;; => 27,860,717
+
+  "4. What is the PUBs total depreciation expense for 2021?"
+  (let [results (into {} results)]
+    (int (apply + (:income/depreciation results))))
+  ;; => -4,533,333
+
+  "5. How many advance payments will PUB receive in January 2021?"
+  (let [results (into {} results)]
+    (int (second (:contracts.advances/total results))))
+  ;; => 7,294,566
+
+  "6. What will be the PUBs outstanding balance of the Advances 
+   Received at the end of February 2021? Remember that they will 
+   receive some new advances in February. They will also cover a 
+   part of the previously received advances with the work completed 
+   in February"
+
+  (let [results (into {} results)]
+    (nth (series->records (select-keys results [:balance-sheet.liabilities/advances :period/end-date]))
+         2))
+  ;; => {:balance-sheet.liabilities/advances 9602483.705, 
+  ;;     :period/end-date "2021-02-28"}
+
+  "What will be PUBs accounts receivable balance on June 30, 2021?"
+  (let [results (into {} results)]
+    (nth (series->records (select-keys results [:balance-sheet.assets/accounts-receivable :period/end-date]))
+         6))
+  ;; => {:balance-sheet.assets/accounts-receivable 21,899,513.28 
+  ;;     :period/end-date "2021-06-30"}
+
+  "8. How much interest will PUB pay for the PP&E leasing in 2021?"
+  (let [results (into {} results)]
+    (int (apply + (:debt.lease/interest results))))
+  ;; => 308,333
+  )
