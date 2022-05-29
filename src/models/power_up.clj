@@ -104,8 +104,7 @@
                             (<= [:inputs/total-contract-volume] [:inputs/capex-vol-3]) [:inputs/capex-3]
                             :else [:inputs/capex-4])
               :capex-spend-period-flag '(date= [:period/end-date] [:inputs/capex-date])
-              :spend '(when-flag [:capex-spend-period-flag] [:total])
-              :facility-draw '(* [:spend] [:inputs/capex-facility-ltv])})
+              :spend '(when-flag [:capex-spend-period-flag] [:total])})
 
 (def new-ppe-depreciation
   #:ppe.new{:depreciation-term-months '(* 12 [:inputs/new-ppe-depreciation])
@@ -133,6 +132,25 @@
    "ppe.balance"
    [:ppe.capex/spend :ppe.old/ppe-bf]
    [:ppe.total-depr/charge]))
+
+;; PPE Lease
+;;;;;;;;;;;;;;;;;;;;;;
+
+(def ppe-lease
+  #:debt.lease
+   {:amount '(* [:inputs/capex-facility-ltv] [:ppe.capex/total])
+    :drawdown '(* [:ppe.capex/spend] [:inputs/capex-facility-ltv])
+    :interest '(/ (* [:inputs/capex-facility-rate] [:debt.balance/start])
+                  12) ;; TODO: Proper Act/365
+    :repayment-term [:inputs/capex-repayment-term]
+    :in-repayment-period-flag '(date> [:period/start-date] [:inputs/capex-date])
+    :repayment-amount '(when-flag [:in-repayment-period-flag]
+                                  (/ [:amount] [:repayment-term]))})
+
+(def debt-corkscrew
+  (fw/corkscrew "debt.balance"
+                [:debt.lease/drawdown]
+                [:debt.lease/repayment-amount]))
 
 ;; Contracts
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -276,6 +294,7 @@
             contract-revenue contract-advances contract-accounting
             contract-expenses-salary contract-expenses-materials
             capex new-ppe-depreciation old-ppe-depreciation
+            ppe-lease debt-corkscrew
             total-depr ppe-balance])
 (fw/fail-catch (fw/build-model2 inputs calcs))
 
@@ -284,6 +303,4 @@
 (def header :period/end-date)
 (def results (time (fw/run-model model 20)))
 
-(fw/print-category results (:meta model) header "income" 1 13)
-(fw/print-category results (:meta model) header "balance-sheet" 1 13)
-(fw/print-category results (:meta model) header "cashflows" 1 13)
+(fw/print-category results (:meta model) header "debt" 1 13)
