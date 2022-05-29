@@ -68,9 +68,14 @@
      :capex-4     20000000
      :capex-date  "2021-02-28"
 
+     :capex-facility-ltv   0.8
+     :capex-facility-rate  0.025
+     :capex-repayment-term 60 ;months
+
      :existing-ppe-depreciation 3 ;years
      :new-ppe-depreciation      5 ;years
 
+     :starting-ppe      3600000
      :starting-holdback 5000000
      :starting-re       5100000}))
 
@@ -85,6 +90,37 @@
                                 -1)
     :number                   '(inc [:number :prev])
     :first-model-column       '(= 1 [:number])})
+
+(def capex
+  #:ppe.capex{:total-vol [:inputs/total-contract-volume]
+              :total '(cond (<= [:inputs/total-contract-volume] [:inputs/capex-vol-1]) [:inputs/capex-1]
+                            (<= [:inputs/total-contract-volume] [:inputs/capex-vol-2]) [:inputs/capex-2]
+                            (<= [:inputs/total-contract-volume] [:inputs/capex-vol-3]) [:inputs/capex-3]
+                            :else [:inputs/capex-4])
+              :capex-spend-period-flag '(date= [:period/end-date] [:inputs/capex-date])
+              :spend '(when-flag [:capex-spend-period-flag] [:total])
+              :facility-draw '(* [:spend] [:inputs/capex-facility-ltv])})
+
+(def new-ppe-depreciation
+  #:ppe.new{:depreciation-term-months '(* 12 [:inputs/new-ppe-depreciation])
+            :in-depreciation-flag '(date> [:period/start-date] [:inputs/capex-date])
+            :new-capex [:ppe.capex/total]
+            :depreciation-charge '(when-flag
+                                   [:in-depreciation-flag]
+                                   (/ [:new-capex] [:depreciation-term-months]))})
+
+(def old-ppe-depreciation
+  #:ppe.old{:depreciation-term-months '(* 12 [:inputs/existing-ppe-depreciation])
+            :old-ppe-start [:inputs/starting-ppe]
+            :ppe-bf '(when-flag [:period/first-model-column]
+                                [:inputs/starting-ppe])
+            :old-depreciation-charge '(/ [:old-ppe-start] [:depreciation-term-months])})
+
+(def ppe-balance
+  (fw/corkscrew "ppe.balance"
+                [:ppe.capex/spend :ppe.old/ppe-bf]
+                [:ppe.new/depreciation-charge
+                 :ppe.old/old-depreciation-charge]))
 
 (def contract-revenue
   (fw/add-total
@@ -210,7 +246,8 @@
 (def calcs [periods bs-assets bs-liabs bs-check
             ebitda net-profit cashflow
             contract-revenue contract-advances contract-accounting
-            contract-expenses-salary contract-expenses-materials])
+            contract-expenses-salary contract-expenses-materials
+            capex new-ppe-depreciation old-ppe-depreciation ppe-balance])
 (fw/fail-catch (fw/build-model2 inputs calcs))
 
 (def model (fw/build-model2 inputs calcs [bs-meta]))
@@ -218,6 +255,4 @@
 (def header :period/end-date)
 (def results (time (fw/run-model model 20)))
 
-(fw/print-category results (:meta model) header "balance-sheet" 1 13)
-(fw/print-category results (:meta model) header "cashflows" 1 13)
-(fw/print-category results (:meta model) header "income" 1 13)
+(fw/print-category results (:meta model) header "ppe.balance" 1 13)
