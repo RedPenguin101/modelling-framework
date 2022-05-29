@@ -163,7 +163,9 @@
   #:debt.rcf
    {:interest '(/ (* [:inputs/rcf-rate] [:debt.rcf.balance/start])
                   12) ;; TODO: Proper Act/365
-    :sweep '(- [:cashflows/before-rcf-sweep])})
+    :cap      [:inputs/rcf-cap]
+    :capacity '(- [:cap] [:debt.rcf.balance/start])
+    :sweep '(min [:capacity] (- [:cashflows/before-rcf-sweep]))})
 
 (def rcf-balance
   (fw/corkscrew-with-start "debt.rcf.balance"
@@ -344,4 +346,5 @@
 (def results (time (fw/run-model model 20)))
 
 (fw/print-category results (:meta model) header "debt.rcf" 1 13)
+(fw/print-category results (:meta model) header "cashflows" 1 13)
 (fw/print-category results (:meta model) header "balance-sheet.checks" 1 13)
