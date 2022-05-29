@@ -300,7 +300,7 @@
 (defn format-ccy-thousands [x]
   (format-ccy (float (/ x 1000))))
 
-(defn format-percent [x] (format "%.2f%%" (* 100 x)))
+(defn format-percent [x] (format "%.2f%%" (* 100.0 x)))
 
 (defn round-collection [xs]
   (if (every? number? xs)
