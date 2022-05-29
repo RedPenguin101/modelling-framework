@@ -107,6 +107,11 @@
     :land-purchase               {:units :currency :total true}
     :total-construction-payments {:units :currency :total true}})
 
+(def nca-corkscrew
+  (fw/corkscrew "ppe"
+                [:construction/total-construction-payments]
+                []))
+
 ;; DEBT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -139,6 +144,13 @@
                         :decrease {:units :currency :total true}
                         :end      {:units :currency}}))
 
+;; Equity
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def equity
+  #:equity
+   {:drawdown '(max 0 (- [:cashflows/cashflow-before-subsidy]))})
+
 ;; FINANCIAL STATEMENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -149,7 +161,7 @@
     :overheads          [:placeholder 0]
     :EBITDA             '(+ [:revenues] [:operating-expenses] [:overheads])
     :depreciation       [:placeholder 0]
-    :interest           [:placeholder 0]
+    :interest           '(- [:debt/interest])
     :pbt                '(+ [:EBITDA] [:depreciation] [:interest])
     :tax-expense        [:placeholder 0] ;; TODO put in a check for placeholders without 2nd element
     :pat                '(+ [:pbt] [:tax-expense])})
@@ -161,14 +173,18 @@
    :cashflows/invoices                             [:placeholder 0]
    :cashflows/operating-costs                      [:placeholder 0]
    :cashflows/tax-paid                             [:placeholder 0]
-   :cashflows/cashflow-available-for-debt-service  '(+ [:invoices] [:operating-costs] [:tax-paid])
-   :cashflows/interest-paid                        [:placeholder 0]
-   :cashflows/debt-facility-drawdown               [:placeholder 0]
-   :cashflows/cashflow-available-for-equity        '(+ [:cashflow-available-for-debt-service]
+   :cashflows/construction                         '(- [:construction/total-construction-payments])
+   :cashflows/cashflow-available-for-debt-service  '(+ [:invoices] [:operating-costs] [:tax-paid]
+                                                       [:construction])
+   :cashflows/interest-paid                        '(- [:debt/interest])
+   :cashflows/debt-facility-drawdown               '(- [:debt/drawdown] [:debt/repayment])
+   :cashflows/cashflow-before-subsidy              '(+ [:cashflow-available-for-debt-service]
                                                        [:interest-paid]
                                                        [:debt-facility-drawdown])
+   :cashflows/subsidy                              [:equity/drawdown]
    :cashflows/dividends-paid                       [:placeholder 0]
-   :cashflows/net-cashflow                         '(+ [:cashflow-available-for-equity]
+   :cashflows/net-cashflow                         '(+ [:cashflow-before-subsidy]
+                                                       [:subsidy]
                                                        [:dividends-paid])))
 
 (def cashflow-meta (fw/add-meta cashflow {:units :currency :total true}))
@@ -177,18 +193,18 @@
   (fw/add-total
    :TOTAL-ASSETS
    #:balance-sheet.assets
-    {:cash                [:placeholder 0]
+    {:cash                '(+ [:cash :prev] [:cashflows/net-cashflow])
      :accounts-receivable [:placeholder 0]
-     :non-current-assets  [:placeholder 0]}))
+     :non-current-assets  [:ppe/end]}))
 
 (def bs-liabs
   (fw/add-total
    :TOTAL-LIABILITIES
    #:balance-sheet.liabilities
     {:accounts-payable  [:placeholder 0]
-     :debt              [:placeholder 0]
-     :share-capital     [:placeholder 0]
-     :retained-earnings [:placeholder 0]}))
+     :debt              [:debt.balance/end]
+     :share-capital     '(+ [:share-capital :prev] [:equity/drawdown])
+     :retained-earnings '(+ [:retained-earnings :prev] [:income/pat])}))
 
 (def bs-check #:balance-sheet.checks
                {:balance '(- [:balance-sheet.assets/TOTAL-ASSETS]
@@ -197,7 +213,8 @@
 (def bs-meta (fw/add-meta (merge bs-assets bs-liabs) {:units :currency}))
 
 (def calcs [periods op-period income cashflow bs-assets bs-liabs bs-check
-            construction-costs debt debt-balance])
+            construction-costs nca-corkscrew
+            debt debt-balance equity])
 (def metadata [income-meta cashflow-meta bs-meta
                construction-meta debt-meta])
 
@@ -207,4 +224,5 @@
 
 (def results (time (fw/run-model model (* 12 11))))
 
-(fw/print-category results (:meta model) header "debt" 1 15)
+(fw/print-category results (:meta model) header "equity" 1 15)
+(fw/print-category results (:meta model) header "balance-sheet.checks" 1 15)
