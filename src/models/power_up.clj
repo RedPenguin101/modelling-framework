@@ -140,15 +140,15 @@
   #:debt.lease
    {:amount '(* [:inputs/capex-facility-ltv] [:ppe.capex/total])
     :drawdown '(* [:ppe.capex/spend] [:inputs/capex-facility-ltv])
-    :interest '(/ (* [:inputs/capex-facility-rate] [:debt.balance/start])
+    :interest '(/ (* [:inputs/capex-facility-rate] [:debt.lease.balance/start])
                   12) ;; TODO: Proper Act/365
     :repayment-term [:inputs/capex-repayment-term]
     :in-repayment-period-flag '(date> [:period/start-date] [:inputs/capex-date])
     :repayment-amount '(when-flag [:in-repayment-period-flag]
                                   (/ [:amount] [:repayment-term]))})
 
-(def debt-corkscrew
-  (fw/corkscrew "debt.balance"
+(def lease-corkscrew
+  (fw/corkscrew "debt.lease.balance"
                 [:debt.lease/drawdown]
                 [:debt.lease/repayment-amount]))
 
@@ -226,7 +226,7 @@
                 #:income
                  {:EBITDA       [:income.EBITDA/EBITDA]
                   :depreciation [:ppe.balance/decrease]
-                  :interest     [:placeholder 0]}))
+                  :interest     '(- [:debt.lease/interest])}))
 
 (def cashflow-ops
   (fw/add-total
@@ -246,8 +246,16 @@
                 #:cashflows.capital
                  {:capex '(- [:ppe.capex/spend])}))
 
+(def cashflow-finance
+  (fw/add-total :total
+                #:cashflows.finance
+                 {:interest-paid '(- [:debt.lease/interest])
+                  :drawdown      '(+ [:debt.lease/drawdown])
+                  :repayment     '(- [:debt.lease/repayment-amount])}))
+
 (def cashflow-total
   {:cashflows/total '(+ [:cashflows.operations/total]
+                        [:cashflows.finance/total]
                         [:cashflows.capital/total])})
 
 (def bs-assets
@@ -275,7 +283,7 @@
                             [:contracts.advances/total]
                             (- [:contracts.accounting/advance-release]))
      :rcf               [:placeholder 2500000]
-     :leasing           [:placeholder 0]
+     :leasing           [:debt.lease.balance/end]
      :share-capital     [:placeholder 1000000]
      :retained-earnings '(if [:period/first-model-column]
                            (+ [:inputs/starting-re]
@@ -290,11 +298,11 @@
 
 (def calcs [periods bs-assets bs-liabs bs-check
             ebitda net-profit
-            cashflow-ops cashflow-capital cashflow-total
+            cashflow-ops cashflow-capital cashflow-finance cashflow-total
             contract-revenue contract-advances contract-accounting
             contract-expenses-salary contract-expenses-materials
             capex new-ppe-depreciation old-ppe-depreciation
-            ppe-lease debt-corkscrew
+            ppe-lease lease-corkscrew
             total-depr ppe-balance])
 (fw/fail-catch (fw/build-model2 inputs calcs))
 
@@ -303,4 +311,6 @@
 (def header :period/end-date)
 (def results (time (fw/run-model model 20)))
 
-(fw/print-category results (:meta model) header "debt" 1 13)
+(fw/print-category results (:meta model) header "balance-sheet" 1 13)
+(fw/print-category results (:meta model) header "income" 1 13)
+(fw/print-category results (:meta model) header "cashflows" 1 13)
