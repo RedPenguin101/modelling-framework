@@ -3,9 +3,12 @@
             [fmwk.tables :refer [series->records]]
             [fmwk.utils :refer :all]))
 
-(def contract-activity
+(def contract-activity2
   [:moonshine :titan :evergreen :sky
-   :one-foot :sputnik :evergreen2 :olympic :wildlife :planetarium])
+   :one-foot :evergreen2 :olympic :wildlife :planetarium])
+
+(def contract-activity
+  [:titan :evergreen :sky :one-foot :sputnik])
 
 (def contracts
   {:moonshine  {:materials  2890976
@@ -186,13 +189,17 @@
                                  [:ppe.capex/for-year])
     :drawdown                '(* [:ppe.capex/spend]
                                  [:inputs/capex-facility-ltv])
-    :interest                '(/ (* [:inputs/capex-facility-rate]
-                                    [:debt.lease.balance/start])
-                                 12) ;; TODO: Proper Act/365
+    :interest                '(* (year-frac-act-365 (add-days [:period/start-date] -1) [:period/end-date])
+                                 [:inputs/capex-facility-rate] [:debt.lease.balance/start])
     :repayment-term           [:inputs/capex-repayment-term]
     :in-repayment-period-flag '(date> [:period/start-date] [:inputs/capex-date])
     :repayment-amount         '(when-flag [:in-repayment-period-flag]
                                           (/ [:amount] [:repayment-term]))})
+
+(def ppe-lease-meta (zipmap '(:debt.lease/drawdown
+                              :debt.lease/interest
+                              :debt.lease/repayment-amount)
+                            (repeat {:units :currency :total true})))
 
 (def lease-corkscrew
   (fw/corkscrew "debt.lease.balance"
@@ -204,12 +211,13 @@
 
 (def rcf
   #:debt.rcf
-   {:interest       '(/ (* [:inputs/rcf-rate] [:debt.rcf.balance/start])
-                        12) ;; TODO: Proper Act/365
-    :rcf-balance-bf [:debt.rcf.balance/start]
+   {:interest       '(* (year-frac-act-365 (add-days [:period/start-date] -1) [:period/end-date])
+                        [:inputs/rcf-rate] [:debt.rcf.balance/start])
+    :balance-bf     [:debt.rcf.balance/start]
     :cap            [:inputs/rcf-cap]
-    :draw-capacity  '(- [:cap] [:rcf-balance-bf])
-    :sweep          '(min [:draw-capacity] (- [:cashflows/before-rcf-sweep]))})
+    :max-repay      '(- [:balance-bf])
+    :draw-capacity  '(- [:cap] [:balance-bf])
+    :sweep          '(max [:max-repay] (min [:draw-capacity] (- [:cashflows/excess-deficit])))})
 
 (def rcf-balance
   (fw/corkscrew-with-start
@@ -298,6 +306,8 @@
      :interest     '(- (+ [:debt.lease/interest]
                           [:debt.rcf/interest]))}))
 
+(def income-meta (fw/add-meta (merge net-profit ebitda) {:units :currency :total true}))
+
 (def cashflow-ops
   (fw/add-total
    :total
@@ -329,7 +339,9 @@
 (def cashflow-before-rcf-sweep
   {:cashflows/before-rcf-sweep '(+ [:cashflows.operations/total]
                                    [:cashflows.finance/total]
-                                   [:cashflows.capital/total])})
+                                   [:cashflows.capital/total])
+   :cashflows/excess-deficit '(+ [:before-rcf-sweep]
+                                 [:balance-sheet.assets/cash :prev])})
 
 (def cashflow-total
   {:cashflows/rcf-sweep [:debt.rcf/sweep]
@@ -387,12 +399,14 @@
             rcf rcf-balance])
 (fw/fail-catch (fw/build-model2 inputs calcs))
 
-(def model (fw/build-model2 inputs calcs [bs-meta]))
+(def model (fw/build-model2 inputs calcs [bs-meta ppe-lease-meta income-meta]))
 
 (def header :period/end-date)
 (def results (time (fw/run-model model 13)))
 
-(fw/print-category results (:meta model) header "income" 1 13)
+(fw/print-category results (:meta model) header "cashflows" 1 20)
+(fw/print-category results (:meta model) header "income" 1 20)
+(fw/print-category results (:meta model) header "balance-sheet" 1 20)
 
 (comment
   "Questions"
@@ -444,5 +458,31 @@
   "8. How much interest will PUB pay for the PP&E leasing in 2021?"
   (let [results (into {} results)]
     (int (apply + (:debt.lease/interest results))))
-  ;; => 308,333
-  )
+  ;; => 310191
+
+  "9. At what month will PUB fully utilize its revolver line of credit and will run out of cash?"
+  (let [results (into {} results)]
+    (take 2 (drop 5 (series->records (select-keys results [:balance-sheet.checks/cash-on-hand :period/end-date])))))
+  ;; => ({:balance-sheet.checks/cash-on-hand 0.0, :period/end-date "2021-05-31"}
+  ;;     {:balance-sheet.checks/cash-on-hand -91682.288543073, :period/end-date "2021-06-30"})
+
+  "10. What is the PUBs expected net profit for 2021?"
+  (let [results (into {} results)]
+    (int (apply + (:income/net-profit results))))
+  ;; => 22,801,790
+
+  "11. What is the PUB’s expected cash balance at the end of 2021?"
+  (let [results (into {} results)]
+    (take 2 (drop 11 (series->records (select-keys results [:balance-sheet.checks/cash-on-hand :period/end-date])))))
+  ;; => ({:balance-sheet.checks/cash-on-hand -4m735,595.45, :period/end-date "2021-11-30"}
+  ;;     {:balance-sheet.checks/cash-on-hand 963,967.88, :period/end-date "2021-12-31"})
+
+  "12. Assume that you have signed all the contracts except for the Sputnik Catcher Office
+   Building. Under this scenario what is PUBs maximum expected cash deficit during 2021?
+   (cash deficit is defined as negative cash balance after all the available revolver balance was
+   used)"
+  -6,563,940.63
+
+  "13. Let’s consider another scenario - you sign the contract only for the Sputnik Catcher Office
+Building and no other contracts. Under this scenario what is PUB’s maximum expected cash
+deficit during 2021?")
