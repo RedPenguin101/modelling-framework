@@ -45,7 +45,9 @@
      :holdback-release-date "2021-06-30"
      :existing-ppe-depreciation 3 ;years
      :new-ppe-depreciation      5 ;years
-     }))
+
+     :starting-holdback 5000000
+     :starting-re       5100000}))
 
 (def periods
   #:period
@@ -84,73 +86,73 @@
 
 (def contract-accounting
   #:contracts.accounting
-   {:revenue         [:contracts.revenue/total]
-    :advance-release '(* [:revenue]
-                         [:inputs/advance-payment])
-    :holdback-accrual '(* [:revenue]
-                          [:inputs/holdback])
+   {:revenue             [:contracts.revenue/total]
+    :advance-release     '(* [:revenue]
+                             [:inputs/advance-payment])
+    :holdback-accrual    '(* [:revenue]
+                             [:inputs/holdback])
     :accounts-receivable '(* [:revenue]
                              [:inputs/invoice-percent])
-    :acc-bal-check '(- [:revenue] [:advance-release] [:holdback-accrual] [:accounts-receivable])
-    :cash-from-invoices [:accounts-receivable :prev]})
+    :acc-bal-check       '(- [:revenue] [:advance-release] [:holdback-accrual] [:accounts-receivable])
+    :cash-from-invoices  [:accounts-receivable :prev]})
 
 (def ebitda
   (fw/add-total :EBITDA
                 #:income.EBITDA
-                 {:revenues [:contracts.accounting/revenue]
+                 {:revenues  [:contracts.accounting/revenue]
                   :materials [:placeholder 0]
-                  :labor [:placeholder 0]
-                  :overhead [:placeholder 0]}))
+                  :labor     [:placeholder 0]
+                  :overhead  [:placeholder 0]}))
 
 (def net-profit
   (fw/add-total :net-profit
                 #:income
-                 {:EBITDA [:income.EBITDA/EBITDA]
+                 {:EBITDA       [:income.EBITDA/EBITDA]
                   :depreciation [:placeholder 0]
-                  :interest [:placeholder 0]}))
-
-(def bs-assets
-  (fw/add-total
-   :total-assets
-   #:balance-sheet.assets
-    {:cash '(+ [:cash :prev] [:cashflows/from-operations])
-     :inventory [:placeholder 0]
-     :accounts-receivable '(+ [:accounts-receivable :prev]
-                              [:contracts.accounting/accounts-receivable]
-                              (- [:contracts.accounting/cash-from-invoices]))
-     :holdbacks '(if [:period/first-model-column]
-                   [:placeholder 5000000]
-                   (+ [:holdbacks :prev]
-                      [:contracts.accounting/holdback-accrual]
-                      (- [:cashflows/holdbacks])))
-     :ppe [:placeholder 3600000]}))
-
-(def bs-liabs
-  (fw/add-total
-   :total-liabilities
-   #:balance-sheet.liabilities
-    {:accounts-payable [:placeholder 0]
-     :advances '(+ [:advances :prev]
-                   [:contracts.advances/total]
-                   (- [:contracts.accounting/advance-release]))
-     :rcf [:placeholder 2500000]
-     :leasing [:placeholder 0]
-     :share-capital [:placeholder 1000000]
-     :retained-earnings '(if [:period/first-model-column]
-                           [:placeholder 5100000]
-                           (+ [:retained-earnings :prev]
-                              [:income/net-profit]))}))
+                  :interest     [:placeholder 0]}))
 
 (def cashflow
   (fw/add-total
    :from-operations
    #:cashflows
-    {:advances [:contracts.advances/total]
+    {:advances         [:contracts.advances/total]
      :contract-revenue [:contracts.accounting/cash-from-invoices]
-     :holdbacks '(if (date= [:inputs/holdback-release-date]
-                            [:period/end-date])
-                   [:inputs/holdback-release-amount]
-                   0)}))
+     :holdbacks        '(if (date= [:inputs/holdback-release-date]
+                                   [:period/end-date])
+                          [:inputs/holdback-release-amount]
+                          0)}))
+
+(def bs-assets
+  (fw/add-total
+   :total-assets
+   #:balance-sheet.assets
+    {:cash                '(+ [:cash :prev] [:cashflows/from-operations])
+     :inventory           [:placeholder 0]
+     :accounts-receivable '(+ [:accounts-receivable :prev]
+                              [:contracts.accounting/accounts-receivable]
+                              (- [:contracts.accounting/cash-from-invoices]))
+     :holdbacks           '(if [:period/first-model-column]
+                             [:inputs/starting-holdback]
+                             (+ [:holdbacks :prev]
+                                [:contracts.accounting/holdback-accrual]
+                                (- [:cashflows/holdbacks])))
+     :ppe                 [:placeholder 3600000]}))
+
+(def bs-liabs
+  (fw/add-total
+   :total-liabilities
+   #:balance-sheet.liabilities
+    {:accounts-payable  [:placeholder 0]
+     :advances          '(+ [:advances :prev]
+                            [:contracts.advances/total]
+                            (- [:contracts.accounting/advance-release]))
+     :rcf               [:placeholder 2500000]
+     :leasing           [:placeholder 0]
+     :share-capital     [:placeholder 1000000]
+     :retained-earnings '(if [:period/first-model-column]
+                           [:inputs/starting-re]
+                           (+ [:retained-earnings :prev]
+                              [:income/net-profit]))}))
 
 (def bs-check {:balance-sheet/check '(- [:balance-sheet.assets/total-assets]
                                         [:balance-sheet.liabilities/total-liabilities])})
