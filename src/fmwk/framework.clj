@@ -67,7 +67,8 @@
 ;; predicates for types of expression, for conditionals
 (def atomic? (complement coll?))
 (def expression? list?)
-(defn constant-ref? [ref] (and (vector? ref) (#{:placeholder :constant} (first ref))))
+(defn constant-ref? [ref]
+  (and (vector? ref) (#{:placeholder :constant :row-literal} (first ref))))
 (def link? (every-pred vector? (complement constant-ref?)))
 (defn current-period-link? [ref] (and (link? ref) (= 1 (count ref))))
 (defn previous-period-link? [ref] (and (link? ref) (= :prev (second ref))))
@@ -93,8 +94,13 @@
 ;; Row and calculation helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn input-val [val]
+  (if (atomic? val)
+    (conj [:constant] val)
+    val))
+
 (defn inputs->rows [inputs]
-  (update-vals inputs #(conj [:constant] %)))
+  (update-vals inputs input-val))
 
 ;; calculations helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -249,12 +255,10 @@
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn run-model [{:keys [display-order calculation-order runner]} periods]
-  (let [array (to-array-2d (vec (repeat (count calculation-order)
-                                        (vec (repeat periods 0)))))
+(defn run-model [{:keys [display-order calculation-order runner rows]} periods]
+  (let [array (tr/make-init-table calculation-order rows periods)
         results (runner array calculation-order periods)]
     (map (juxt identity results) display-order)))
-
 
 ;; Result selection and printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

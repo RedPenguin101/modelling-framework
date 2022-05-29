@@ -4,6 +4,7 @@
 ;; predicates for types of expression, for conditionals
 (def atomic? (complement coll?))
 (def expression? list?)
+(defn row-literal? [ref] (and (vector? ref) (= :row-literal (first ref))))
 (defn constant-ref? [ref] (and (vector? ref) (#{:placeholder :constant} (first ref))))
 (def link? (every-pred vector? (complement constant-ref?)))
 (defn current-period-link? [ref] (and (link? ref) (= 1 (count ref))))
@@ -23,10 +24,11 @@
 
 
 (defn rewrite-expression [row-name expr row->num]
-  (conj (list 'aset 'rows (get row->num row-name) 'period
-              (postwalk #(cond (vector? %) (rewrite-ref-as-get % (get row->num (first %)))
-                               :else %)
-                        expr))))
+  (when-not (row-literal? expr)
+    (conj (list 'aset 'rows (get row->num row-name) 'period
+                (postwalk #(cond (vector? %) (rewrite-ref-as-get % (get row->num (first %)))
+                                 :else %)
+                          expr)))))
 
 (comment
   (rewrite-ref-as-get [:model-column-number] 2)
@@ -53,17 +55,28 @@
    [:constant 7]
    {:a   15}))
 
+(defn size-vector [v length]
+  (let [c (count v)]
+    (if (> c length)
+      (vec (take length v))
+      (vec (concat v (repeat (- length c) 0))))))
+
+(defn make-init-table [ordered-rows rows periods]
+  (to-array-2d
+   (vec (for [row ordered-rows]
+          (if (row-literal? (row rows))
+            (size-vector (vec (rest (row rows))) periods)
+            (repeat periods 0))))))
 
 (defn make-runner [ordered-rows model]
   (let [row->num (into {} (map-indexed #(vector %2 %1) ordered-rows))
-        expressions (map #(rewrite-expression % (model %) row->num) ordered-rows)]
+        expressions (keep #(rewrite-expression % (model %) row->num) ordered-rows)]
     (list 'fn '[rows row-names periods]
           (into expressions '([period (range 1 periods)] doseq))
           '(zipmap row-names (map vec rows)))))
 
 (defn run-model-table [ordered-rows model periods]
-  (let [array (to-array-2d (vec (repeat (count ordered-rows)
-                                        (vec (repeat periods 0)))))]
+  (let [array (make-init-table ordered-rows model periods)]
     ((eval (make-runner ordered-rows model))
      array ordered-rows periods)))
 

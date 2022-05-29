@@ -1,9 +1,6 @@
 # Dev Diary
 ## Todo
 * Inputs, base cases, scenarios
-* **DONE** Units and metadata
-* **DONE** Printing of Percent
-* **DONE** Totals
 * Outputs, output comparison
 * Dump to CSV
 * Dump to HTML?
@@ -19,6 +16,46 @@
 * Circularity helpers, but only when it comes up
 * Some sort of limited "sheet" recalculation. Everything in the ns is recalculated, but any external references are looked up in a cache
 * Empty inputs in corkscrews
+
+## 29th May
+Currently I'm working though the Power Up scenario from FMWK. The concept is that you have 10 contracts which you can either take or not take, and you need to be able to model the revenues, costs and cashflows from the contracts.
+
+So a contract might have a revenue of X and a cost of Y. It has a completion schedule which determines in a given work how much of the contract you complete (e.g. 25%). And Some stuff about billing in advance, holdbacks, payment terms etc.
+
+So you might model it something like this.
+
+```clojure
+{:materials      123
+ :salaries       123
+ :OVH-and-profit 123
+ :total          369
+ :completion     [0 0 0 0 0 0 0.1 0.2 0.25 0.25 0.2]}
+```
+
+Your revenue would be the total * completion for the month. Your cashflow would be 80% of that, and 10% would go to advance release and holdback accrual.
+
+Pretty simple, but how does that fit into what I've built? I can think of two ways to solve this:
+
+1. Precalculate everything outside of the model and allow users to create input vectors which are just put straight into the results set.
+2. Allow users to create collections as inputs.
+
+The first might look like this:
+
+```clojure
+(def revenue-row
+  (for [c (:completion contract)
+    (* c (:total contract))]))
+
+(def inputs
+  {:contract-revenue [:row revenue-row]})
+```
+
+This is probably simpler, but the problem comes when the row itself has dependencies (i.e. can't be precalculated.) This is what I'm going to try first.
+
+## 26th May
+* **DONE** Units and metadata
+* **DONE** Printing of Percent
+* **DONE** Totals
 
 ## 25th May
 * **DONE** Better printing
