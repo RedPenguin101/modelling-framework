@@ -79,9 +79,10 @@
      :rcf-rate 0.03
      :starting-rcf 2500000
 
-     :starting-ppe      3600000
-     :starting-holdback 5000000
-     :starting-re       5100000}))
+     :starting-ppe       3600000
+     :starting-share-cap 1000000
+     :starting-holdback  5000000
+     :starting-re        5100000}))
 
 ;; TIME
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -102,30 +103,33 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 (def capex
-  #:ppe.capex{:total-vol [:inputs/total-contract-volume]
-              :total '(cond (<= [:inputs/total-contract-volume] [:inputs/capex-vol-1]) [:inputs/capex-1]
-                            (<= [:inputs/total-contract-volume] [:inputs/capex-vol-2]) [:inputs/capex-2]
-                            (<= [:inputs/total-contract-volume] [:inputs/capex-vol-3]) [:inputs/capex-3]
-                            :else [:inputs/capex-4])
-              :capex-spend-period-flag '(date= [:period/end-date] [:inputs/capex-date])
-              :spend '(when-flag [:capex-spend-period-flag] [:total])})
+  #:ppe.capex
+   {:total-vol               [:inputs/total-contract-volume]
+    :total                   '(cond (<= [:inputs/total-contract-volume] [:inputs/capex-vol-1]) [:inputs/capex-1]
+                                    (<= [:inputs/total-contract-volume] [:inputs/capex-vol-2]) [:inputs/capex-2]
+                                    (<= [:inputs/total-contract-volume] [:inputs/capex-vol-3]) [:inputs/capex-3]
+                                    :else [:inputs/capex-4])
+    :capex-spend-period-flag '(date= [:period/end-date] [:inputs/capex-date])
+    :spend                   '(when-flag [:capex-spend-period-flag] [:total])})
 
 (def new-ppe-depreciation
-  #:ppe.new{:depreciation-term-months '(* 12 [:inputs/new-ppe-depreciation])
-            :in-depreciation-flag '(date> [:period/start-date] [:inputs/capex-date])
-            :new-capex [:ppe.capex/total]
-            :charge '(when-flag
-                      [:in-depreciation-flag]
-                      (/ [:new-capex]
-                         [:depreciation-term-months]))})
+  #:ppe.new
+   {:depreciation-term-months '(* 12 [:inputs/new-ppe-depreciation])
+    :in-depreciation-flag     '(date> [:period/start-date] [:inputs/capex-date])
+    :new-capex                [:ppe.capex/total]
+    :charge                   '(when-flag
+                                [:in-depreciation-flag]
+                                (/ [:new-capex]
+                                   [:depreciation-term-months]))})
 
 (def old-ppe-depreciation
-  #:ppe.old{:depreciation-term-months '(* 12 [:inputs/existing-ppe-depreciation])
-            :old-ppe-start [:inputs/starting-ppe]
-            :ppe-bf '(when-flag [:period/first-model-column]
-                                [:inputs/starting-ppe])
-            :charge '(/ [:old-ppe-start]
-                        [:depreciation-term-months])})
+  #:ppe.old
+   {:depreciation-term-months '(* 12 [:inputs/existing-ppe-depreciation])
+    :old-ppe-start            [:inputs/starting-ppe]
+    :ppe-bf                   '(when-flag [:period/first-model-column]
+                                          [:inputs/starting-ppe])
+    :charge                   '(/ [:old-ppe-start]
+                                  [:depreciation-term-months])})
 
 ;; hack - multiple decreases not working?
 (def total-depr
@@ -142,14 +146,15 @@
 
 (def ppe-lease
   #:debt.lease
-   {:amount '(* [:inputs/capex-facility-ltv] [:ppe.capex/total])
-    :drawdown '(* [:ppe.capex/spend] [:inputs/capex-facility-ltv])
-    :interest '(/ (* [:inputs/capex-facility-rate] [:debt.lease.balance/start])
-                  12) ;; TODO: Proper Act/365
-    :repayment-term [:inputs/capex-repayment-term]
+   {:amount                  '(* [:inputs/capex-facility-ltv] [:ppe.capex/total])
+    :drawdown                '(* [:ppe.capex/spend] [:inputs/capex-facility-ltv])
+    :interest                '(/ (* [:inputs/capex-facility-rate]
+                                    [:debt.lease.balance/start])
+                                 12) ;; TODO: Proper Act/365
+    :repayment-term           [:inputs/capex-repayment-term]
     :in-repayment-period-flag '(date> [:period/start-date] [:inputs/capex-date])
-    :repayment-amount '(when-flag [:in-repayment-period-flag]
-                                  (/ [:amount] [:repayment-term]))})
+    :repayment-amount         '(when-flag [:in-repayment-period-flag]
+                                          (/ [:amount] [:repayment-term]))})
 
 (def lease-corkscrew
   (fw/corkscrew "debt.lease.balance"
@@ -165,14 +170,15 @@
                   12) ;; TODO: Proper Act/365
     :cap      [:inputs/rcf-cap]
     :capacity '(- [:cap] [:debt.rcf.balance/start])
-    :sweep '(min [:capacity] (- [:cashflows/before-rcf-sweep]))})
+    :sweep    '(min [:capacity] (- [:cashflows/before-rcf-sweep]))})
 
 (def rcf-balance
-  (fw/corkscrew-with-start "debt.rcf.balance"
-                           [:inputs/starting-rcf]
-                           [:period/first-model-column]
-                           [:debt.rcf/sweep]
-                           []))
+  (fw/corkscrew-with-start
+   "debt.rcf.balance"
+   [:inputs/starting-rcf]
+   [:period/first-model-column]
+   [:debt.rcf/sweep]
+   []))
 
 ;; Contracts
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -236,20 +242,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 
 (def ebitda
-  (fw/add-total :EBITDA
-                #:income.EBITDA
-                 {:revenues  [:contracts.accounting/revenue]
-                  :materials '(- [:contracts.material-expense/total])
-                  :labor     '(- [:contracts.salary-expense/total])
-                  :overhead  '(- [:inputs/overhead-per-month])}))
+  (fw/add-total
+   :EBITDA
+   #:income.EBITDA
+    {:revenues  [:contracts.accounting/revenue]
+     :materials '(- [:contracts.material-expense/total])
+     :labor     '(- [:contracts.salary-expense/total])
+     :overhead  '(- [:inputs/overhead-per-month])}))
 
 (def net-profit
-  (fw/add-total :net-profit
-                #:income
-                 {:EBITDA       [:income.EBITDA/EBITDA]
-                  :depreciation [:ppe.balance/decrease]
-                  :interest     '(- (+ [:debt.lease/interest]
-                                       [:debt.rcf/interest]))}))
+  (fw/add-total
+   :net-profit
+   #:income
+    {:EBITDA       [:income.EBITDA/EBITDA]
+     :depreciation [:ppe.balance/decrease]
+     :interest     '(- (+ [:debt.lease/interest]
+                          [:debt.rcf/interest]))}))
 
 (def cashflow-ops
   (fw/add-total
@@ -265,17 +273,19 @@
                            0)}))
 
 (def cashflow-capital
-  (fw/add-total :total
-                #:cashflows.capital
-                 {:capex '(- [:ppe.capex/spend])}))
+  (fw/add-total
+   :total
+   #:cashflows.capital
+    {:capex '(- [:ppe.capex/spend])}))
 
 (def cashflow-finance
-  (fw/add-total :total
-                #:cashflows.finance
-                 {:interest-paid '(- (+ [:debt.lease/interest]
-                                        [:debt.rcf/interest]))
-                  :drawdown      '(+ [:debt.lease/drawdown])
-                  :repayment     '(- [:debt.lease/repayment-amount])}))
+  (fw/add-total
+   :total
+   #:cashflows.finance
+    {:interest-paid '(- (+ [:debt.lease/interest]
+                           [:debt.rcf/interest]))
+     :drawdown      '(+ [:debt.lease/drawdown])
+     :repayment     '(- [:debt.lease/repayment-amount])}))
 
 (def cashflow-before-rcf-sweep
   {:cashflows/before-rcf-sweep '(+ [:cashflows.operations/total]
@@ -292,7 +302,6 @@
    :total-assets
    #:balance-sheet.assets
     {:cash                '(+ [:cash :prev] [:cashflows/total])
-     :inventory           [:placeholder 0]
      :accounts-receivable '(+ [:accounts-receivable :prev]
                               [:contracts.accounting/accounts-receivable]
                               (- [:contracts.accounting/cash-from-invoices]))
@@ -307,13 +316,12 @@
   (fw/add-total
    :total-liabilities
    #:balance-sheet.liabilities
-    {:accounts-payable  [:placeholder 0]
-     :advances          '(+ [:advances :prev]
+    {:advances          '(+ [:advances :prev]
                             [:contracts.advances/total]
                             (- [:contracts.accounting/advance-release]))
      :rcf               [:debt.rcf.balance/end]
      :leasing           [:debt.lease.balance/end]
-     :share-capital     [:placeholder 1000000]
+     :share-capital     [:inputs/starting-share-cap]
      :retained-earnings '(if [:period/first-model-column]
                            (+ [:inputs/starting-re]
                               [:income/net-profit])
