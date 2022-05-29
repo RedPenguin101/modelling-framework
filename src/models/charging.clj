@@ -149,66 +149,66 @@
 
 (def equity
   #:equity
-   {:drawdown '(max 0 (- [:cashflows/cashflow-before-subsidy]))})
+   {:drawdown '(max 0 (- [:fs.cashflows/cashflow-before-subsidy]))})
 
 ;; FINANCIAL STATEMENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def income
-  #:income
-   {:revenues           [:placeholder 0]
-    :operating-expenses [:placeholder 0]
-    :overheads          [:placeholder 0]
-    :EBITDA             '(+ [:revenues] [:operating-expenses] [:overheads])
-    :depreciation       [:placeholder 0]
-    :interest           '(- [:debt/interest])
-    :pbt                '(+ [:EBITDA] [:depreciation] [:interest])
-    :tax-expense        [:placeholder 0] ;; TODO put in a check for placeholders without 2nd element
-    :pat                '(+ [:pbt] [:tax-expense])})
+  (array-map
+   :fs.income/revenues           [:placeholder 0]
+   :fs.income/operating-expenses [:placeholder 0]
+   :fs.income/overheads          [:placeholder 0]
+   :fs.income/EBITDA             '(+ [:revenues] [:operating-expenses] [:overheads])
+   :fs.income/depreciation       [:placeholder 0]
+   :fs.income/interest           '(- [:debt/interest])
+   :fs.income/PBT                '(+ [:EBITDA] [:depreciation] [:interest])
+   :fs.income/tax-expense        [:placeholder 0] ;; TODO put in a check for placeholders without 2nd element
+   :fs.income/PAT                '(+ [:PBT] [:tax-expense])))
 
 (def income-meta (fw/add-meta income {:units :currency :total true}))
 
 (def cashflow
   (array-map
-   :cashflows/invoices                             [:placeholder 0]
-   :cashflows/operating-costs                      [:placeholder 0]
-   :cashflows/tax-paid                             [:placeholder 0]
-   :cashflows/construction                         '(- [:construction/total-construction-payments])
-   :cashflows/cashflow-available-for-debt-service  '(+ [:invoices] [:operating-costs] [:tax-paid]
-                                                       [:construction])
-   :cashflows/interest-paid                        '(- [:debt/interest])
-   :cashflows/debt-facility-drawdown               '(- [:debt/drawdown] [:debt/repayment])
-   :cashflows/cashflow-before-subsidy              '(+ [:cashflow-available-for-debt-service]
-                                                       [:interest-paid]
-                                                       [:debt-facility-drawdown])
-   :cashflows/subsidy                              [:equity/drawdown]
-   :cashflows/dividends-paid                       [:placeholder 0]
-   :cashflows/net-cashflow                         '(+ [:cashflow-before-subsidy]
-                                                       [:subsidy]
-                                                       [:dividends-paid])))
+   :fs.cashflows/invoices                             [:placeholder 0]
+   :fs.cashflows/operating-costs                      [:placeholder 0]
+   :fs.cashflows/tax-paid                             [:placeholder 0]
+   :fs.cashflows/construction                         '(- [:construction/total-construction-payments])
+   :fs.cashflows/cashflow-available-for-debt-service  '(+ [:invoices] [:operating-costs] [:tax-paid]
+                                                          [:construction])
+   :fs.cashflows/interest-paid                        '(- [:debt/interest])
+   :fs.cashflows/debt-facility-drawdown               '(- [:debt/drawdown] [:debt/repayment])
+   :fs.cashflows/cashflow-before-subsidy              '(+ [:cashflow-available-for-debt-service]
+                                                          [:interest-paid]
+                                                          [:debt-facility-drawdown])
+   :fs.cashflows/subsidy                              [:equity/drawdown]
+   :fs.cashflows/dividends-paid                       [:placeholder 0]
+   :fs.cashflows/net-cashflow                         '(+ [:cashflow-before-subsidy]
+                                                          [:subsidy]
+                                                          [:dividends-paid])))
 
 (def cashflow-meta (fw/add-meta cashflow {:units :currency :total true}))
 
 (def bs-assets
   (fw/add-total
    :TOTAL-ASSETS
-   #:balance-sheet.assets
-    {:cash                '(+ [:cash :prev] [:cashflows/net-cashflow])
+   #:fs.balance-sheet.assets
+    {:cash                '(+ [:cash :prev] [:fs.cashflows/net-cashflow])
      :accounts-receivable [:placeholder 0]
      :non-current-assets  [:ppe/end]}))
 
 (def bs-liabs
   (fw/add-total
    :TOTAL-LIABILITIES
-   #:balance-sheet.liabilities
+   #:fs.balance-sheet.liabilities
     {:accounts-payable  [:placeholder 0]
      :debt              [:debt.balance/end]
      :share-capital     '(+ [:share-capital :prev] [:equity/drawdown])
-     :retained-earnings '(+ [:retained-earnings :prev] [:income/pat])}))
+     :retained-earnings '(+ [:retained-earnings :prev] [:fs.income/PAT])}))
 
-(def bs-check #:balance-sheet.checks
-               {:balance '(- [:balance-sheet.assets/TOTAL-ASSETS]
-                             [:balance-sheet.liabilities/TOTAL-LIABILITIES])})
+(def bs-check #:fs.balance-sheet.checks
+               {:balance '(- [:fs.balance-sheet.assets/TOTAL-ASSETS]
+                             [:fs.balance-sheet.liabilities/TOTAL-LIABILITIES])})
 
 (def bs-meta (fw/add-meta (merge bs-assets bs-liabs) {:units :currency}))
 
@@ -224,5 +224,5 @@
 
 (def results (time (fw/run-model model (* 12 11))))
 
-(fw/print-category results (:meta model) header "equity" 1 15)
-(fw/print-category results (:meta model) header "balance-sheet.checks" 1 15)
+(fw/print-category results (:meta model) header "fs" 1 15)
+(fw/print-category results (:meta model) header "fs.balance-sheet.checks" 1 15)
