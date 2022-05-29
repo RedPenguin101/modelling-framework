@@ -7,6 +7,7 @@
    {:model-start-date           "2020-12-01"
     :aquisition-date            "2020-12-31"
     :sale-date                  "2035-12-31"
+    :operating-period-start     "2022-01-01"
     :length-of-operating-period 1
 
     :cost-of-land               50000
@@ -28,8 +29,9 @@
     :regular-initial-share      0.5
     :premium-initial-share      0.4
     :mini-growth                0.02
-    :regular-growth             0.02
-    :premium-growth             0.02
+    :regular-growth             0.03
+    :premium-growth             0.01
+    :high-growth-years          5
     :post-2026-growth           0.005
 
     :mini-battery-capacity       25
@@ -71,12 +73,12 @@
 (def op-period
   #:operating-period
    {:end               [:inputs/sale-date]
-    :in-flag           '(and (date> [:period/start-date]
-                                    [:inputs/aquisition-date])
+    :in-flag           '(and (date>= [:period/start-date]
+                                     [:inputs/operating-period-start])
                              (date<= [:period/end-date]
                                      [:end]))
-    :first-flag        '(date= [:inputs/aquisition-date]
-                               (add-days [:period/start-date] -1))
+    :first-flag        '(date= [:inputs/operating-period-start]
+                               [:period/start-date])
     :last-flag         '(date= [:end]
                                [:period/end-date])})
 
@@ -151,6 +153,41 @@
   #:equity
    {:drawdown '(max 0 (- [:fs.cashflows/cashflow-before-subsidy]))})
 
+;; ECars
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def ecars
+  (array-map
+   :ecars.volumes/period-number         '(dec [:period/number])
+   :ecars.volumes/end-of-high-growth    '(add-months [:inputs/operating-period-start] (* 12 [:inputs/high-growth-years]))
+   :ecars.volumes/high-growth-flag      '(and [:operating-period/in-flag]
+                                              (date< [:period/end-date]
+                                                     [:end-of-high-growth]))
+   :ecars.volumes/mini-growth           '(inc (cond (not [:operating-period/in-flag]) 0
+                                                    [:high-growth-flag] [:inputs/mini-growth]
+                                                    :else [:inputs/post-2026-growth]))
+   :ecars.volumes/mini-volume           '(if [:operating-period/first-flag]
+                                           (* [:inputs/initial-cars] [:inputs/mini-initial-share])
+                                           (* [:mini-growth] [:mini-volume :prev]))
+   :ecars.volumes/regular-growth           '(inc (cond (not [:operating-period/in-flag]) 0
+                                                       [:high-growth-flag] [:inputs/regular-growth]
+                                                       :else [:inputs/post-2026-growth]))
+   :ecars.volumes/regular-volume           '(if [:operating-period/first-flag]
+                                              (* [:inputs/initial-cars] [:inputs/regular-initial-share])
+                                              (* [:regular-growth] [:regular-volume :prev]))
+   :ecars.volumes/premium-growth           '(inc (cond (not [:operating-period/in-flag]) 0
+                                                       [:high-growth-flag] [:inputs/premium-growth]
+                                                       :else [:inputs/post-2026-growth]))
+   :ecars.volumes/premium-volume           '(if [:operating-period/first-flag]
+                                              (* [:inputs/initial-cars] [:inputs/premium-initial-share])
+                                              (* [:premium-growth] [:premium-volume :prev]))))
+
+(def ecars-meta
+  #:ecars.volumes
+   {:mini-growth {:units :percent}
+    :regular-growth {:units :percent}
+    :premium-growth {:units :percent}})
+
 ;; FINANCIAL STATEMENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -214,9 +251,11 @@
 
 (def calcs [periods op-period income cashflow bs-assets bs-liabs bs-check
             construction-costs nca-corkscrew
-            debt debt-balance equity])
+            debt debt-balance equity
+            ecars])
 (def metadata [income-meta cashflow-meta bs-meta
-               construction-meta debt-meta])
+               construction-meta debt-meta
+               ecars-meta])
 
 (fw/fail-catch (fw/build-model2 inputs calcs metadata))
 (def model (fw/build-model2 inputs calcs metadata))
@@ -224,5 +263,6 @@
 
 (def results (time (fw/run-model model (* 12 11))))
 
-(fw/print-category results (:meta model) header "fs" 1 15)
-(fw/print-category results (:meta model) header "fs.balance-sheet.checks" 1 15)
+(fw/print-category results (:meta model) header "ecars" 1 16)
+(fw/print-category results (:meta model) header "ecars" 70 80)
+(fw/print-category results (:meta model) header "fs.balance-sheet.checks" 1 16)
