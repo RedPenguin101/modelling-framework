@@ -47,4 +47,4 @@
 (def model (fw/build-model2 inputs calcs))
 (def header :period/end-date)
 (def results (fw/run-model model 20))
-(fw/print-category results (:meta model) header "operating-period" 1 10)
+(fw/print-category results (:meta model) header "period" 1 10)
