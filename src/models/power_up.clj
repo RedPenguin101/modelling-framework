@@ -26,6 +26,8 @@
   (into (array-map)
         (let [qualifier (str "inputs.contracts." (name contract-name))]
           [[(keyword qualifier "completion") (into [:row-literal] (:completion contract))]
+           [(keyword qualifier "materials") (:materials contract)]
+           [(keyword qualifier "salaries") (:salaries contract)]
            [(keyword qualifier "revenue") (:total contract)]
            [(keyword qualifier "advance-month") (- 12 (count (drop-while zero? (:completion contract))))]])))
 
@@ -71,6 +73,26 @@
               (list '* [(keyword input-qualifier "revenue")]
                     [(keyword input-qualifier "completion")])])))))
 
+(def contract-expenses-salary
+  (fw/add-total
+   :total
+   (into (array-map)
+         (for [c contract-activity]
+           (let [input-qualifier (str "inputs.contracts." (name c))]
+             [(keyword "contracts.salary-expense" (name c))
+              (list '* [(keyword input-qualifier "salaries")]
+                    [(keyword input-qualifier "completion")])])))))
+
+(def contract-expenses-materials
+  (fw/add-total
+   :total
+   (into (array-map)
+         (for [c contract-activity]
+           (let [input-qualifier (str "inputs.contracts." (name c))]
+             [(keyword "contracts.material-expense" (name c))
+              (list '* [(keyword input-qualifier "materials")]
+                    [(keyword input-qualifier "completion")])])))))
+
 (def contract-advances
   (fw/add-total
    :total
@@ -100,8 +122,8 @@
   (fw/add-total :EBITDA
                 #:income.EBITDA
                  {:revenues  [:contracts.accounting/revenue]
-                  :materials [:placeholder 0]
-                  :labor     [:placeholder 0]
+                  :materials '(- [:contracts.material-expense/total])
+                  :labor     '(- [:contracts.salary-expense/total])
                   :overhead  '(- [:inputs/overhead-per-month])}))
 
 (def net-profit
@@ -115,13 +137,14 @@
   (fw/add-total
    :from-operations
    #:cashflows
-    {:advances         [:contracts.advances/total]
-     :contract-revenue [:contracts.accounting/cash-from-invoices]
-     :overhead         '(- [:inputs/overhead-per-month])
-     :holdbacks        '(if (date= [:inputs/holdback-release-date]
-                                   [:period/end-date])
-                          [:inputs/holdback-release-amount]
-                          0)}))
+    {:advances          [:contracts.advances/total]
+     :contract-revenue  [:contracts.accounting/cash-from-invoices]
+     :contract-expenses '(- (+ [:contracts.salary-expense/total] [:contracts.material-expense/total]))
+     :overhead          '(- [:inputs/overhead-per-month])
+     :holdbacks         '(if (date= [:inputs/holdback-release-date]
+                                    [:period/end-date])
+                           [:inputs/holdback-release-amount]
+                           0)}))
 
 (def bs-assets
   (fw/add-total
@@ -163,7 +186,8 @@
 
 (def calcs [periods bs-assets bs-liabs bs-check
             ebitda net-profit cashflow
-            contract-revenue contract-advances contract-accounting])
+            contract-revenue contract-advances contract-accounting
+            contract-expenses-salary contract-expenses-materials])
 (fw/fail-catch (fw/build-model2 inputs calcs))
 
 (def model (fw/build-model2 inputs calcs [bs-meta]))
