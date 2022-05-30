@@ -45,7 +45,15 @@
     :initial-sale-price          0.35
     :initial-cost                0.15
     :inflation-electricity       0.03
-    :inflation-store             0.03})
+    :inflation-store             0.03
+
+    :mini-take-rate       0.15
+    :regular-take-rate    0.4
+    :premium-take-rate    0.8
+    :mini-store-sales     5.0
+    :regular-store-sales  10.0
+    :premium-store-sales  15.0
+    :store-cost-of-sale   0.5})
 
 ;; TIME
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -205,25 +213,47 @@
      :regular-sales-in-kwh '(* [:ecars.volumes/regular-volume] [:inputs/regular-battery-capacity] [:inputs/regular-battery-pct-charged])
      :premium-sales-in-kwh '(* [:ecars.volumes/premium-volume] [:inputs/premium-battery-capacity] [:inputs/premium-battery-pct-charged])}))
 
+(def inflation
+  #:inflation
+   {:increase '(if (and [:calendar-period/first-period-flag]
+                        (date> [:period/end-date]
+                               [:inputs/inflation-start-date]))
+                 (inc [:inputs/inflation-electricity])
+                 1.0)})
+
+(def inflation-meta
+  {:inflation/increase {:units :percent}})
+
 (def revenue
   #:revenue
-   {:inflation-increase '(inc (when-flag
-                               [:calendar-period/first-period-flag]
-                               [:inputs/inflation-electricity]))
-    :sale-price '(if (date<= [:period/end-date]
-                             [:inputs/inflation-start-date])
+   {:sale-price '(if [:period/first-model-column]
                    [:inputs/initial-sale-price]
-                   (* [:sale-price :prev] [:inflation-increase]))
-    :cost-price '(if (date<= [:period/end-date]
-                             [:inputs/inflation-start-date])
+                   (* [:sale-price :prev] [:inflation/increase]))
+    :cost-price '(if [:period/first-model-column]
                    [:inputs/initial-cost]
-                   (* [:cost-price :prev] [:inflation-increase]))
+                   (* [:cost-price :prev] [:inflation/increase]))
     :revenue  '(* [:sales/total] [:sale-price])
     :cost     '(* [:sales/total] [:cost-price])})
 
 
-(def revenue-meta
-  {:revenue/inflation-increase {:units :percent}})
+(def store-sales
+  #:store-sales
+   {:mini-spend     '(if [:period/first-model-column]
+                       [:inputs/mini-store-sales]
+                       (* [:mini-spend :prev] [:inflation/increase]))
+    :regular-spend '(if [:period/first-model-column]
+                      [:inputs/regular-store-sales]
+                      (* [:regular-spend :prev] [:inflation/increase]))
+    :premium-spend  '(if [:period/first-model-column]
+                       [:inputs/premium-store-sales]
+                       (* [:premium-spend :prev] [:inflation/increase]))
+
+    :mini     '(* [:ecars.volumes/mini-volume]    [:inputs/mini-take-rate] [:mini-spend])
+    :regular  '(* [:ecars.volumes/regular-volume] [:inputs/regular-take-rate] [:regular-spend])
+    :premium  '(* [:ecars.volumes/premium-volume] [:inputs/premium-take-rate] [:premium-spend])
+    :revenue  '(+ [:mini] [:regular] [:premium])
+    :costs    '(* [:inputs/store-cost-of-sale] [:revenue])})
+
 ;; FINANCIAL STATEMENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -289,11 +319,12 @@
             income cashflow bs-assets bs-liabs bs-check
             construction-costs nca-corkscrew
             debt debt-balance equity
-            ecars sales revenue])
+            inflation
+            ecars sales revenue store-sales])
 (def metadata [income-meta cashflow-meta bs-meta
                construction-meta debt-meta
                ecars-meta
-               revenue-meta])
+               inflation-meta])
 
 (fw/fail-catch (fw/build-model2 inputs calcs metadata))
 (def model (fw/build-model2 inputs calcs metadata))
@@ -301,4 +332,4 @@
 
 (def results (time (fw/run-model model 30)))
 
-(fw/print-category results (:meta model) header "fs" 10 20)
+(fw/print-category results (:meta model) header "store-sales" 20 30)
