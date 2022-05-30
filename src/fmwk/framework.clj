@@ -293,7 +293,7 @@
 (def ccy-format (java.text.DecimalFormat. "###,##0.00"))
 
 (defn format-ccy [x]
-  (if (= (int x) 0)
+  (if (= (int (* 100 x)) 0)
     "- "
     (.format ccy-format x)))
 
