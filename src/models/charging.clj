@@ -53,7 +53,16 @@
     :mini-store-sales     5.0
     :regular-store-sales  10.0
     :premium-store-sales  15.0
-    :store-cost-of-sale   0.5})
+    :store-cost-of-sale   0.5
+
+    :employee-start-date      "2022-01-01"
+    :employees                9
+    :employee-salary          2500 ;monthly
+    :social-security          0.2
+    :employee-benefits        0.1
+    :overheads                3000
+    :opex-annual-increase     0.025
+    :first-opex-increase-date "2023-01-01"})
 
 ;; TIME
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -254,6 +263,25 @@
     :revenue  '(+ [:mini] [:regular] [:premium])
     :costs    '(* [:inputs/store-cost-of-sale] [:revenue])})
 
+(def operating-costs
+  #:operating-costs
+   {:opex-increase     '(if (and [:calendar-period/first-period-flag]
+                                 (date> [:period/end-date]
+                                        [:inputs/first-opex-increase-date]))
+                          (inc [:inputs/opex-annual-increase])
+                          1.0)
+    :employees         '(when-flag [:operating-period/in-flag] [:inputs/employees])
+    :employee-wage     '(if [:operating-period/first-flag]
+                          [:inputs/employee-salary]
+                          (* [:employee-wage :prev] [:opex-increase]))
+    :social-security   '(* [:inputs/social-security] [:employee-wage])
+    :employee-benefits '(* [:inputs/employee-benefits] [:employee-wage])
+    :cost-per-employee '(+ [:employee-wage] [:social-security] [:employee-benefits])
+    :employee-expense  '(* [:employees] [:cost-per-employee])
+    :overheads         '(if [:operating-period/first-flag]
+                          [:inputs/overheads]
+                          (* [:overheads :prev] [:opex-increase]))})
+
 ;; FINANCIAL STATEMENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -261,8 +289,9 @@
   (array-map
    :fs.income/revenues           '(+ [:store-sales/revenue] [:electricity-revenue/revenue])
    :fs.income/cost-of-sales      '(- (+ [:store-sales/costs] [:electricity-revenue/cost-of-sales]))
-   :fs.income/overheads          [:placeholder 0]
-   :fs.income/EBITDA             '(+ [:revenues] [:cost-of-sales] [:overheads])
+   :fs.income/labor              '(- [:operating-costs/employee-expense])
+   :fs.income/overheads          '(- [:operating-costs/overheads])
+   :fs.income/EBITDA             '(+ [:revenues] [:cost-of-sales] [:labor] [:overheads])
    :fs.income/depreciation       [:placeholder 0]
    :fs.income/interest           '(- [:debt/interest])
    :fs.income/PBT                '(+ [:EBITDA] [:depreciation] [:interest])
@@ -274,10 +303,13 @@
 (def cashflow
   (array-map
    :fs.cashflows/invoices                             '(+ [:store-sales/revenue] [:electricity-revenue/revenue])
-   :fs.cashflows/cost-of-sales                         '(- (+ [:store-sales/costs] [:electricity-revenue/cost-of-sales]))
+   :fs.cashflows/invoices-paid                        '(- (+ [:operating-costs/overheads]
+                                                             [:store-sales/costs]
+                                                             [:electricity-revenue/cost-of-sales]))
+   :fs.cashflows/wages                                '(- [:operating-costs/employee-expense])
    :fs.cashflows/tax-paid                             [:placeholder 0]
    :fs.cashflows/construction                         '(- [:construction/total-construction-payments])
-   :fs.cashflows/cashflow-available-for-debt-service  '(+ [:invoices] [:cost-of-sales] [:tax-paid]
+   :fs.cashflows/cashflow-available-for-debt-service  '(+ [:invoices] [:invoices-paid] [:wages] [:tax-paid]
                                                           [:construction])
    :fs.cashflows/interest-paid                        '(- [:debt/interest])
    :fs.cashflows/debt-facility-drawdown               '(- [:debt/drawdown] [:debt/repayment])
@@ -320,7 +352,8 @@
             construction-costs nca-corkscrew
             debt debt-balance equity
             inflation
-            ecars sales revenue store-sales])
+            ecars sales revenue store-sales
+            operating-costs])
 (def metadata [income-meta cashflow-meta bs-meta
                construction-meta debt-meta
                ecars-meta
@@ -330,6 +363,6 @@
 (def model (fw/build-model2 inputs calcs metadata))
 (def header :period/end-date)
 
-(def results (time (fw/run-model model 30)))
+(def results (time (fw/run-model model 120)))
 
-(fw/print-category results (:meta model) header "fs" 20 30)
+(fw/print-category results (:meta model) header "fs" (inc (* 12 5)) (+ (* 12 5) 14))
