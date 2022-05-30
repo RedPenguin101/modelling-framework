@@ -205,14 +205,6 @@
 ;; Sales
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def sales
-  (fw/add-total
-   :total
-   #:sales
-    {:mini-sales-in-kwh '(* [:ecars.volumes/mini-volume] [:inputs/mini-battery-capacity] [:inputs/mini-battery-pct-charged])
-     :regular-sales-in-kwh '(* [:ecars.volumes/regular-volume] [:inputs/regular-battery-capacity] [:inputs/regular-battery-pct-charged])
-     :premium-sales-in-kwh '(* [:ecars.volumes/premium-volume] [:inputs/premium-battery-capacity] [:inputs/premium-battery-pct-charged])}))
-
 (def inflation
   #:inflation
    {:increase '(if (and [:calendar-period/first-period-flag]
@@ -224,16 +216,24 @@
 (def inflation-meta
   {:inflation/increase {:units :percent}})
 
+(def sales
+  (fw/add-total
+   :total
+   #:electricity-sales
+    {:mini    '(* [:ecars.volumes/mini-volume] [:inputs/mini-battery-capacity] [:inputs/mini-battery-pct-charged])
+     :regular '(* [:ecars.volumes/regular-volume] [:inputs/regular-battery-capacity] [:inputs/regular-battery-pct-charged])
+     :premium '(* [:ecars.volumes/premium-volume] [:inputs/premium-battery-capacity] [:inputs/premium-battery-pct-charged])}))
+
 (def revenue
-  #:revenue
-   {:sale-price '(if [:period/first-model-column]
-                   [:inputs/initial-sale-price]
-                   (* [:sale-price :prev] [:inflation/increase]))
-    :cost-price '(if [:period/first-model-column]
-                   [:inputs/initial-cost]
-                   (* [:cost-price :prev] [:inflation/increase]))
-    :revenue  '(* [:sales/total] [:sale-price])
-    :cost     '(* [:sales/total] [:cost-price])})
+  #:electricity-revenue
+   {:sale-price     '(if [:period/first-model-column]
+                       [:inputs/initial-sale-price]
+                       (* [:sale-price :prev] [:inflation/increase]))
+    :cost-price     '(if [:period/first-model-column]
+                       [:inputs/initial-cost]
+                       (* [:cost-price :prev] [:inflation/increase]))
+    :revenue        '(* [:electricity-sales/total] [:sale-price])
+    :cost-of-sales  '(* [:electricity-sales/total] [:cost-price])})
 
 
 (def store-sales
@@ -241,9 +241,9 @@
    {:mini-spend     '(if [:period/first-model-column]
                        [:inputs/mini-store-sales]
                        (* [:mini-spend :prev] [:inflation/increase]))
-    :regular-spend '(if [:period/first-model-column]
-                      [:inputs/regular-store-sales]
-                      (* [:regular-spend :prev] [:inflation/increase]))
+    :regular-spend  '(if [:period/first-model-column]
+                       [:inputs/regular-store-sales]
+                       (* [:regular-spend :prev] [:inflation/increase]))
     :premium-spend  '(if [:period/first-model-column]
                        [:inputs/premium-store-sales]
                        (* [:premium-spend :prev] [:inflation/increase]))
@@ -259,10 +259,10 @@
 
 (def income
   (array-map
-   :fs.income/revenues           [:revenue/revenue]
-   :fs.income/operating-expenses '(- [:revenue/cost])
+   :fs.income/revenues           '(+ [:store-sales/revenue] [:electricity-revenue/revenue])
+   :fs.income/cost-of-sales      '(- (+ [:store-sales/costs] [:electricity-revenue/cost-of-sales]))
    :fs.income/overheads          [:placeholder 0]
-   :fs.income/EBITDA             '(+ [:revenues] [:operating-expenses] [:overheads])
+   :fs.income/EBITDA             '(+ [:revenues] [:cost-of-sales] [:overheads])
    :fs.income/depreciation       [:placeholder 0]
    :fs.income/interest           '(- [:debt/interest])
    :fs.income/PBT                '(+ [:EBITDA] [:depreciation] [:interest])
@@ -273,11 +273,11 @@
 
 (def cashflow
   (array-map
-   :fs.cashflows/invoices                             [:revenue/revenue]
-   :fs.cashflows/operating-costs                      '(- [:revenue/cost])
+   :fs.cashflows/invoices                             '(+ [:store-sales/revenue] [:electricity-revenue/revenue])
+   :fs.cashflows/cost-of-sales                         '(- (+ [:store-sales/costs] [:electricity-revenue/cost-of-sales]))
    :fs.cashflows/tax-paid                             [:placeholder 0]
    :fs.cashflows/construction                         '(- [:construction/total-construction-payments])
-   :fs.cashflows/cashflow-available-for-debt-service  '(+ [:invoices] [:operating-costs] [:tax-paid]
+   :fs.cashflows/cashflow-available-for-debt-service  '(+ [:invoices] [:cost-of-sales] [:tax-paid]
                                                           [:construction])
    :fs.cashflows/interest-paid                        '(- [:debt/interest])
    :fs.cashflows/debt-facility-drawdown               '(- [:debt/drawdown] [:debt/repayment])
@@ -332,4 +332,4 @@
 
 (def results (time (fw/run-model model 30)))
 
-(fw/print-category results (:meta model) header "store-sales" 20 30)
+(fw/print-category results (:meta model) header "fs" 20 30)
