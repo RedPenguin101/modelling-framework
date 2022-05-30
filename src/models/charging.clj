@@ -41,6 +41,7 @@
     :premium-battery-capacity    100
     :premium-battery-pct-charged 0.40
 
+    :inflation-start-date        "2022-12-31"
     :initial-sale-price          0.35
     :initial-cost                0.15
     :inflation-electricity       0.03
@@ -81,6 +82,11 @@
                                [:period/start-date])
     :last-flag         '(date= [:end]
                                [:period/end-date])})
+
+(def calendar-period
+  #:calendar-period
+   {:last-period-flag  '(= 12 (month-of [:period/end-date]))
+    :first-period-flag '(= 1 (month-of [:period/end-date]))})
 
 
 ;; Construction
@@ -188,13 +194,43 @@
     :regular-growth {:units :percent}
     :premium-growth {:units :percent}})
 
+;; Sales
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def sales
+  (fw/add-total
+   :total
+   #:sales
+    {:mini-sales-in-kwh '(* [:ecars.volumes/mini-volume] [:inputs/mini-battery-capacity] [:inputs/mini-battery-pct-charged])
+     :regular-sales-in-kwh '(* [:ecars.volumes/regular-volume] [:inputs/regular-battery-capacity] [:inputs/regular-battery-pct-charged])
+     :premium-sales-in-kwh '(* [:ecars.volumes/premium-volume] [:inputs/premium-battery-capacity] [:inputs/premium-battery-pct-charged])}))
+
+(def revenue
+  #:revenue
+   {:inflation-increase '(inc (when-flag
+                               [:calendar-period/first-period-flag]
+                               [:inputs/inflation-electricity]))
+    :sale-price '(if (date<= [:period/end-date]
+                             [:inputs/inflation-start-date])
+                   [:inputs/initial-sale-price]
+                   (* [:sale-price :prev] [:inflation-increase]))
+    :cost-price '(if (date<= [:period/end-date]
+                             [:inputs/inflation-start-date])
+                   [:inputs/initial-cost]
+                   (* [:cost-price :prev] [:inflation-increase]))
+    :revenue  '(* [:sales/total] [:sale-price])
+    :cost     '(* [:sales/total] [:cost-price])})
+
+
+(def revenue-meta
+  {:revenue/inflation-increase {:units :percent}})
 ;; FINANCIAL STATEMENTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def income
   (array-map
-   :fs.income/revenues           [:placeholder 0]
-   :fs.income/operating-expenses [:placeholder 0]
+   :fs.income/revenues           [:revenue/revenue]
+   :fs.income/operating-expenses '(- [:revenue/cost])
    :fs.income/overheads          [:placeholder 0]
    :fs.income/EBITDA             '(+ [:revenues] [:operating-expenses] [:overheads])
    :fs.income/depreciation       [:placeholder 0]
@@ -207,8 +243,8 @@
 
 (def cashflow
   (array-map
-   :fs.cashflows/invoices                             [:placeholder 0]
-   :fs.cashflows/operating-costs                      [:placeholder 0]
+   :fs.cashflows/invoices                             [:revenue/revenue]
+   :fs.cashflows/operating-costs                      '(- [:revenue/cost])
    :fs.cashflows/tax-paid                             [:placeholder 0]
    :fs.cashflows/construction                         '(- [:construction/total-construction-payments])
    :fs.cashflows/cashflow-available-for-debt-service  '(+ [:invoices] [:operating-costs] [:tax-paid]
@@ -249,20 +285,20 @@
 
 (def bs-meta (fw/add-meta (merge bs-assets bs-liabs) {:units :currency}))
 
-(def calcs [periods op-period income cashflow bs-assets bs-liabs bs-check
+(def calcs [periods op-period calendar-period
+            income cashflow bs-assets bs-liabs bs-check
             construction-costs nca-corkscrew
             debt debt-balance equity
-            ecars])
+            ecars sales revenue])
 (def metadata [income-meta cashflow-meta bs-meta
                construction-meta debt-meta
-               ecars-meta])
+               ecars-meta
+               revenue-meta])
 
 (fw/fail-catch (fw/build-model2 inputs calcs metadata))
 (def model (fw/build-model2 inputs calcs metadata))
 (def header :period/end-date)
 
-(def results (time (fw/run-model model (* 12 11))))
+(def results (time (fw/run-model model 30)))
 
-(fw/print-category results (:meta model) header "ecars" 1 16)
-(fw/print-category results (:meta model) header "ecars" 70 80)
-(fw/print-category results (:meta model) header "fs.balance-sheet.checks" 1 16)
+(fw/print-category results (:meta model) header "fs" 10 20)
