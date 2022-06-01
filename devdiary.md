@@ -6,6 +6,52 @@
 * Checks and warnings
 * UI
 * Results Diff
+* Model construction helpers - format is
+
+```clojure
+(base-case
+  "base-case-name"
+  :input1  1
+  :input2  2
+  ,,,)
+
+(scenario
+  "base-case-name" "scenario-name"
+  :input1  1
+  :input2  2
+  ,,,)
+
+(calculation
+   "the-calculation.sub"
+   :name  '(formula)
+   :name2 '(formula2)
+   ,,,)
+
+(totalled-calculation
+   "the-calculation.sub"
+   :total-name
+   :name  '(formula)
+   :name2 '(formula2)
+   ,,,)
+
+(corkscrew
+   "the-calculation.sub.balance"
+   :starter         [:start-measure]
+   :start-condition [:start-flag]]
+   :increases       [:increase1 :increase2]
+   :decreases       [:decrease1 :decrease2]
+   ,,,)
+
+(metadata
+  "calculation"
+  :name   {:units :currency}
+  ,,,)
+
+(bulk-metadata
+  "calculation" {:units :currency}
+  ,,,)
+```
+
 ### Other
 * Only-dependencies recalculation? Need to recompile model function
 * Isolate and show circular dependencies
@@ -24,6 +70,8 @@
 It's time to work on a UI for displaying results. There should be 2 'modes' which the user can select from: build mode and run mode. The emphasis for build mode should be on the results, and for run mode the outputs and different scenarios.
 
 The UI should refresh whenever the model is re-run.
+
+The UI is not two way. That is, the user can't change the model from the UI. That gets done from the editor.
 
 The following are the important elements
 
@@ -62,7 +110,9 @@ A graph of dependencies for the calculation that is being worked on should be di
 
 The user should be able to click on a row and have a dependency graph for that row become visible. Hovering over the row should display the formula for that row.
 
-Model summary - number of calculations, rows, unused rows. 
+Model summary - number of calculations, rows, unused rows.
+
+If the model fails to compile, The UI should display the problem - e.g. for circular dependencies it should display the dependency graph, for bad references it should display the bad references.
 
 ## 29th May
 Currently I'm working though the Power Up scenario from FMWK. The concept is that you have 10 contracts which you can either take or not take, and you need to be able to model the revenues, costs and cashflows from the contracts.
