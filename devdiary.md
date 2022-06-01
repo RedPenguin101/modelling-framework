@@ -1,9 +1,12 @@
 # Dev Diary
 ## Todo
+### MVP
 * Inputs, base cases, scenarios
 * Outputs, output comparison
-* Dump to CSV
-* Dump to HTML?
+* Checks and warnings
+* UI
+* Results Diff
+### Other
 * Only-dependencies recalculation? Need to recompile model function
 * Isolate and show circular dependencies
 * Check on print table where there are no rows, or you got the sheet name wrong
@@ -15,7 +18,51 @@
 * flag optimizations: when you've calculated the flags, you can store them in a set, then if an expression depends on the flag you can just look it up and avoid evaluating if the flag isn't true
 * Circularity helpers, but only when it comes up
 * Some sort of limited "sheet" recalculation. Everything in the ns is recalculated, but any external references are looked up in a cache
-* Empty inputs in corkscrews
+* Multiple headers
+
+## 1st June
+It's time to work on a UI for displaying results. There should be 2 'modes' which the user can select from: build mode and run mode. The emphasis for build mode should be on the results, and for run mode the outputs and different scenarios.
+
+The UI should refresh whenever the model is re-run.
+
+The following are the important elements
+
+### Results
+This should mirror the spreadsheets. The user should be able to select the Sheet they want to display, as well as the number of periods.
+
+The measure selection should be hierarchical. That is, if the hierarchy looks like:
+
+```
+Debt
+  RCF
+    RCF Balance
+  Senior Loan
+    Senior Loan Balance
+Financials
+  Income
+  Balance Sheet
+  Cashflows
+```
+
+Users should be able to select any level and have all rows included in the output.
+
+Calculations should be grouped under headings.
+
+The user should have the option to include imports/references to other calcs as a separate table.
+
+Rows with placeholders should be highlighted in yellow.
+
+### Outputs, Checks and Warnings
+Outputs should be displayed along with deltas from the previous run.
+
+If there are variations on the inputs, the outputs from each of the variations should be displayed along with the base case.
+
+### Model stuff
+A graph of dependencies for the calculation that is being worked on should be displayed.
+
+The user should be able to click on a row and have a dependency graph for that row become visible. Hovering over the row should display the formula for that row.
+
+Model summary - number of calculations, rows, unused rows. 
 
 ## 29th May
 Currently I'm working though the Power Up scenario from FMWK. The concept is that you have 10 contracts which you can either take or not take, and you need to be able to model the revenues, costs and cashflows from the contracts.
