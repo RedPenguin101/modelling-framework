@@ -300,3 +300,7 @@
          (format-results metadata)
          (series->row-wise-table)
          print-table))))
+
+(defn vizi [model]
+  (uber/viz-graph (rows->graph (:rows model)) {:auto-label true
+                                               :save {:filename "graph.png" :format :png}}))

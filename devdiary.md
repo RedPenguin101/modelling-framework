@@ -1,56 +1,13 @@
 # Dev Diary
 ## Todo
 ### MVP
+* **DONE** Model construction helpers
 * Inputs, base cases, scenarios
 * Outputs, output comparison
 * Checks and warnings
 * UI
 * Results Diff
-* Model construction helpers - format is
-
-```clojure
-(base-case
-  "base-case-name"
-  :input1  1
-  :input2  2
-  ,,,)
-
-(scenario
-  "base-case-name" "scenario-name"
-  :input1  1
-  :input2  2
-  ,,,)
-
-(calculation
-   "the-calculation.sub"
-   :name  '(formula)
-   :name2 '(formula2)
-   ,,,)
-
-(totalled-calculation
-   "the-calculation.sub"
-   :total-name
-   :name  '(formula)
-   :name2 '(formula2)
-   ,,,)
-
-(corkscrew
-   "the-calculation.sub.balance"
-   :starter         [:start-measure]
-   :start-condition [:start-flag]]
-   :increases       [:increase1 :increase2]
-   :decreases       [:decrease1 :decrease2]
-   ,,,)
-
-(metadata
-  "calculation"
-  :name   {:units :currency}
-  ,,,)
-
-(bulk-metadata
-  "calculation" {:units :currency}
-  ,,,)
-```
+* reimplement metadata
 
 ### Other
 * Only-dependencies recalculation? Need to recompile model function
@@ -65,6 +22,7 @@
 * Circularity helpers, but only when it comes up
 * Some sort of limited "sheet" recalculation. Everything in the ns is recalculated, but any external references are looked up in a cache
 * Multiple headers
+* "Hidden" metadata
 
 ## 1st June
 It's time to work on a UI for displaying results. There should be 2 'modes' which the user can select from: build mode and run mode. The emphasis for build mode should be on the results, and for run mode the outputs and different scenarios.
