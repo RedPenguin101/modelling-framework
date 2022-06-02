@@ -256,15 +256,14 @@
 ;; Results Formatting
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-(def counter-format (java.text.DecimalFormat. "0"))
-(def ccy-format (java.text.DecimalFormat. "###,##0"))
+(def counter-format  (java.text.DecimalFormat. "0"))
+(def ccy-format      (java.text.DecimalFormat. "###,##0"))
 (def ccy-cent-format (java.text.DecimalFormat. "###,##0.00"))
 
 (defn- format-counter [x] (.format counter-format x))
 
 (defn- format-ccy [x]
-  (if (= (int (* 100 x)) 0)
+  (if (zero? (Math/round (* 1.0 x)))
     "- "
     (.format ccy-format x)))
 
@@ -276,11 +275,11 @@
     "- "
     (.format ccy-cent-format x)))
 
-(defn format-boolean [x]  (if x "✓" "⨯"))
+(defn- format-boolean [x]  (if x "✓" "⨯"))
 
 (defn- format-percent [x] (format "%.2f%%" (* 100.0 x)))
 
-(defn- round-collection [xs]
+(defn- default-rounding [xs]
   (if (every? number? xs)
     (map format-ccy xs)
     xs))
@@ -293,7 +292,7 @@
     :currency-cents     (map format-ccy-cents xs)
     :percent            (map format-percent xs)
     :boolean            (map format-boolean xs)
-    (round-collection xs)))
+    (default-rounding xs)))
 
 (defn- format-results [results metadata]
   (map #(update % 1

@@ -30,14 +30,13 @@
  :inflation-period   '(dec [:period/number])
  :compound-inflation '(Math/pow [:inputs/inflation-rate] [:inflation-period])
  :sale-price         '(* [:inputs/starting-price] [:compound-inflation])
- :curr-test          [:placeholder 123.51]
+ :curr-test          [:placeholder -0.1]
+ :curr-cents-test    '(if (even? [:period/number]) -0.1 0.001)
  :thousands-test     [:placeholder 100000]
  :true-test          '(= 1 1)
  :false-test         '(= 1 2)
  :total-test         '(* [:period/number] 100)
  :hidden-row         '(* [:period/number] 100))
-
-;; types should be counter, percent, currency
 
 (f/metadata!
  "prices"
@@ -45,6 +44,8 @@
  :compound-inflation {:units :percent}
  :sale-price         {:units :currency-cents}
  :thousands-test     {:units :currency-thousands}
+ :curr-test          {:units :currency}
+ :curr-cents-test    {:units :currency-cents}
  :true-test          {:units :boolean}
  :false-test         {:units :boolean}
  :total-test         {:total true}
