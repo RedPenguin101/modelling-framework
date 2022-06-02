@@ -33,7 +33,8 @@
  :curr-test          [:placeholder 123.51]
  :thousands-test     [:placeholder 100000]
  :true-test          '(= 1 1)
- :false-test         '(= 1 2))
+ :false-test         '(= 1 2)
+ :total-test         '(* [:period/number] 100))
 
 ;; types should be counter, percent, currency
 
@@ -44,7 +45,8 @@
  :sale-price         {:units :currency-cents}
  :thousands-test     {:units :currency-thousands}
  :true-test          {:units :boolean}
- :false-test         {:units :boolean})
+ :false-test         {:units :boolean}
+ :total-test         {:total true})
 
 (f/calculation!
  "invoices"
