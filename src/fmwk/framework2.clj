@@ -253,26 +253,9 @@
 (defn compile-model! []
   (compile-model (first @case-store) @calculation-store @meta-store))
 
-;; Result selection and printing
+;; Results Formatting
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- select-rows [results rows]
-  (filter #((set rows) (first %)) results))
-
-(defn- select-periods [results from to]
-  (map #(vector (first %) (take (- to from) (drop from (second %)))) results))
-
-(defn- get-total-rows [metadata]
-  (set (filter #(get-in metadata [% :total]) (keys metadata))))
-
-(defn- totals [results total-rows]
-  (into {}
-        (for [[r xs] results]
-          [r (if (total-rows r) (apply + xs) 0)])))
-
-(defn- add-totals [results totals]
-  (for [[nm xs] results]
-    [nm (into [(get totals nm 0)] xs)]))
 
 (def counter-format (java.text.DecimalFormat. "0"))
 (def ccy-format (java.text.DecimalFormat. "###,##0"))
@@ -317,6 +300,27 @@
                 display-format-series
                 (get-in metadata [(first %) :units]))
        results))
+
+;; Result selection and printing
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- select-rows [results rows]
+  (filter #((set rows) (first %)) results))
+
+(defn- select-periods [results from to]
+  (map #(vector (first %) (take (- to from) (drop from (second %)))) results))
+
+(defn- get-total-rows [metadata]
+  (set (filter #(get-in metadata [% :total]) (keys metadata))))
+
+(defn- totals [results total-rows]
+  (into {}
+        (for [[r xs] results]
+          [r (if (total-rows r) (apply + xs) 0)])))
+
+(defn- add-totals [results totals]
+  (for [[nm xs] results]
+    [nm (into [(get totals nm 0)] xs)]))
 
 (defn- print-table [table]
   (let [[hdr & rows] table
