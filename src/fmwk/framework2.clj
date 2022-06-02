@@ -304,7 +304,12 @@
 ;; Result selection and printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- select-rows [results rows]
+(defn- hidden-rows [metadata]
+  (keep (fn [[k v]] (when (:hidden v) k)) metadata))
+
+(defn- select-rows
+  "Order is determined by order of _results_, not rows"
+  [results rows]
   (filter #((set rows) (first %)) results))
 
 (defn- select-periods [results from to]
@@ -331,9 +336,12 @@
   ([results header category from to]
    (print-category results nil header category from to))
   ([results metadata header category from to]
-   (let [tot (totals results (get-total-rows metadata))]
+   (let [tot (totals results (get-total-rows metadata))
+         display-rows (set/difference
+                       (set (conj (rows-in-hierarchy category (map first results)) header))
+                       (set (hidden-rows metadata)))]
      (-> results
-         (select-rows (conj (rows-in-hierarchy category (map first results)) header))
+         (select-rows display-rows)
          (select-periods from to)
          (add-totals tot)
          (format-results metadata)
