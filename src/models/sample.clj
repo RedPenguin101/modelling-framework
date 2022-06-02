@@ -96,8 +96,9 @@
 
 (f/check!
  :balance-sheet-balances
- '(= [:balance-sheet.assets/total-assets]
-     [:balance-sheet.liabilities/total-liabilities]))
+ '(= (Math/round [:balance-sheet.assets/total-assets])
+     (Math/round [:balance-sheet.liabilities/total-liabilities]))
+ :other-thing '(= 1 1))
 
 (def model (f/compile-model!))
 
@@ -111,4 +112,4 @@
 
 (:meta model)
 
-(f/print-category results (:meta model) :period/end-date "prices" 1 5)
+(f/print-category results (:meta model) :period/end-date "balance-sheet" 10 15)

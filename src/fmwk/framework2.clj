@@ -314,7 +314,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- hidden-rows [metadata]
-  (println "hidden-rows" (keep (fn [[k v]] (when (:hidden v) k)) metadata))
   (keep (fn [[k v]] (when (:hidden v) k)) metadata))
 
 (defn- select-rows
