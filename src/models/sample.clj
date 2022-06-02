@@ -9,7 +9,9 @@
  :model-start-date        "2020-01-01"
  :period-length-in-months 3
  :invoice-payment-terms   1 ;; months
- )
+
+ :inflation-rate          1.02
+ :starting-price          10)
 
 (f/calculation!
  "period"
@@ -19,15 +21,37 @@
                        [:inputs/model-start-date]
                        (add-days [:end-date :prev] 1))
  :end-date          '(add-days
-                      (add-months "2020-01-01"
+                      (add-months [:start-date]
                                   [:inputs/period-length-in-months])
                       -1))
 
 (f/calculation!
+ "prices"
+ :inflation-period   '(dec [:period/number])
+ :compound-inflation '(Math/pow [:inputs/inflation-rate] [:inflation-period])
+ :sale-price         '(* [:inputs/starting-price] [:compound-inflation])
+ :curr-test          [:placeholder 123.51]
+ :thousands-test     [:placeholder 100000]
+ :true-test          '(= 1 1)
+ :false-test         '(= 1 2))
+
+;; types should be counter, percent, currency
+
+(f/metadata!
+ "prices"
+ :inflation-period   {:units :counter}
+ :compound-inflation {:units :percent}
+ :sale-price         {:units :currency-cents}
+ :thousands-test     {:units :currency-thousands}
+ :true-test          {:units :boolean}
+ :false-test         {:units :boolean})
+
+(f/calculation!
  "invoices"
- :issued '(if [:period/first-period-flag]
+ :sales  '(if [:period/first-period-flag]
             20
-            (* [:issued :prev] 1.2))
+            (* [:sales :prev] 1.2))
+ :issued '(* [:sales] [:prices/sale-price])
  :paid   [:issued :prev])
 
 (f/totalled-calculation!
@@ -80,4 +104,7 @@
 
 (def results (time (f/run-model model 20)))
 
-(f/print-category results :period/end-date "income" 1 4)
+(:meta model)
+
+(f/print-category results (:meta model) :period/end-date "prices" 1 5)
+(f/print-category results (:meta model) :period/end-date "checks" 1 5)

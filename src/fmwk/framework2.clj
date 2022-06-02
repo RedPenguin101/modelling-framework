@@ -164,6 +164,9 @@
 (defn- check [& row-pairs]
   (apply calculation "checks" row-pairs))
 
+(defn metadata [calc-name & row-pairs]
+  [calc-name (apply array-map row-pairs)])
+
 ;; Calculation and input preparation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Up to this points all inputs to the model have had the format
@@ -181,13 +184,19 @@
   [[_case-name rows]]
   ["inputs" (mapv #(update % 1 input-val) rows)])
 
+(defn- qualify-row-names [[calc-name rows]]
+  (map (fn [[row-name row-val]]
+         (vector (qualify calc-name row-name)
+                 row-val))
+       rows))
+
 (defn- qualify-all-references [[calc-name rows]]
   (map (fn [[row-name expr]]
          (vector (qualify calc-name row-name)
                  (qualify-local-references calc-name expr)))
        rows))
 
-(defn- compile-model [inputs calculations]
+(defn- compile-model [inputs calculations metadata]
   (let [rows (mapcat qualify-all-references (into [(input->calculation inputs)] calculations))
         row-map (into {} rows)
         order (calculate-order row-map)]
@@ -196,7 +205,8 @@
           :else {:display-order (map first rows)
                  :rows row-map
                  :calculation-order order
-                 :runner (eval (tr/make-runner order row-map))})))
+                 :runner (eval (tr/make-runner order row-map))
+                 :meta (into {} (mapcat qualify-row-names metadata))})))
 
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -212,6 +222,7 @@
 
 (defonce calculation-store (atom []))
 (defonce case-store (atom []))
+(defonce meta-store (atom []))
 
 (defn reset-model! []
   (reset! calculation-store [])
@@ -219,6 +230,7 @@
 
 (defn- add-calc! [calc] (swap! calculation-store conj calc))
 (defn- add-case! [cas] (swap! case-store conj cas))
+(defn- add-meta! [md] (swap! meta-store conj md))
 
 (defn calculation! [calc-name & row-pairs]
   (add-calc! (apply calculation calc-name row-pairs)))
@@ -232,11 +244,14 @@
 (defn base-case! [case-name & row-pairs]
   (add-case! (apply base-case case-name row-pairs)))
 
-(defn compile-model! []
-  (compile-model (first @case-store) @calculation-store))
-
 (defn check! [calc-name & row-pairs]
   (add-calc! (apply check calc-name row-pairs)))
+
+(defn metadata! [calc-name & row-pairs]
+  (add-meta! (apply metadata calc-name row-pairs)))
+
+(defn compile-model! []
+  (compile-model (first @case-store) @calculation-store @meta-store))
 
 ;; Result selection and printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -259,7 +274,11 @@
   (for [[nm xs] results]
     [nm (into [(get totals nm 0)] xs)]))
 
-(def ccy-format (java.text.DecimalFormat. "###,##0.00"))
+(def counter-format (java.text.DecimalFormat. "0"))
+(def ccy-format (java.text.DecimalFormat. "###,##0"))
+(def ccy-cent-format (java.text.DecimalFormat. "###,##0.00"))
+
+(defn- format-counter [x] (.format counter-format x))
 
 (defn- format-ccy [x]
   (if (= (int (* 100 x)) 0)
@@ -268,6 +287,13 @@
 
 (defn- format-ccy-thousands [x]
   (format-ccy (float (/ x 1000))))
+
+(defn- format-ccy-cents [x]
+  (if (= (int (* 100 x)) 0)
+    "- "
+    (.format ccy-cent-format x)))
+
+(defn format-boolean [x]  (if x "✓" "⨯"))
 
 (defn- format-percent [x] (format "%.2f%%" (* 100.0 x)))
 
@@ -278,9 +304,12 @@
 
 (defn- display-format-series [xs unit]
   (case unit
+    :counter            (map format-counter xs)
     :currency           (map format-ccy xs)
     :currency-thousands (map format-ccy-thousands xs)
+    :currency-cents     (map format-ccy-cents xs)
     :percent            (map format-percent xs)
+    :boolean            (map format-boolean xs)
     (round-collection xs)))
 
 (defn- format-results [results metadata]
