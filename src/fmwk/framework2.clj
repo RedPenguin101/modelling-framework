@@ -5,7 +5,7 @@
             [clojure.string :as str]
             [ubergraph.alg :as uberalg]
             [clojure.pprint :as pp]
-            [fmwk.tables :refer [series->row-wise-table]]
+            [fmwk.tables :refer [records->series series->row-wise-table series->records]]
             [fmwk.table-runner :as tr]))
 
 ;; utils
@@ -208,15 +208,6 @@
                  :runner (eval (tr/make-runner order row-map))
                  :meta (into {} (mapcat qualify-row-names metadata))})))
 
-;; Model running
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn run-model [{:keys [display-order calculation-order runner rows]} periods]
-  (let [array (tr/make-init-table calculation-order rows periods)
-        results (runner array calculation-order periods)]
-    (map (juxt identity results) display-order)))
-
-
 ;; Stateful wrappers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -226,7 +217,8 @@
 
 (defn reset-model! []
   (reset! calculation-store [])
-  (reset! case-store []))
+  (reset! case-store [])
+  (reset! meta-store []))
 
 (defn- add-calc! [calc] (swap! calculation-store conj calc))
 (defn- add-case! [cas] (swap! case-store conj cas))
@@ -253,6 +245,24 @@
 (defn compile-model! []
   (compile-model (first @case-store) @calculation-store @meta-store))
 
+;; Model running
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn run-model [{:keys [display-order calculation-order runner rows]} periods]
+  (let [array (tr/make-init-table calculation-order rows periods)
+        results (runner array calculation-order periods)]
+    (map (juxt identity results) display-order)))
+
+(defn checks-failed? [record header]
+  (let [failed-checks (filter #(false? (second %)) (dissoc record header))]
+    (when (not-empty failed-checks)
+      (into (select-keys record [header]) failed-checks))))
+
+(defn check-results [results header]
+  (let [check-rows (rows-in-hierarchy "checks" (map first results))]
+    (keep #(checks-failed? % header)
+          (series->records (select-keys (into {} results) (conj check-rows header))))))
+
 ;; Results Formatting
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -275,14 +285,14 @@
     "- "
     (.format ccy-cent-format x)))
 
-(defn- format-boolean [x]  (if x "✓" "⨯"))
+(defn- format-boolean [x]  (if x "✓" "x"))
 
 (defn- format-percent [x] (format "%.2f%%" (* 100.0 x)))
 
 (defn- default-rounding [xs]
-  (if (every? number? xs)
-    (map format-ccy xs)
-    xs))
+  (cond (every? number? xs) (map format-ccy xs)
+        (every? boolean? (rest xs)) (map format-boolean xs)
+        :else xs))
 
 (defn- display-format-series [xs unit]
   (case unit
@@ -304,6 +314,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- hidden-rows [metadata]
+  (println "hidden-rows" (keep (fn [[k v]] (when (:hidden v) k)) metadata))
   (keep (fn [[k v]] (when (:hidden v) k)) metadata))
 
 (defn- select-rows
@@ -338,14 +349,22 @@
    (let [tot (totals results (get-total-rows metadata))
          display-rows (set/difference
                        (set (conj (rows-in-hierarchy category (map first results)) header))
-                       (set (hidden-rows metadata)))]
+                       (set (hidden-rows metadata)))
+         checks (check-results results header)]
      (-> results
          (select-rows display-rows)
          (select-periods from to)
          (add-totals tot)
          (format-results metadata)
          (series->row-wise-table)
-         print-table))))
+         print-table)
+     (when (not-empty checks)
+       (println "\nWARNING: CHECKS NOT PASSING")
+       (-> checks
+           (records->series)
+           (format-results metadata)
+           (series->row-wise-table)
+           print-table)))))
 
 (defn vizi [model]
   (uber/viz-graph (rows->graph (:rows model)) {:auto-label true
