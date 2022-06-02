@@ -2,12 +2,13 @@
 ## Todo
 ### MVP
 * **DONE** Model construction helpers
+* **DONE** reimplement metadata
+* **DONE** Checks and warnings
+* **DONE** "Hidden" metadata
 * Inputs, base cases, scenarios
 * Outputs, output comparison
-* **DONE** Checks and warnings
 * UI
 * Results Diff
-* **DONE** reimplement metadata
 
 ### Other
 * Only-dependencies recalculation? Need to recompile model function
@@ -22,7 +23,6 @@
 * Circularity helpers, but only when it comes up
 * Some sort of limited "sheet" recalculation. Everything in the ns is recalculated, but any external references are looked up in a cache
 * Multiple headers
-* **DONE** "Hidden" metadata
 
 ## 2nd June - checks
 Something like 
