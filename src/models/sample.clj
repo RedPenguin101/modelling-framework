@@ -33,19 +33,43 @@
 (f/totalled-calculation!
  "cashflows" :net-cashflow
  :invoices    [:invoices/paid]
- :overheads   [:placeholder 1])
+ :overheads   '(- [:placeholder 1]))
+
+(f/corkscrew!
+ "cashflows.retained-cash"
+ :increases [:cashflows/net-cashflow]
+ :decreases [])
 
 (f/totalled-calculation!
  "income" :profit-after-tax
  :revenue  [:invoices/issued]
- :expenses [:placeholder 1])
+ :expenses [:placeholder -1])
+
+(f/corkscrew!
+ "income.retained-earnings"
+ :increases [:income/profit-after-tax]
+ :decreases [])
 
 (f/corkscrew!
  "receivables"
  :increases [:invoices/issued]
  :decreases [:invoices/paid])
 
-@f/calculation-store
+(f/totalled-calculation!
+ "balance-sheet.assets" :total-assets
+ :cash             [:cashflows.retained-cash/end]
+ :receivables      [:receivables/end])
+
+(f/totalled-calculation!
+ "balance-sheet.liabilities" :total-liabilities
+ :equity            [:placeholder 0]
+ :retained-earnings [:income.retained-earnings/end])
+
+(f/check!
+ :balance-sheet-balances
+ '(= [:balance-sheet.assets/total-assets]
+     [:balance-sheet.liabilities/total-liabilities]))
+
 (def model (f/compile-model!))
 
 (comment
@@ -56,4 +80,4 @@
 
 (def results (time (f/run-model model 20)))
 
-(f/print-category results :period/number "invoices" 1 4)
+(f/print-category results :period/end-date "income" 1 4)

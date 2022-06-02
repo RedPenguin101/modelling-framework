@@ -161,6 +161,9 @@
 (defn- base-case [case-name & row-pairs]
   [case-name (apply array-map row-pairs)])
 
+(defn- check [& row-pairs]
+  (apply calculation "checks" row-pairs))
+
 ;; Calculation and input preparation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Up to this points all inputs to the model have had the format
@@ -231,6 +234,9 @@
 
 (defn compile-model! []
   (compile-model (first @case-store) @calculation-store))
+
+(defn check! [calc-name & row-pairs]
+  (add-calc! (apply check calc-name row-pairs)))
 
 ;; Result selection and printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

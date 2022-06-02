@@ -2,7 +2,7 @@
   (:require [fmwk.framework2 :as f :refer [calculation! totalled-calculation! base-case! corkscrew!]]
             [fmwk.utils :refer :all]))
 
-"Rewrite using the stateful version of the framework"
+;; Rewrite using the stateful version of the framework
 
 (f/reset-model!)
 
@@ -41,16 +41,16 @@
                                   (date<= [:inputs/aquisition-date]
                                           [:end-date]))
 
- :exit-flag      '(and (date>= [:inputs/sale-date]
-                               [:start-date])
-                       (date<= [:inputs/sale-date]
-                               [:end-date])))
+ :exit-flag                 '(and (date>= [:inputs/sale-date]
+                                          [:start-date])
+                                  (date<= [:inputs/sale-date]
+                                          [:end-date])))
 
 (calculation!
  "operating-period"
  :end               [:inputs/sale-date]
- :in-flag           '(and (date> [:period/start-date]
-                                 [:inputs/aquisition-date])
+ :in-flag           '(and (date>  [:period/start-date]
+                                  [:inputs/aquisition-date])
                           (date<= [:period/end-date]
                                   [:end]))
  :first-flag        '(date= [:inputs/aquisition-date]

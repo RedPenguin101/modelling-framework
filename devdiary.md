@@ -24,6 +24,53 @@
 * Multiple headers
 * "Hidden" metadata
 
+## 2nd June - checks
+Something like 
+```clojure
+(check! "balance-sheet-balances" '(= [:balance-sheet/total-assets] [:balance-sheet/total-liabilities]))
+```
+
+Behind the scenes, this is just another model row
+
+On running model, in addition to printing the table it will output a summary
+
+```
+ALL CHECKS PASSED
+
+--or--
+
+WARNING: CHECKS FAILED
+- balance-sheet-balances: period-end-date 2020-12-31, 2021-12,...
+- other checks
+```
+
+Alternative: _Any_ row can be flagged as a check in the metadata. So like
+
+```clojure
+(f/totalled-calculation!
+ "balance-sheet.assets" :total-assets
+ :cash             [:cashflows.retained-cash/end]
+ :receivables      [:receivables/end])
+
+(f/totalled-calculation!
+ "balance-sheet.liabilities" :total-liabilities
+ :equity            [:placeholder 0]
+ :retained-earnings [:income.retained-earnings/end])
+
+(f/calculation!
+ "balance-sheet"
+ :check   '(= [:balance-sheet.assets/total-assets] 
+              [:balance-sheet.liabilities/total-liabilities]))
+
+(f/meta-data! {:balance-sheet/check {:units :bool :check true}})
+```
+
+This could clutter up the model a bit. I think I prefer keeping it separate. You could add more spec-like validation, like
+
+```clojure
+(check! :volume-always-positive '(pos? [:volume/end]))
+```
+
 ## 1st June
 It's time to work on a UI for displaying results. There should be 2 'modes' which the user can select from: build mode and run mode. The emphasis for build mode should be on the results, and for run mode the outputs and different scenarios.
 
