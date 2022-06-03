@@ -92,6 +92,7 @@
 (f/totalled-calculation!
  "balance-sheet.assets" :total-assets
  :cash             [:cashflows.retained-cash/end]
+ :spoiler          [:placeholder 1]
  :receivables      [:receivables/end])
 
 (f/totalled-calculation!

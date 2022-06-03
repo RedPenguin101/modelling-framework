@@ -30,13 +30,14 @@ td {
 }
 
 td.content {
+  width: 6em;
   white-space: pre-wrap;
   text-align: right;
-  width: 6em;
   padding-right: 5px;
 }
 
 td.title {
+  min-width: 10em;
   white-space: nowrap;
   padding-right: 1em;
   padding-left: 0.5em;
