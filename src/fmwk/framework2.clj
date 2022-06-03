@@ -290,26 +290,32 @@
 
 (defn- format-percent [x] (format "%.2f%%" (* 100.0 x)))
 
+(defn- format-date [d]
+  (if (string? d)
+    (.format (java.time.format.DateTimeFormatter/ofPattern "dd MMM yy") (java.time.LocalDate/parse d))
+    d))
+
 (defn- default-rounding [xs]
-  (cond (every? number? xs) (map format-ccy xs)
-        (every? boolean? (rest xs)) (map format-boolean xs)
+  (cond (every? number? xs) (mapv format-ccy xs)
+        (every? boolean? (rest xs)) (mapv format-boolean xs)
         :else xs))
 
 (defn- display-format-series [xs unit]
   (case unit
-    :counter            (map format-counter xs)
-    :currency           (map format-ccy xs)
-    :currency-thousands (map format-ccy-thousands xs)
-    :currency-cents     (map format-ccy-cents xs)
-    :percent            (map format-percent xs)
-    :boolean            (map format-boolean xs)
+    :counter            (mapv format-counter xs)
+    :currency           (mapv format-ccy xs)
+    :currency-thousands (mapv format-ccy-thousands xs)
+    :currency-cents     (mapv format-ccy-cents xs)
+    :percent            (mapv format-percent xs)
+    :flag               (mapv format-boolean xs)
+    :date               (mapv format-date xs)
     (default-rounding xs)))
 
 (defn- format-results [results metadata]
-  (map #(update % 1
-                display-format-series
-                (get-in metadata [(first %) :units]))
-       results))
+  (mapv #(update % 1
+                 display-format-series
+                 (get-in metadata [(first %) :units]))
+        results))
 
 ;; Result selection and printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -367,7 +373,10 @@
            print-table)))))
 
 (defn- add-total-label [table]
+  (def debug table)
   (assoc-in (vec table) [0 1 0] "TOTAL"))
+
+debug
 
 (defn print-category-html
   ([results header category from to]

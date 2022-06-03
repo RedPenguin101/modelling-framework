@@ -1,5 +1,5 @@
 (ns models.forest3
-  (:require [fmwk.framework2 :as f :refer [calculation! totalled-calculation! base-case! corkscrew!]]
+  (:require [fmwk.framework2 :as f :refer [calculation! totalled-calculation! base-case! corkscrew! metadata!]]
             [fmwk.utils :refer :all]))
 
 ;; Rewrite using the stateful version of the framework
@@ -46,6 +46,11 @@
                                   (date<= [:inputs/sale-date]
                                           [:end-date])))
 
+(metadata!
+ "period"
+ :start-date {:units :date}
+ :end-date   {:units :date})
+
 (calculation!
  "operating-period"
  :end               [:inputs/sale-date]
@@ -81,14 +86,6 @@
  :start-condition [:period/aquisition-flag]
  :increases       [:volume/growth]
  :decreases       [:volume/harvest :volume/exit])
-
-#_(def prices-meta
-    #:prices{:inflation-period {:units :counter}
-             :compound-inflation {:units :percent}
-             :sale {:units :currency}
-             :cost {:units :currency}
-             :profit {:units :currency}
-             :tax {:units :currency}})
 
 (calculation!
  "prices"
@@ -151,4 +148,4 @@
 (def model (f/compile-model!))
 
 (def results (f/run-model model 20))
-(f/print-category-html results :period/end-date "debt" 13 20)
+(f/print-category-html results (:meta model) :period/end-date "volume" 13 20)
