@@ -59,6 +59,7 @@
                     :type "text/css"
                     :href "style.css"}]]
      [:body
+      [:h1 (name->title (sheet (first (second results))))]
       (-> results
           t/series->row-wise-table
           table->grouped-table
