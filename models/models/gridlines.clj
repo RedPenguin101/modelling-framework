@@ -1,5 +1,5 @@
 (ns models.gridlines
-  (:require [fmwk.framework2 :as f :refer [base-case! calculation! metadata! corkscrew! totalled-calculation! check!]]
+  (:require [fmwk.framework :as f :refer [base-case! calculation! metadata! corkscrew! totalled-calculation! check!]]
             [fmwk.utils :refer :all]))
 
 (f/reset-model!)
@@ -14,7 +14,7 @@
  :financial-close-date       "2021-03-31"
  :operating-years-remaining  25
 
- :cost-of-solar-asset             100000000
+ :cost-of-solar-asset        100000000
  :useful-life-of-asset       25
 
  :annual-degradation         0.005
@@ -102,10 +102,10 @@
                                      [:compound-degradation]
                                      [:inputs/year-1-p50-yield]
                                      [:inputs/availability])
- :electricity-generation-revenue '(* [:electricity-generation]
-                                     [:inputs/power-tariff]
-                                     1000000 ; kwh per gwh
-                                     ))
+ :revenue '(* [:electricity-generation]
+              [:inputs/power-tariff]
+              1000000 ; kwh per gwh
+              ))
 
 (metadata!
  "ops.revenue"
@@ -113,7 +113,7 @@
  :compound-degradation           {:units :percent}
  :seasonality-adjustment         {:units :percent}
  :electricity-generation         {:total true}
- :electricity-generation-revenue {:units :currency-thousands :total true})
+ :revenue {:units :currency-thousands :total true})
 
 (calculation!
  "ops.opex"
@@ -192,7 +192,7 @@
 (totalled-calculation!
  "cashflow" :available-for-dividends
  ;; TODO payment term delay for revenue 
- :electricity-generation-revenue [:ops.revenue/electricity-generation-revenue]
+ :revenue                        [:ops.revenue/revenue]
  :opex-expense                   [:ops.opex/om-expense]
  :share-capital-redemption       [:share-capital/redemption])
 
@@ -203,7 +203,7 @@
 
 (metadata!
  "cashflow"
- :electricity-generation-revenue {:units :currency-thousands :total true}
+ :revenue                        {:units :currency-thousands :total true}
  :opex-expense                   {:units :currency-thousands :total true}
  :available-for-dividends        {:units :currency-thousands :total true})
 
@@ -212,7 +212,7 @@
 
 (totalled-calculation!
  "income" :profit-after-tax
- :electricity-generation-revenue [:ops.revenue/electricity-generation-revenue]
+ :revenue                        [:ops.revenue/revenue]
  :opex-expense                   [:ops.opex/om-expense]
  :depreciation-charge            [:depreciation/depreciation])
 
@@ -223,7 +223,7 @@
 
 (metadata!
  "income"
- :electricity-generation-revenue {:units :currency-thousands :total true}
+ :revenue                        {:units :currency-thousands :total true}
  :opex-expense                   {:units :currency-thousands :total true}
  :depreciation-charge            {:units :currency-thousands :total true}
  :profit-after-tax               {:units :currency-thousands :total true})
@@ -262,10 +262,9 @@
 
 
 (def model (f/compile-model!))
-(def results (time (f/run-model model 183)))
+(def results (time (f/run-model model 20)))
 (f/print-result-summary! results {:model model
                                   :header :period/end-date
-                                  :sheets ["income" "cashflow"]
-                                  :start 100
-                                  :charts [:income.retained-earnings/end
-                                           :cashflow.retained/end]})
+                                  :sheets ["balance-sheet" "income" "cashflow"]
+                                  #_#_:charts [:income.retained-earnings/end
+                                               :cashflow.retained/end]})

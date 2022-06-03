@@ -200,13 +200,13 @@
 
 (comment
   (def test-results (clojure.edn/read-string (slurp "test-results.edn")))
-  (def test-results-check (clojure.edn/read-string (slurp "test-results-check-fail.edn"))))
+  (def test-results-check (clojure.edn/read-string (slurp "test-results-check-fail.edn")))
 
-(print-result-summary!
- test-results
- {:model nil
-  :header :period/end-date
-  :start 5
-  :periods 12
-  :sheets ["balance-sheet" "period"]
-  :charts [:balance-sheet.assets/cash]})
+  (print-result-summary!
+   test-results
+   {:model nil
+    :header :period/end-date
+    :start 5
+    :periods 12
+    :sheets ["balance-sheet" "period"]
+    :charts [:balance-sheet.assets/cash]}))
