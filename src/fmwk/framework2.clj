@@ -39,17 +39,6 @@
   (if (or (not qualifier) (= :placeholder kw) (qualified-keyword? kw)) kw
       (keyword (name qualifier) (name kw))))
 
-(defn- calculation-hierarchy [k]
-  (if (qualified-keyword? k)
-    (vec (str/split (namespace k) #"\."))
-    []))
-
-(defn- rows-in-hierarchy [hierarchy rows]
-  (let [ch (str/split hierarchy #"\.")
-        depth (count ch)]
-    (filter #(= ch (take depth (calculation-hierarchy %))) rows)))
-
-
 ;; References and calculation expressions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -319,72 +308,6 @@
 ;; Result selection and printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- hidden-rows [metadata]
-  (keep (fn [[k v]] (when (:hidden v) k)) metadata))
-
-(defn- select-rows
-  "Order is determined by order of _results_, not rows"
-  [results rows]
-  (filter #((set rows) (first %)) results))
-
-(defn- select-periods [results from to]
-  (map #(vector (first %) (take (- to from) (drop from (second %)))) results))
-
-(defn- get-total-rows [metadata]
-  (set (filter #(get-in metadata [% :total]) (keys metadata))))
-
-(defn- totals [results total-rows]
-  (into {}
-        (for [[r xs] results]
-          [r (if (total-rows r) (apply + xs) 0)])))
-
-(defn- add-totals [results totals]
-  (for [[nm xs] results]
-    [nm (into [(get totals nm 0)] xs)]))
-
-(defn- print-table [table]
-  (let [[hdr & rows] table
-        hdr (assoc hdr 1 "total")]
-    (pp/print-table hdr (map #(zipmap hdr %) rows))))
-
-(defn print-category
-  ([results header category from to]
-   (print-category results nil header category from to))
-  ([results metadata header category from to]
-   (let [tot (totals results (get-total-rows metadata))
-         display-rows (set/difference
-                       (set (conj (rows-in-hierarchy category (map first results)) header))
-                       (set (hidden-rows metadata)))
-         checks (check-results results header)]
-     (-> results
-         (select-rows display-rows)
-         (select-periods from to)
-         (add-totals tot)
-         (format-results metadata)
-         (series->row-wise-table)
-         print-table)
-     (when (not-empty checks)
-       (println "\nWARNING: CHECKS NOT PASSING")
-       (-> checks
-           (records->series)
-           (format-results metadata)
-           (series->row-wise-table)
-           print-table)))))
-
-(defn- add-total-label [table]
-  (assoc-in (vec table) [0 1 0] "TOTAL"))
-
-(defn- prep-results [results metadata header category from to]
-  (let [tot (totals results (get-total-rows metadata))
-        display-rows (set/difference
-                      (set (conj (rows-in-hierarchy category (map first results)) header))
-                      (set (hidden-rows metadata)))]
-    (-> results
-        (select-rows display-rows)
-        (select-periods from to)
-        (add-totals tot)
-        (format-results metadata)
-        (add-total-label))))
 
 (defn print-category-html
   ([results header category from to]

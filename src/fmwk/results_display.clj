@@ -1,27 +1,133 @@
 (ns fmwk.results-display
   (:require [fmwk.tables :as t]
+            [clojure.set :as set]
             [clojure.string :as str]
             [hiccup.core :refer [html]]))
-
-(defn name->title [k]
-  (when k (str/join " " (map str/capitalize (str/split (name k) #"-")))))
 
 (defn- calculation-hierarchy [k]
   (if (qualified-keyword? k)
     (vec (str/split (namespace k) #"\."))
     []))
 
+(defn- rows-in-hierarchy [hierarchy rows]
+  (let [ch (str/split hierarchy #"\.")
+        depth (count ch)]
+    (filter #(= ch (take depth (calculation-hierarchy %))) rows)))
+
+;; results check
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn checks-failed? [record header]
+  (let [failed-checks (filter #(false? (second %)) (dissoc record header))]
+    (when (not-empty failed-checks)
+      (into (select-keys record [header]) failed-checks))))
+
+(defn check-results [results header]
+  (let [check-rows (rows-in-hierarchy "checks" (map first results))]
+    (keep #(checks-failed? % header)
+          (t/series->records (select-keys (into {} results) (conj check-rows header))))))
+
+;; Results Formatting
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def counter-format  (java.text.DecimalFormat. "0"))
+(def ccy-format      (java.text.DecimalFormat. "###,##0 ;(###,##0)"))
+(def ccy-cent-format (java.text.DecimalFormat. "###,##0.00"))
+
+(defn- format-counter [x] (.format counter-format x))
+
+(defn- format-ccy [x]
+  (if (zero? (Math/round (* 1.0 x)))
+    "-  "
+    (.format ccy-format x)))
+
+(defn- format-ccy-thousands [x]
+  (format-ccy (float (/ x 1000))))
+
+(defn- format-ccy-cents [x]
+  (if (= (int (* 100 x)) 0)
+    "- "
+    (.format ccy-cent-format x)))
+
+(defn- format-boolean [x]  (when (true? x) "✓"))
+
+(defn- format-percent [x] (format "%.2f%%" (* 100.0 x)))
+
+(defn- format-date [d]
+  (when (string? d)
+    (.format (java.time.format.DateTimeFormatter/ofPattern "dd MMM yy") (java.time.LocalDate/parse d))))
+
+(defn- default-rounding [xs]
+  (cond (every? number? xs) (mapv format-ccy xs)
+        (every? boolean? (rest xs)) (mapv format-boolean xs)
+        :else xs))
+
+(defn- display-format-series [xs unit]
+  (case unit
+    :counter            (mapv format-counter xs)
+    :currency           (mapv format-ccy xs)
+    :currency-thousands (mapv format-ccy-thousands xs)
+    :currency-cents     (mapv format-ccy-cents xs)
+    :percent            (mapv format-percent xs)
+    :flag               (mapv format-boolean xs)
+    :date               (mapv format-date xs)
+    (default-rounding xs)))
+
+(defn- format-results [results metadata]
+  (mapv #(update % 1
+                 display-format-series
+                 (get-in metadata [(first %) :units]))
+        results))
+
+;; Results prep
+;;;;;;;;;;;;;;;;;;;;;
+
+(defn- hidden-rows [metadata]
+  (keep (fn [[k v]] (when (:hidden v) k)) metadata))
+
+(defn- select-rows
+  "Order is determined by order of _results_, not rows"
+  [results rows]
+  (filter #((set rows) (first %)) results))
+
+(defn- select-periods [results from to]
+  (map #(vector (first %) (take (- to from) (drop from (second %)))) results))
+
+(defn- get-total-rows [metadata]
+  (set (filter #(get-in metadata [% :total]) (keys metadata))))
+
+(defn- totals [results total-rows]
+  (into {}
+        (for [[r xs] results]
+          [r (if (total-rows r) (apply + xs) 0)])))
+
+(defn- add-totals [results totals]
+  (for [[nm xs] results]
+    [nm (into [(get totals nm 0)] xs)]))
+
+(defn- add-total-label [table]
+  (assoc-in (vec table) [0 1 0] "TOTAL"))
+
+(defn- prep-results [results metadata header category from to]
+  (let [tot (totals results (get-total-rows metadata))
+        display-rows (set/difference
+                      (set (conj (rows-in-hierarchy category (map first results)) header))
+                      (set (hidden-rows metadata)))]
+    (-> results
+        (select-rows display-rows)
+        (select-periods from to)
+        (add-totals tot)
+        (format-results metadata)
+        (add-total-label))))
+
+;; Table prep
+;;;;;;;;;;;;;;;;;;;;
+
+(defn name->title [k]
+  (when k (str/join " " (map str/capitalize (str/split (name k) #"-")))))
+
 (def sheet (comp first calculation-hierarchy))
 (def calc  (comp second calculation-hierarchy))
-
-(def test-data
-  '([:time.period/end-date ["TOTAL" "2022-06-30" "2022-09-30" "2022-12-31" "2023-03-31" "2023-06-30"]]
-    [:balance-sheet.assets/cash ("- " "4,603" "5,835" "7,344" "9,190" "11,451")]
-    [:balance-sheet.assets/receivables ("- " "1,233" "1,510" "1,848" "2,262" "2,768")]
-    [:balance-sheet.assets/total-assets ("- " "5,836" "7,345" "9,191" "11,452" "14,219")]
-    [:balance-sheet.liabilities/equity ("- " "- " "- " "- " "- " "- ")]
-    [:balance-sheet.liabilities/retained-earnings ("- " "5,836" "7,345" "9,191" "11,452" "14,219")]
-    [:balance-sheet.liabilities/total-liabilities ("- " "5,836" "7,345" "9,191" "11,452" "14,219")]))
 
 (defn table->grouped-table [table]
   (->> table
@@ -78,4 +184,27 @@
       (when (not-empty checks) (check-warning checks))
       (results->html-table results)]])))
 
-(html-table! '({:period/end-date "2020-03-31", :checks/balance-sheet-balances false} {:period/end-date "2020-06-30", :checks/balance-sheet-balances false}) test-data)
+(defn print-result-summary [results {:keys [start periods header] :as options}]
+  (let [start (or start 1)
+        end   (+ start (or periods 10))
+        checks (check-results results header)
+        filtered-results (map #(prep-results results (get-in options [:model :meta]) header % start end) (:sheets options))]
+    (spit
+     "./results.html"
+     (html [:html
+            [:head [:link {:rel :stylesheet
+                           :type "text/css"
+                           :href "style.css"}]]
+            [:body
+             (when (not-empty checks) (check-warning checks))
+             (for [r filtered-results]
+               [:div
+                [:h1 (name->title (sheet (first (second r))))]
+                (results->html-table r)])]]))))
+
+(def test-results (clojure.edn/read-string (slurp "test-results.edn")))
+(def test-results-check (clojure.edn/read-string (slurp "test-results-check-fail.edn")))
+
+(print-result-summary test-results-check {:model nil
+                                          :header :period/end-date
+                                          :sheets ["balance-sheet" "period" "checks"]})
