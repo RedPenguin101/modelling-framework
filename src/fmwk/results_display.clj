@@ -5,6 +5,12 @@
             [clojure.string :as str]
             [hiccup.core :refer [html]]))
 
+;; calc-outputs - probably shouldn't be here
+
+(defn- outputs [results outputs]
+  (for [[_r f] outputs]
+    (assoc f :result ((:function f) results))))
+
 (defn- calculation-hierarchy [k]
   (if (qualified-keyword? k)
     (vec (str/split (namespace k) #"\."))
@@ -62,6 +68,17 @@
   (cond (every? number? xs) (mapv format-ccy xs)
         (every? boolean? (rest xs)) (mapv format-boolean xs)
         :else xs))
+
+(defn- display-format [x unit]
+  (case unit
+    :counter            (format-counter x)
+    :currency           (format-ccy x)
+    :currency-thousands (format-ccy-thousands x)
+    :currency-cents     (format-ccy-cents x)
+    :percent            (format-percent x)
+    :flag               (format-boolean x)
+    :date               (format-date x)
+    x))
 
 (defn- display-format-series [xs unit]
   (case unit
@@ -177,13 +194,12 @@
     (series-lines-save series filename)
     filename))
 
-(defn print-result-summary! [results {:keys [start periods header charts] :as options}]
+(defn print-result-summary! [results {:keys [model start periods header charts] :as options}]
   (let [start (or start 1)
         end   (+ start (or periods 10))
         checks (check-results results header)
         filtered-results (map #(prep-results results (get-in options [:model :meta]) header % start end) (:sheets options))
         graph-file (when charts (graph-series (map (into {} results) charts)))]
-    (println "charts" charts)
     (spit
      "./results.html"
      (html [:html
@@ -192,6 +208,11 @@
                            :href "style.css"}]]
             [:body
              (when (not-empty checks) (check-warning checks))
+             (when (not-empty (:outputs model))
+               [:div
+                [:h3 "Outputs"]
+                (for [{:keys [result name units]} (outputs results (:outputs model))]
+                  [:p (str name ": " (display-format result units))])])
              (for [r filtered-results]
                [:div
                 [:h3 (name->title (sheet (first (second r))))]

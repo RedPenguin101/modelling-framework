@@ -1,6 +1,9 @@
 (ns models.gridlines
-  (:require [fmwk.framework :as f :refer [base-case! calculation! metadata! corkscrew! totalled-calculation! check!]]
-            [fmwk.utils :refer :all]))
+  (:require [fmwk.framework :as f :refer [base-case! calculation! metadata! corkscrew! totalled-calculation! check! outputs!]]
+            [fmwk.results-display :refer [print-result-summary!]]
+            [fmwk.utils :refer [when-flag when-not-flag round]]
+            [fmwk.dates :refer [month-of add-days add-months date= date< date<= date> date>=]]
+            [fmwk.irr :refer [irr-days]]))
 
 (f/reset-model!)
 
@@ -47,6 +50,10 @@
 
 (calculation!
  "period.operating"
+ :close-flag               '(date= [:period/end-date] [:inputs/financial-close-date])
+ :exit-flag                '(date= [:period/end-date]
+                                   (add-months [:inputs/financial-close-date]
+                                               (* 12 [:inputs/operating-years-remaining])))
  :start-date               [:inputs/operating-period-start]
  :end-date                 '(-> [:start-date]
                                 (add-months (* 12 [:inputs/operating-years-remaining]))
@@ -155,16 +162,16 @@
 (corkscrew!
  "depreciation.balance"
  :starter         [:depreciation/cost-of-solar-asset]
- :start-condition [:period.operating/first-flag]
+ :start-condition [:period.operating/close-flag]
  :decreases       [:depreciation/depreciation-pos])
-
 
 ;; EQUITY
 ;;;;;;;;;;;;;;;;;;;;
 
 (calculation!
  "share-capital"
- :x [:period.operating/last-flag]
+ :drawdown        '(when-flag [:period.operating/close-flag]
+                              [:inputs/cost-of-solar-asset])
  :redemption-pos  '(when-flag [:period.operating/last-flag]
                               [:share-capital.balance/start])
  :redemption       '(- [:redemption-pos]))
@@ -172,7 +179,7 @@
 (corkscrew!
  "share-capital.balance"
  :starter          [:inputs/cost-of-solar-asset]
- :start-condition  [:period.operating/first-flag]
+ :start-condition  [:period.operating/close-flag]
  :decreases        [:share-capital/redemption-pos])
 
 (calculation!
@@ -260,11 +267,26 @@
  '(= (round [:balance-sheet.assets/total-assets])
      (round [:balance-sheet.liabilities/total-liabilities])))
 
+;; Returns to equity holders
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(totalled-calculation!
+ "equity-return" :cashflow-for-irr
+ :share-capital-drawdown   '(- [:share-capital/drawdown])
+ :share-capital-redemption '(- [:share-capital/redemption])
+ :dividend                 [:dividends/dividend-paid-pos])
+
+(outputs!
+ :irr {:name "IRR to Equity Holders"
+       :units :percent
+       :function '(irr-days :period/end-date :equity-return/cashflow-for-irr)})
 
 (def model (f/compile-model!))
-(def results (time (f/run-model model 20)))
-(f/print-result-summary! results {:model model
-                                  :header :period/end-date
-                                  :sheets ["balance-sheet" "income" "cashflow"]
-                                  #_#_:charts [:income.retained-earnings/end
-                                               :cashflow.retained/end]})
+(def results (time (f/run-model model 183)))
+
+
+(print-result-summary! results {:model model
+                                :header :period/end-date
+                                :sheets ["share-capital" "equity-return"]
+                                :start 1
+                                :charts [:equity-return/cashflow-for-irr]})

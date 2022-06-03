@@ -90,6 +90,22 @@
   ;; => (if [:bar/baz] [:foo/hello :prev] [:foo/world])
   )
 
+(def reference? qualified-keyword?)
+
+(defn rewrite-output-ref [ref]
+  (list 'rest (list ref '(into {} r))))
+
+(defn rewrite-output-expr [expr]
+  (reverse
+   (conj
+    '([r] fn)
+    (clojure.walk/postwalk
+     #(if (reference? %) (rewrite-output-ref %) %)
+     expr))))
+
+(rewrite-output-expr '(irr-days :period/end-date :equity-return/cashflow-for-irr))
+'(fn [r] (irr-days (rest (:period/end-date (into {} r))) (rest (:equity-return/cashflow-for-irr (into {} r)))))
+
 ;; Graphing and dependecies
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -138,12 +154,14 @@
 
 (defn- corkscrew [calc-name & row-pairs]
   (let [{:keys [increases decreases starter start-condition]} (apply hash-map row-pairs)]
-    (totalled-calculation
-     calc-name :end
-     :start (if start-condition
-              (list 'if start-condition starter [:end :prev]) [:end :prev])
+    (calculation
+     calc-name
+     :start    [:end :prev]
      :increase (sum-expression increases)
-     :decrease (negative-sum-expression decreases))))
+     :decrease (negative-sum-expression decreases)
+     :end      (if starter
+                 (list 'if start-condition starter '(+ [:start] [:increase] [:decrease]))
+                 '(+ [:start] [:increase] [:decrease])))))
 
 (defn- base-case [case-name & row-pairs]
   [case-name (apply array-map row-pairs)])
@@ -183,7 +201,7 @@
                  (qualify-local-references calc-name expr)))
        rows))
 
-(defn- compile-model [inputs calculations metadata]
+(defn- compile-model [inputs calculations metadata outputs]
   (let [rows (mapcat qualify-all-references (into [(input->calculation inputs)] calculations))
         row-map (into {} rows)
         order (calculate-order row-map)]
@@ -193,7 +211,9 @@
                  :rows row-map
                  :calculation-order order
                  :runner (eval (tr/make-runner order row-map))
-                 :meta (into {} (mapcat qualify-row-names metadata))})))
+                 :meta (into {} (mapcat qualify-row-names metadata))
+                 :outputs (into (array-map) (for [[k v] (partition 2 (apply concat outputs))]
+                                              [k (update v :function (comp eval rewrite-output-expr))]))})))
 
 ;; Stateful wrappers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -201,15 +221,18 @@
 (defonce calculation-store (atom []))
 (defonce case-store (atom []))
 (defonce meta-store (atom []))
+(defonce output-store (atom []))
 
 (defn reset-model! []
   (reset! calculation-store [])
   (reset! case-store [])
-  (reset! meta-store []))
+  (reset! meta-store [])
+  (reset! output-store []))
 
 (defn- add-calc! [calc] (swap! calculation-store conj calc))
 (defn- add-case! [cas] (swap! case-store conj cas))
 (defn- add-meta! [md] (swap! meta-store conj md))
+(defn- add-outputs! [md] (swap! output-store conj md))
 
 (defn calculation! [calc-name & row-pairs]
   (add-calc! (apply calculation calc-name row-pairs)))
@@ -229,8 +252,11 @@
 (defn metadata! [calc-name & row-pairs]
   (add-meta! (apply metadata calc-name row-pairs)))
 
+(defn outputs! [& row-pairs]
+  (add-outputs! row-pairs))
+
 (defn compile-model! []
-  (compile-model (first @case-store) @calculation-store @meta-store))
+  (compile-model (first @case-store) @calculation-store @meta-store @output-store))
 
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
