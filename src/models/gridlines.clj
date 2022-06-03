@@ -263,4 +263,9 @@
 
 (def model (f/compile-model!))
 (def results (time (f/run-model model 183)))
-(f/print-category-html results (:meta model) :period/end-date  "cashflow" 100 110)
+(f/print-result-summary! results {:model model
+                                  :header :period/end-date
+                                  :sheets ["income" "cashflow"]
+                                  :start 100
+                                  :charts [:income.retained-earnings/end
+                                           :cashflow.retained/end]})

@@ -92,12 +92,26 @@
                   c))
     (c2d/show-window canvas "Graph")))
 
+(defn series-lines-save [series filename]
+  (let [canvas (c2d/canvas 1000 1000)
+        y-scale (scale-factors (apply concat series) 800)
+        x-vals (map #(+ 100 %) (calc-and-scale (range 0 (apply max (map count series))) 800))]
+    (draw-axis-lines canvas 1000 1000)
+    (doseq [[s c] (map vector series colors)]
+      (draw-lines canvas (lines-from-points (map vector x-vals (flip-vals (map #(+ 100 %) (scale s y-scale)))))
+                  c))
+    (c2d/save canvas filename)))
+
 (comment
 
   (series-line '(0 0 0 0 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 11000 12000 13000 14000 15000 16000))
 
   (series-lines ['(0 0 0 0 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 11000 12000 13000 14000 15000 16000)
-                 '(0 0 0 0 2000 4000 6000 8000 10000 12000 14000 16000 18000 20000 22000 24000 26000 28000 30000 32000)]))
+                 '(0 0 0 0 2000 4000 6000 8000 10000 12000 14000 16000 18000 20000 22000 24000 26000 28000 30000 32000)])
+
+  (series-lines-save ['(0 0 0 0 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 11000 12000 13000 14000 15000 16000)
+                      '(0 0 0 0 2000 4000 6000 8000 10000 12000 14000 16000 18000 20000 22000 24000 26000 28000 30000 32000)]
+                     "graph.png"))
 
 (defn function [f start end x-size y-size]
   (scatter (map (juxt identity f) (range start end (/ (- end start) 1000)))

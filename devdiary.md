@@ -11,7 +11,7 @@
 * Results Diff
 * metadata in bulk (e.g. income statement, all totals, all ccy-thousands
 * Change corkscrew so starter goes to _end_, not start)
-* Improvement to html print
+* **DONE** Improvement to html print
   * Charting for UI
   * print multiple sheets
 * Warnings on linked dependencies (links which are just other links)

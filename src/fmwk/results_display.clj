@@ -1,5 +1,6 @@
 (ns fmwk.results-display
   (:require [fmwk.tables :as t]
+            [fmwk.simple-viz.main :refer [series-lines-save]]
             [clojure.set :as set]
             [clojure.string :as str]
             [hiccup.core :refer [html]]))
@@ -171,24 +172,18 @@
    [:p "Some of your checks are not passing. Print 'checks' to see which ones"]
    #_[:p (pr-str checks)]])
 
-(defn html-table! [checks results]
-  (spit
-   "./results.html"
-   (html
-    [:html
-     [:head [:link {:rel :stylesheet
-                    :type "text/css"
-                    :href "style.css"}]]
-     [:body
-      [:h1 (name->title (sheet (first (second results))))]
-      (when (not-empty checks) (check-warning checks))
-      (results->html-table results)]])))
+(defn- graph-series [series]
+  (let [filename "graph.png"]
+    (series-lines-save series filename)
+    filename))
 
-(defn print-result-summary [results {:keys [start periods header] :as options}]
+(defn print-result-summary! [results {:keys [start periods header charts] :as options}]
   (let [start (or start 1)
         end   (+ start (or periods 10))
         checks (check-results results header)
-        filtered-results (map #(prep-results results (get-in options [:model :meta]) header % start end) (:sheets options))]
+        filtered-results (map #(prep-results results (get-in options [:model :meta]) header % start end) (:sheets options))
+        graph-file (when charts (graph-series (map (into {} results) charts)))]
+    (println "charts" charts)
     (spit
      "./results.html"
      (html [:html
@@ -199,12 +194,19 @@
              (when (not-empty checks) (check-warning checks))
              (for [r filtered-results]
                [:div
-                [:h1 (name->title (sheet (first (second r))))]
-                (results->html-table r)])]]))))
+                [:h3 (name->title (sheet (first (second r))))]
+                (results->html-table r)])
+             (when charts [:img.graph {:src graph-file}])]]))))
 
-(def test-results (clojure.edn/read-string (slurp "test-results.edn")))
-(def test-results-check (clojure.edn/read-string (slurp "test-results-check-fail.edn")))
+(comment
+  (def test-results (clojure.edn/read-string (slurp "test-results.edn")))
+  (def test-results-check (clojure.edn/read-string (slurp "test-results-check-fail.edn"))))
 
-(print-result-summary test-results-check {:model nil
-                                          :header :period/end-date
-                                          :sheets ["balance-sheet" "period" "checks"]})
+(print-result-summary!
+ test-results
+ {:model nil
+  :header :period/end-date
+  :start 5
+  :periods 12
+  :sheets ["balance-sheet" "period"]
+  :charts [:balance-sheet.assets/cash]})

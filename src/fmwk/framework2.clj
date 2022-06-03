@@ -2,12 +2,9 @@
   (:require [clojure.walk :refer [postwalk]]
             [clojure.set :as set]
             [ubergraph.core :as uber]
-            [clojure.string :as str]
             [ubergraph.alg :as uberalg]
-            [clojure.pprint :as pp]
-            [fmwk.tables :refer [records->series series->row-wise-table series->records]]
             [fmwk.table-runner :as tr]
-            [fmwk.results-display :refer [html-table!]]))
+            [fmwk.results-display :as display]))
 
 ;; utils
 ;;;;;;;;;;;;;;
@@ -243,78 +240,10 @@
         results (runner array calculation-order periods)]
     (map (juxt identity results) display-order)))
 
-(defn checks-failed? [record header]
-  (let [failed-checks (filter #(false? (second %)) (dissoc record header))]
-    (when (not-empty failed-checks)
-      (into (select-keys record [header]) failed-checks))))
-
-(defn check-results [results header]
-  (let [check-rows (rows-in-hierarchy "checks" (map first results))]
-    (keep #(checks-failed? % header)
-          (series->records (select-keys (into {} results) (conj check-rows header))))))
-
-;; Results Formatting
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def counter-format  (java.text.DecimalFormat. "0"))
-(def ccy-format      (java.text.DecimalFormat. "###,##0 ;(###,##0)"))
-(def ccy-cent-format (java.text.DecimalFormat. "###,##0.00"))
-
-(defn- format-counter [x] (.format counter-format x))
-
-(defn- format-ccy [x]
-  (if (zero? (Math/round (* 1.0 x)))
-    "-  "
-    (.format ccy-format x)))
-
-(defn- format-ccy-thousands [x]
-  (format-ccy (float (/ x 1000))))
-
-(defn- format-ccy-cents [x]
-  (if (= (int (* 100 x)) 0)
-    "- "
-    (.format ccy-cent-format x)))
-
-(defn- format-boolean [x]  (when (true? x) "✓"))
-
-(defn- format-percent [x] (format "%.2f%%" (* 100.0 x)))
-
-(defn- format-date [d]
-  (when (string? d)
-    (.format (java.time.format.DateTimeFormatter/ofPattern "dd MMM yy") (java.time.LocalDate/parse d))))
-
-(defn- default-rounding [xs]
-  (cond (every? number? xs) (mapv format-ccy xs)
-        (every? boolean? (rest xs)) (mapv format-boolean xs)
-        :else xs))
-
-(defn- display-format-series [xs unit]
-  (case unit
-    :counter            (mapv format-counter xs)
-    :currency           (mapv format-ccy xs)
-    :currency-thousands (mapv format-ccy-thousands xs)
-    :currency-cents     (mapv format-ccy-cents xs)
-    :percent            (mapv format-percent xs)
-    :flag               (mapv format-boolean xs)
-    :date               (mapv format-date xs)
-    (default-rounding xs)))
-
-(defn- format-results [results metadata]
-  (mapv #(update % 1
-                 display-format-series
-                 (get-in metadata [(first %) :units]))
-        results))
-
 ;; Result selection and printing
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-(defn print-category-html
-  ([results header category from to]
-   (print-category-html results nil header category from to))
-  ([results metadata header category from to]
-   (html-table! (check-results results header)
-                (prep-results results metadata header category from to))))
+(def print-result-summary! display/print-result-summary!)
 
 (defn vizi [model]
   (uber/viz-graph (rows->graph (:rows model)) {:auto-label true

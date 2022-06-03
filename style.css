@@ -1,6 +1,5 @@
 body {
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 0.8em;
 }
 
 table {
@@ -27,6 +26,7 @@ div.warning {
 
 td {
   border: 0.5px solid rgb(207, 207, 207);
+  font-size: 0.8em;
 }
 
 td.content {
@@ -46,4 +46,9 @@ td.title {
 td.header {
   font-weight: bold;
   border: 0;
+}
+
+img.graph {
+  width: 500;
+  height: 500;
 }
