@@ -68,12 +68,3 @@
           remove-first-title)]])))
 
 (results->html test-data)
-
-(def debug '([:period/end-date [0 "2022-06-30" "2022-09-30" "2022-12-31" "2023-03-31" "2023-06-30"]]
-             [:income/revenue ("- " "1,233" "1,510" "1,848" "2,262" "2,768")]
-             [:income/expenses ("- " "-1" "-1" "-1" "-1" "-1")]
-             [:income/profit-after-tax ("- " "1,232" "1,509" "1,847" "2,261" "2,767")]
-             [:income.retained-earnings/start ("- " "4,604" "5,836" "7,345" "9,191" "11,452")]
-             [:income.retained-earnings/increase ("- " "1,232" "1,509" "1,847" "2,261" "2,767")]
-             [:income.retained-earnings/decrease ("- " "- " "- " "- " "- " "- ")]
-             [:income.retained-earnings/end ("- " "5,836" "7,345" "9,191" "11,452" "14,219")]))
