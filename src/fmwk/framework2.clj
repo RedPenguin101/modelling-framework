@@ -286,14 +286,13 @@
     "- "
     (.format ccy-cent-format x)))
 
-(defn- format-boolean [x]  (if x "✓" ""))
+(defn- format-boolean [x]  (when (true? x) "✓"))
 
 (defn- format-percent [x] (format "%.2f%%" (* 100.0 x)))
 
 (defn- format-date [d]
-  (if (string? d)
-    (.format (java.time.format.DateTimeFormatter/ofPattern "dd MMM yy") (java.time.LocalDate/parse d))
-    d))
+  (when (string? d)
+    (.format (java.time.format.DateTimeFormatter/ofPattern "dd MMM yy") (java.time.LocalDate/parse d))))
 
 (defn- default-rounding [xs]
   (cond (every? number? xs) (mapv format-ccy xs)
