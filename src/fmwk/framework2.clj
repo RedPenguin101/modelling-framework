@@ -286,7 +286,7 @@
     "- "
     (.format ccy-cent-format x)))
 
-(defn- format-boolean [x]  (if x "✓" "x"))
+(defn- format-boolean [x]  (if x "✓" ""))
 
 (defn- format-percent [x] (format "%.2f%%" (* 100.0 x)))
 
