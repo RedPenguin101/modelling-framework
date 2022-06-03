@@ -7,22 +7,26 @@ table {
   border-collapse: collapse;
 }
 
+tr:first-child {
+  background-color: lightgrey;
+  font-weight: bold;
+}
+
 td {
-  white-space: pre-wrap;
   border: 0.5px solid rgb(207, 207, 207);
 }
 
 td.content {
+  white-space: pre-wrap;
   text-align: right;
   width: 6em;
   padding-right: 5px;
 }
 
 td.title {
-  border: 0;
+  white-space: nowrap;
   padding-right: 1em;
   padding-left: 0.5em;
-  border: 0.5px solid rgb(207, 207, 207);
 }
 
 td.header {
