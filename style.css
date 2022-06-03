@@ -9,7 +9,20 @@ table {
 
 tr:first-child {
   background-color: lightgrey;
-  font-weight: bold;
+}
+
+div.warning {
+  background-color: rgb(255, 250, 230);
+  padding: 0.5em;
+  margin-bottom: 1em;
+  display: flex;
+  align-items: center;
+}
+
+#warning-icon {
+  width: 2em;
+  height: 2em;
+  margin-right: 1em;
 }
 
 td {

@@ -25,6 +25,11 @@
                                   [:inputs/period-length-in-months])
                       -1))
 
+(f/metadata!
+ "period"
+ :start-date {:units :date}
+ :end-date {:units :date})
+
 (f/calculation!
  "prices"
  :inflation-period   '(dec [:period/number])
@@ -115,4 +120,4 @@
 (defn print-helper [results cat start]
   (f/print-category-html results (:meta model) :period/end-date cat start (+ 11 start)))
 
-(print-helper results "income" 10)
+(print-helper results "balance-sheet" 10)

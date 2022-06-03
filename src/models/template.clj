@@ -20,6 +20,13 @@
  :end-date                 '(-> [:start-date]
                                 (add-months [:inputs/months-in-period])
                                 (add-days -1)))
+
+(metadata!
+ "period"
+ :number     {:units :counter}
+ :start-date {:units :date}
+ :end-date   {:units :date})
+
 (calculation!
  "period.operating"
  :start-date               [:inputs/operating-period-start]
@@ -27,6 +34,10 @@
                                     [:inputs/operating-period-start])
  :first-flag               '(date= [:start-date]
                                    [:period/start-date]))
+
+(metadata!
+ "period.operating"
+ :start-date {:units :date :hidden true})
 
 (calculation!
  "period.calendar-year"

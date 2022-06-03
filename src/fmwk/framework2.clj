@@ -7,7 +7,7 @@
             [clojure.pprint :as pp]
             [fmwk.tables :refer [records->series series->row-wise-table series->records]]
             [fmwk.table-runner :as tr]
-            [fmwk.results-display :refer [results->html]]))
+            [fmwk.results-display :refer [html-table!]]))
 
 ;; utils
 ;;;;;;;;;;;;;;
@@ -374,22 +374,24 @@
 (defn- add-total-label [table]
   (assoc-in (vec table) [0 1 0] "TOTAL"))
 
+(defn- prep-results [results metadata header category from to]
+  (let [tot (totals results (get-total-rows metadata))
+        display-rows (set/difference
+                      (set (conj (rows-in-hierarchy category (map first results)) header))
+                      (set (hidden-rows metadata)))]
+    (-> results
+        (select-rows display-rows)
+        (select-periods from to)
+        (add-totals tot)
+        (format-results metadata)
+        (add-total-label))))
 
 (defn print-category-html
   ([results header category from to]
    (print-category-html results nil header category from to))
   ([results metadata header category from to]
-   (let [tot (totals results (get-total-rows metadata))
-         display-rows (set/difference
-                       (set (conj (rows-in-hierarchy category (map first results)) header))
-                       (set (hidden-rows metadata)))]
-     (-> results
-         (select-rows display-rows)
-         (select-periods from to)
-         (add-totals tot)
-         (format-results metadata)
-         (add-total-label)
-         results->html))))
+   (html-table! (check-results results header)
+                (prep-results results metadata header category from to))))
 
 (defn vizi [model]
   (uber/viz-graph (rows->graph (:rows model)) {:auto-label true

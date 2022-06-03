@@ -50,7 +50,22 @@
 (defn remove-first-title [html-table]
   (assoc-in html-table [1 1 1] ""))
 
-(defn results->html [results]
+(defn results->html-table [results]
+  (-> results
+      t/series->row-wise-table
+      table->grouped-table
+      row-titles
+      table->html-table
+      remove-first-header
+      remove-first-title))
+
+(defn check-warning [checks]
+  [:div.warning
+   [:img#warning-icon {:src "./warning.png"}]
+   [:p "Some of your checks are not passing. Print 'checks' to see which ones"]
+   #_[:p (pr-str checks)]])
+
+(defn html-table! [checks results]
   (spit
    "./results.html"
    (html
@@ -60,12 +75,7 @@
                     :href "style.css"}]]
      [:body
       [:h1 (name->title (sheet (first (second results))))]
-      (-> results
-          t/series->row-wise-table
-          table->grouped-table
-          row-titles
-          table->html-table
-          remove-first-header
-          remove-first-title)]])))
+      (when (not-empty checks) (check-warning checks))
+      (results->html-table results)]])))
 
-(results->html test-data)
+(html-table! '({:period/end-date "2020-03-31", :checks/balance-sheet-balances false} {:period/end-date "2020-06-30", :checks/balance-sheet-balances false}) test-data)
