@@ -50,3 +50,6 @@
   (add-days "2021-03-01" -1)
   (end-of-month "2021-03-31" 2)
   (.getDayOfMonth (str->date "2021-03-31")))
+
+(defn round [x]
+  (if (int? x) x (Math/round x)))
