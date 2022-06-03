@@ -369,8 +369,6 @@
 (defn- add-total-label [table]
   (assoc-in (vec table) [0 1 0] "TOTAL"))
 
-debug
-
 (defn print-category-html
   ([results header category from to]
    (print-category-html results nil header category from to))
