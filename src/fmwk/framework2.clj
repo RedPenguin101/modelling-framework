@@ -268,14 +268,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def counter-format  (java.text.DecimalFormat. "0"))
-(def ccy-format      (java.text.DecimalFormat. "###,##0"))
+(def ccy-format      (java.text.DecimalFormat. "###,##0 ;(###,##0)"))
 (def ccy-cent-format (java.text.DecimalFormat. "###,##0.00"))
 
 (defn- format-counter [x] (.format counter-format x))
 
 (defn- format-ccy [x]
   (if (zero? (Math/round (* 1.0 x)))
-    "- "
+    "-  "
     (.format ccy-format x)))
 
 (defn- format-ccy-thousands [x]

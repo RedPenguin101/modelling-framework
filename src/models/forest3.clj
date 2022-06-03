@@ -151,4 +151,4 @@
 (def model (f/compile-model!))
 
 (def results (f/run-model model 20))
-(f/print-category-html results :period/end-date "volume" 13 20)
+(f/print-category-html results :period/end-date "debt" 13 20)
