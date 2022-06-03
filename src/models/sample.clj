@@ -112,4 +112,7 @@
 
 (:meta model)
 
-(f/print-category results (:meta model) :period/end-date "balance-sheet" 10 15)
+(defn print-helper [results cat start]
+  (f/print-category-html results (:meta model) :period/end-date cat start (+ 11 start)))
+
+(print-helper results "income" 10)

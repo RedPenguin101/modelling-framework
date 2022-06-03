@@ -1,0 +1,29 @@
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.8em;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+td {
+  border: 0.5px solid rgb(207, 207, 207);
+}
+
+td.content {
+  text-align: right;
+  width: 6em;
+  padding-right: 5px;
+}
+
+td.title {
+  border: 0;
+  padding-right: 1em;
+  padding-left: 0.5em;
+}
+
+td.header {
+  font-weight: bold;
+  border: 0;
+}

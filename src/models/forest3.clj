@@ -71,14 +71,16 @@
  :harvest    '(when-not-flag
                [:period/exit-flag]
                (/ (- [:expenses])
-                  [:prices/profit])))
+                  [:prices/profit]))
+ :exit       '(when-flag [:period/exit-flag]
+                         (+ [:growth] [:volume.balance/start] (- [:harvest]))))
 
 (corkscrew!
  "volume.balance"
  :starter         [:inputs/volume-at-aquisition]
  :start-condition [:period/aquisition-flag]
  :increases       [:volume/growth]
- :decreases       [:volume/harvest])
+ :decreases       [:volume/harvest :volume/exit])
 
 #_(def prices-meta
     #:prices{:inflation-period {:units :counter}
@@ -149,5 +151,4 @@
 (def model (f/compile-model!))
 
 (def results (f/run-model model 20))
-(f/print-category results :period/end-date "volume" 13 20)
-(f/print-category results :period/end-date "volume" 1 5)
+(f/print-category-html results :period/end-date "volume" 13 20)

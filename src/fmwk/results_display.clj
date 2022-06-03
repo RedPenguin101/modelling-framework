@@ -1,0 +1,79 @@
+(ns fmwk.results-display
+  (:require [fmwk.tables :as t]
+            [clojure.string :as str]
+            [hiccup.core :refer [html]]))
+
+(defn name->title [k]
+  (when k (str/join " " (map str/capitalize (str/split (name k) #"-")))))
+
+(defn- calculation-hierarchy [k]
+  (if (qualified-keyword? k)
+    (vec (str/split (namespace k) #"\."))
+    []))
+
+(def sheet (comp first calculation-hierarchy))
+(def calc  (comp second calculation-hierarchy))
+
+(def test-data
+  '([:time.period/end-date ["TOTAL" "2022-06-30" "2022-09-30" "2022-12-31" "2023-03-31" "2023-06-30"]]
+    [:balance-sheet.assets/cash ("- " "4,603" "5,835" "7,344" "9,190" "11,451")]
+    [:balance-sheet.assets/receivables ("- " "1,233" "1,510" "1,848" "2,262" "2,768")]
+    [:balance-sheet.assets/total-assets ("- " "5,836" "7,345" "9,191" "11,452" "14,219")]
+    [:balance-sheet.liabilities/equity ("- " "- " "- " "- " "- " "- ")]
+    [:balance-sheet.liabilities/retained-earnings ("- " "5,836" "7,345" "9,191" "11,452" "14,219")]
+    [:balance-sheet.liabilities/total-liabilities ("- " "5,836" "7,345" "9,191" "11,452" "14,219")]))
+
+(defn table->grouped-table [table]
+  (->> table
+       (group-by (comp calc first))
+       (mapcat (fn [[grp rows]] (into [[grp]] rows)))))
+
+(defn row-titles [table]
+  (map #(update % 0 name->title) table))
+
+;; html 
+
+(defn apply-classes [row]
+  (cond (= 1 (count row)) (map #(conj [:td.header] %) row)
+        :else             (into [[:td.title (first row)]]
+                                (map #(conj [:td.content] %) (rest row)))))
+
+(defn row->table-row [row]
+  (into [:tr] (apply-classes row)))
+
+(defn table->html-table [table]
+  (into [:table] (map row->table-row table)))
+
+(defn remove-first-header [html-table]
+  (into [:table] (drop 2 html-table)))
+
+(defn remove-first-title [html-table]
+  (assoc-in html-table [1 1 1] ""))
+
+(defn results->html [results]
+  (spit
+   "./results.html"
+   (html
+    [:html
+     [:head [:link {:rel :stylesheet
+                    :type "text/css"
+                    :href "style.css"}]]
+     [:body
+      (-> results
+          t/series->row-wise-table
+          table->grouped-table
+          row-titles
+          table->html-table
+          remove-first-header
+          remove-first-title)]])))
+
+(results->html test-data)
+
+(def debug '([:period/end-date [0 "2022-06-30" "2022-09-30" "2022-12-31" "2023-03-31" "2023-06-30"]]
+             [:income/revenue ("- " "1,233" "1,510" "1,848" "2,262" "2,768")]
+             [:income/expenses ("- " "-1" "-1" "-1" "-1" "-1")]
+             [:income/profit-after-tax ("- " "1,232" "1,509" "1,847" "2,261" "2,767")]
+             [:income.retained-earnings/start ("- " "4,604" "5,836" "7,345" "9,191" "11,452")]
+             [:income.retained-earnings/increase ("- " "1,232" "1,509" "1,847" "2,261" "2,767")]
+             [:income.retained-earnings/decrease ("- " "- " "- " "- " "- " "- ")]
+             [:income.retained-earnings/end ("- " "5,836" "7,345" "9,191" "11,452" "14,219")]))
