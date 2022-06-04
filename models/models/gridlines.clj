@@ -29,7 +29,13 @@
  :availability               0.97
  :power-tariff               0.065
 
- :inputs/annual-opex-cost 1500000)
+ :annual-opex-cost           1500000
+
+ :senior-debt-ltv            0.7
+ :senior-debt-swap-rate      0.025
+ :senior-debt-margin         0.038
+ :senior-debt-repayment-term 10 ;years
+ )
 
 (calculation!
  "period"
@@ -193,6 +199,38 @@
  "dividends"
  :dividend-paid {:total true})
 
+;; DEBT
+;;;;;;;;;;;;;;;;;;;;
+
+(calculation!
+ "senior-debt"
+ :drawdown-amount       '(* [:inputs/senior-debt-ltv] [:inputs/cost-of-solar-asset])
+ :drawdown              '(when-flag
+                          [:period.operating/close-flag]
+                          [:drawdown-amount])
+ :end-of-repayment       '(add-months [:inputs/financial-close-date]
+                                      (* 12 [:inputs/senior-debt-repayment-term]))
+ :repayment-period-flag  '(and (date>= [:period/start-date]
+                                       [:inputs/operating-period-start])
+                               (date<= [:period/end-date]
+                                       [:end-of-repayment]))
+ :repayment-amount-pos    '(when-flag [:repayment-period-flag]
+                                      (/ [:drawdown-amount]
+                                         (* [:inputs/periods-in-year]
+                                            [:inputs/senior-debt-repayment-term])))
+ :repayment-amount        '(- [:repayment-amount-pos]))
+
+(metadata!
+ "senior-debt"
+ :drawdown             {:total true}
+ :end-of-repayment     {:units :date}
+ :repayment-amount-pos {:total true})
+
+(corkscrew!
+ "senior-debt.balance"
+ :increases [:senior-debt/drawdown]
+ :decreases [:senior-debt/repayment-amount-pos])
+
 ;; Financial Statements
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -290,7 +328,7 @@
 
 (print-result-summary! results {:model model
                                 :header :period/end-date
-                                :sheets ["cashflow" "income"]
+                                :sheets ["senior-debt"]
                                 :start 1
                                 :charts []
                                 :outputs true})
