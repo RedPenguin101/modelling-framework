@@ -11,3 +11,6 @@
 
 (defn round [x]
   (if (int? x) x (Math/round x)))
+
+(defn sum  [xs] (apply + xs))
+(defn mean [xs] (/ (sum xs) (count xs)))

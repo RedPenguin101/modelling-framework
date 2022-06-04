@@ -40,6 +40,7 @@
 (def counter-format  (java.text.DecimalFormat. "0"))
 (def ccy-format      (java.text.DecimalFormat. "###,##0 ;(###,##0)"))
 (def ccy-cent-format (java.text.DecimalFormat. "###,##0.00"))
+(def factor-format   (java.text.DecimalFormat. "###,##0.0000"))
 
 (defn- format-counter [x] (.format counter-format x))
 
@@ -56,8 +57,10 @@
     "- "
     (.format ccy-cent-format x)))
 
-(defn- format-boolean [x]  (when (true? x) "✓"))
+(defn format-factor [x]
+  (.format factor-format x))
 
+(defn- format-boolean [x]  (when (true? x) "✓"))
 (defn- format-percent [x] (format "%.2f%%" (* 100.0 x)))
 
 (defn- format-date [d]
@@ -78,6 +81,7 @@
     :percent            (format-percent x)
     :flag               (format-boolean x)
     :date               (format-date x)
+    :factor             (format-factor x)
     x))
 
 (defn- display-format-series [xs unit]
@@ -89,6 +93,7 @@
     :percent            (mapv format-percent xs)
     :flag               (mapv format-boolean xs)
     :date               (mapv format-date xs)
+    :factor             (mapv format-factor xs)
     (default-rounding xs)))
 
 (defn- format-results [results metadata]

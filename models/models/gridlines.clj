@@ -1,7 +1,7 @@
 (ns models.gridlines
   (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! cork-metadata! corkscrew! totalled-calculation! check! outputs!]]
             [fmwk.results-display :refer [print-result-summary!]]
-            [fmwk.utils :refer [when-flag when-not-flag round]]
+            [fmwk.utils :refer [when-flag when-not-flag round mean]]
             [fmwk.dates :refer [year-frac-act-360 month-of add-days add-months date= date< date<= date> date>=]]
             [fmwk.irr :refer [irr-days]]))
 
@@ -194,7 +194,7 @@
 (calculation!
  "dividends"
  :earnings-available '(max 0 (+ [:income.retained/start] [:income/profit-after-tax]))
- :cash-available     '(max 0 (+ [:cashflow.retained/start] [:cashflow/available-for-dividends]))
+ :cash-available     '(max 0 (+ [:cashflow.retained/start] [:cashflow.financing/available-for-dividends]))
  :dividend-paid-pos  '(min [:earnings-available] [:cash-available])
  :dividend-paid      '(- [:dividend-paid-pos]))
 
@@ -249,22 +249,45 @@
 (cork-metadata!
  "senior-debt.balance" :currency-thousands)
 
+(calculation!
+ "senior-debt.dscr"
+ :debt-service             '(+ [:senior-debt/repayment-amount-pos]
+                               [:senior-debt/interest-pos])
+ :cash-available           [:cashflow.operating/available-for-debt-service]
+ :dscr                     '(if (true? [:senior-debt/repayment-period-flag])
+                              (/ [:cash-available]
+                                 [:debt-service]) 0))
+
+(metadata!
+ "senior-debt.dscr"
+ :dscr                 {:units :factor})
+
+
 ;; Financial Statements
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (totalled-calculation!
- "cashflow" :available-for-dividends
+ "cashflow.operating" :available-for-debt-service
  ;; TODO payment term delay for revenue 
  :revenue                        [:ops.revenue/revenue]
  :opex-expense                   [:ops.opex/om-expense]
- :puchase-of-solar-asset         '(- [:depreciation/puchase-cashflow])
+ :puchase-of-solar-asset         '(- [:depreciation/puchase-cashflow]))
+
+(bulk-metadata!
+ "cashflow.operating"
+ {:units :currency-thousands :total true})
+
+(totalled-calculation!
+ "cashflow.financing" :available-for-dividends
+ ;; TODO payment term delay for revenue
+ :available-for-debt-service     [:cashflow.operating/available-for-debt-service]
  :debt-principal                 '(+ [:senior-debt/drawdown] [:senior-debt/repayment-amount])
  :interest-paid                  [:senior-debt/interest]
  :share-capital                  '(+ [:share-capital/drawdown] [:share-capital/redemption]))
 
 (corkscrew!
  "cashflow.retained"
- :increases [:cashflow/available-for-dividends]
+ :increases [:cashflow.financing/available-for-dividends]
  :decreases [:dividends/dividend-paid-pos])
 
 (check!
@@ -272,12 +295,14 @@
  '(>= [:cashflow.retained/end] 0))
 
 (bulk-metadata!
- "cashflow"
+ "cashflow.financing"
  {:units :currency-thousands :total true})
 
-(bulk-metadata!
- "cashflow.retained"
- {:units :currency-thousands})
+(metadata!
+ "cashflow.financing"
+ :available-for-debt-service {:hidden true})
+
+(cork-metadata! "cashflow.retained" :currency-thousands)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; INCOME ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -350,15 +375,20 @@
              :function '(irr-days :period/end-date :equity-return/cashflow-for-irr)}
  :dividends {:name "Dividends paid (thousands)"
              :units :currency-thousands
-             :function '(apply + :dividends/dividend-paid-pos)})
+             :function '(apply + :dividends/dividend-paid-pos)}
+ :min-dscr  {:name "Min DSCR"
+             :units :factor
+             :function '(apply min (remove zero? :senior-debt.dscr/dscr))}
+ :avg-dscr  {:name "Avg DSCR"
+             :units :factor
+             :function '(mean (remove zero? :senior-debt.dscr/dscr))})
 
 (def model (f/compile-model!))
 (def results (time (f/run-model model 183)))
 
-
 (print-result-summary! results {:model model
                                 :header :period/end-date
-                                :sheets ["cashflow" "checks"]
+                                :sheets ["senior-debt"]
                                 :start 1
-                                :charts []
+                                :charts [:senior-debt.dscr/dscr]
                                 :outputs true})
