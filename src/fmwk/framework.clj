@@ -262,6 +262,13 @@
   (let [calc (get-calc! calc-name)]
     (add-meta! (bulk-metadata calc-name mp calc))))
 
+(defn cork-metadata! [calc-name units]
+  (metadata! calc-name
+             :start    {:units units}
+             :increase {:total true :units units}
+             :decrease {:total true :units units}
+             :end      {:units units}))
+
 (defn outputs! [& row-pairs]
   (add-outputs! row-pairs))
 

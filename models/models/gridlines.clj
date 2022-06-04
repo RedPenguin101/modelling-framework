@@ -1,5 +1,5 @@
 (ns models.gridlines
-  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! corkscrew! totalled-calculation! check! outputs!]]
+  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! cork-metadata! corkscrew! totalled-calculation! check! outputs!]]
             [fmwk.results-display :refer [print-result-summary!]]
             [fmwk.utils :refer [when-flag when-not-flag round]]
             [fmwk.dates :refer [month-of add-days add-months date= date< date<= date> date>=]]
@@ -233,6 +233,9 @@
  "senior-debt.balance"
  :increases [:senior-debt/drawdown]
  :decreases [:senior-debt/repayment-amount-pos])
+
+(cork-metadata!
+ "senior-debt.balance" :currency-thousands)
 
 ;; Financial Statements
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
