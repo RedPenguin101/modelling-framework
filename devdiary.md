@@ -12,9 +12,11 @@
 * **DONE** Improvement to html print
   * Charting for UI
   * print multiple sheets
+* Only run on changed model
 * Improve checks - show at bottom of sheet
 * Inputs, base cases, scenarios
 * Output comparison across scenarios
+* Save run outputs, display last x (like gridlines output sheet)
 * Results Diff - colors on changed cells
 * Warnings on linked dependencies (links which are just other links)
 

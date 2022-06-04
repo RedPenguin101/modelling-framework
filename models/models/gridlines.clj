@@ -345,9 +345,12 @@
  :dividend {:total true})
 
 (outputs!
- :irr {:name "IRR to Equity Holders"
-       :units :percent
-       :function '(irr-days :period/end-date :equity-return/cashflow-for-irr)})
+ :irr       {:name "IRR to Equity Holders"
+             :units :percent
+             :function '(irr-days :period/end-date :equity-return/cashflow-for-irr)}
+ :dividends {:name "Dividends paid (thousands)"
+             :units :currency-thousands
+             :function '(apply + :dividends/dividend-paid-pos)})
 
 (def model (f/compile-model!))
 (def results (time (f/run-model model 183)))
