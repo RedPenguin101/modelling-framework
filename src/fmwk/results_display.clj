@@ -208,7 +208,7 @@
                            :href "style.css"}]]
             [:body
              (when (not-empty checks) (check-warning checks))
-             (when (not-empty (:outputs model))
+             (when (and (:outputs options) (not-empty (:outputs model)))
                [:div
                 [:h3 "Outputs"]
                 (for [{:keys [result name units]} (outputs results (:outputs model))]
@@ -217,7 +217,7 @@
                [:div
                 [:h3 (name->title (sheet (first (second r))))]
                 (results->html-table r)])
-             (when charts [:img.graph {:src graph-file}])]]))))
+             (when (not-empty charts) [:img.graph {:src graph-file}])]]))))
 
 (comment
   (def test-results (clojure.edn/read-string (slurp "test-results.edn")))

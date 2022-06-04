@@ -291,6 +291,7 @@
 
 (print-result-summary! results {:model model
                                 :header :period/end-date
-                                :sheets ["share-capital" "equity-return"]
+                                :sheets ["balance-sheet"]
                                 :start 1
-                                :charts []})
+                                :charts []
+                                :outputs true})
