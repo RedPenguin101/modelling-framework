@@ -6,24 +6,16 @@
 * **DONE** Checks and warnings
 * **DONE** "Hidden" metadata
 * Inputs, base cases, scenarios
-* Outputs, output comparison
-* UI
-* Results Diff
-* metadata in bulk (e.g. income statement, all totals, all ccy-thousands
-* Change corkscrew so starter goes to _end_, not start)
+* **DONE** Outputs
+* Output comparison across scenarios
+* **DONE** UI
+* Results Diff - colors on changed cells
+* **DONE** metadata in bulk (e.g. income statement, all totals, all ccy-thousands
+* **DONE** Change corkscrew so starter goes to _end_, not start)
 * **DONE** Improvement to html print
   * Charting for UI
   * print multiple sheets
 * Warnings on linked dependencies (links which are just other links)
-
-```clojure
-(print-results results {:model   model
-                        :headers [:period/end-date]
-                        :sheets  ["cashflow","income"]
-                        :charts  [:dividends/dividend-paid]
-                        :start   100
-                        :periods 10})
-```
 
 ### Other
 * Only-dependencies recalculation? Need to recompile model function

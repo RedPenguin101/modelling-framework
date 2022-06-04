@@ -169,8 +169,11 @@
 (defn- check [& row-pairs]
   (apply calculation "checks" row-pairs))
 
-(defn metadata [calc-name & row-pairs]
+(defn- metadata [calc-name & row-pairs]
   [calc-name (apply array-map row-pairs)])
+
+(defn- bulk-metadata [calc-name mp calc]
+  [calc-name (zipmap (keys calc) (repeat mp))])
 
 ;; Calculation and input preparation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -223,6 +226,9 @@
 (defonce meta-store (atom []))
 (defonce output-store (atom []))
 
+(defn- get-calc! [calc-name]
+  (get (into {} @calculation-store) calc-name))
+
 (defn reset-model! []
   (reset! calculation-store [])
   (reset! case-store [])
@@ -251,6 +257,10 @@
 
 (defn metadata! [calc-name & row-pairs]
   (add-meta! (apply metadata calc-name row-pairs)))
+
+(defn bulk-metadata! [calc-name mp]
+  (let [calc (get-calc! calc-name)]
+    (add-meta! (bulk-metadata calc-name mp calc))))
 
 (defn outputs! [& row-pairs]
   (add-outputs! row-pairs))

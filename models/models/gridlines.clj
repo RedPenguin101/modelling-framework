@@ -1,5 +1,5 @@
 (ns models.gridlines
-  (:require [fmwk.framework :as f :refer [base-case! calculation! metadata! corkscrew! totalled-calculation! check! outputs!]]
+  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! corkscrew! totalled-calculation! check! outputs!]]
             [fmwk.results-display :refer [print-result-summary!]]
             [fmwk.utils :refer [when-flag when-not-flag round]]
             [fmwk.dates :refer [month-of add-days add-months date= date< date<= date> date>=]]
@@ -208,11 +208,13 @@
  :increases [:cashflow/available-for-dividends]
  :decreases [:dividends/dividend-paid-pos])
 
-(metadata!
+(bulk-metadata!
  "cashflow"
- :revenue                        {:units :currency-thousands :total true}
- :opex-expense                   {:units :currency-thousands :total true}
- :available-for-dividends        {:units :currency-thousands :total true})
+ {:units :currency-thousands :total true})
+
+(bulk-metadata!
+ "cashflow.retained"
+ {:units :currency-thousands})
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; INCOME ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -228,34 +230,31 @@
  :increases [:income/profit-after-tax]
  :decreases [:dividends/dividend-paid-pos])
 
-(metadata!
+(bulk-metadata!
  "income"
- :revenue                        {:units :currency-thousands :total true}
- :opex-expense                   {:units :currency-thousands :total true}
- :depreciation-charge            {:units :currency-thousands :total true}
- :profit-after-tax               {:units :currency-thousands :total true})
+ {:units :currency-thousands :total true})
+
+(bulk-metadata!
+ "income.retained"
+ {:units :currency-thousands})
 
 (totalled-calculation!
  "balance-sheet.assets" :total-assets
  :non-current-assets [:depreciation.balance/end]
  :retained-cash      [:cashflow.retained/end])
 
-(metadata!
+(bulk-metadata!
  "balance-sheet.assets"
- :non-current-assets  {:units :currency-thousands}
- :retained-cash       {:units :currency-thousands}
- :total-assets        {:units :currency-thousands})
+ {:units :currency-thousands})
 
 (totalled-calculation!
  "balance-sheet.liabilities" :total-liabilities
  :share-capital     [:share-capital.balance/end]
  :retained-earnings [:income.retained/end])
 
-(metadata!
+(bulk-metadata!
  "balance-sheet.liabilities"
- :share-capital      {:units :currency-thousands}
- :retained-earnings  {:units :currency-thousands}
- :total-liabilities  {:units :currency-thousands})
+ {:units :currency-thousands})
 
 (calculation!
  "balance-sheet.check"
@@ -291,7 +290,7 @@
 
 (print-result-summary! results {:model model
                                 :header :period/end-date
-                                :sheets ["balance-sheet"]
+                                :sheets ["cashflow" "income"]
                                 :start 1
                                 :charts []
                                 :outputs true})
