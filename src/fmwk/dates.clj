@@ -18,6 +18,9 @@
 (defn year-frac-act-365 [from-date to-date]
   (float (/ (days-between from-date to-date) 365)))
 
+(defn year-frac-act-360 [from-date to-date]
+  (float (/ (days-between from-date to-date) 360)))
+
 (year-frac-act-365 "2021-01-01" "2021-06-30")
 
 (days-between "2021-01-01" "2021-01-31")

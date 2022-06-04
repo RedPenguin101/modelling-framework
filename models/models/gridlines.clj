@@ -2,7 +2,7 @@
   (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! cork-metadata! corkscrew! totalled-calculation! check! outputs!]]
             [fmwk.results-display :refer [print-result-summary!]]
             [fmwk.utils :refer [when-flag when-not-flag round]]
-            [fmwk.dates :refer [month-of add-days add-months date= date< date<= date> date>=]]
+            [fmwk.dates :refer [year-frac-act-360 month-of add-days add-months date= date< date<= date> date>=]]
             [fmwk.irr :refer [irr-days]]))
 
 (f/reset-model!)
@@ -221,13 +221,25 @@
                                       (/ [:drawdown-amount]
                                          (* [:inputs/periods-in-year]
                                             [:inputs/senior-debt-repayment-term])))
- :repayment-amount        '(- [:repayment-amount-pos]))
+ :repayment-amount        '(- [:repayment-amount-pos])
+ :year-frac               '(year-frac-act-360 (add-days [:period/start-date] -1)
+                                              [:period/end-date])
+ :interest-pos            '(* [:senior-debt.balance/start]
+                              [:year-frac]
+                              (+ [:inputs/senior-debt-margin]
+                                 [:inputs/senior-debt-swap-rate]))
+ :interest                 '(- [:interest-pos]))
 
 (metadata!
  "senior-debt"
- :drawdown             {:total true}
+ :drawdown             {:total true :units :currency-thousands}
+ :drawdown-amount      {:units :currency-thousands}
  :end-of-repayment     {:units :date}
- :repayment-amount-pos {:total true})
+ :repayment-amount-pos {:total true :units :currency-thousands}
+ :repayment-amount     {:total true :units :currency-thousands}
+ :year-frac            {:units :currency-cents}
+ :interest-pos         {:total true :units :currency-thousands}
+ :interest             {:total true :units :currency-thousands})
 
 (corkscrew!
  "senior-debt.balance"
@@ -247,12 +259,17 @@
  :opex-expense                   [:ops.opex/om-expense]
  :puchase-of-solar-asset         '(- [:depreciation/puchase-cashflow])
  :debt-principal                 '(+ [:senior-debt/drawdown] [:senior-debt/repayment-amount])
+ :interest-paid                  [:senior-debt/interest]
  :share-capital                  '(+ [:share-capital/drawdown] [:share-capital/redemption]))
 
 (corkscrew!
  "cashflow.retained"
  :increases [:cashflow/available-for-dividends]
  :decreases [:dividends/dividend-paid-pos])
+
+(check!
+ :no-negative-cash-balance
+ '(>= [:cashflow.retained/end] 0))
 
 (bulk-metadata!
  "cashflow"
@@ -269,7 +286,8 @@
  "income" :profit-after-tax
  :revenue                        [:ops.revenue/revenue]
  :opex-expense                   [:ops.opex/om-expense]
- :depreciation-charge            [:depreciation/depreciation])
+ :depreciation-charge            [:depreciation/depreciation]
+ :interest                       [:senior-debt/interest])
 
 (corkscrew!
  "income.retained"
@@ -337,7 +355,7 @@
 
 (print-result-summary! results {:model model
                                 :header :period/end-date
-                                :sheets ["cashflow" "depreciation" "balance-sheet"]
+                                :sheets ["cashflow" "checks"]
                                 :start 1
                                 :charts []
                                 :outputs true})
