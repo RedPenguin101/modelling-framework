@@ -5,16 +5,17 @@
 * **DONE** reimplement metadata
 * **DONE** Checks and warnings
 * **DONE** "Hidden" metadata
-* Inputs, base cases, scenarios
 * **DONE** Outputs
-* Output comparison across scenarios
 * **DONE** UI
-* Results Diff - colors on changed cells
 * **DONE** metadata in bulk (e.g. income statement, all totals, all ccy-thousands
 * **DONE** Change corkscrew so starter goes to _end_, not start)
 * **DONE** Improvement to html print
   * Charting for UI
   * print multiple sheets
+* Improve checks - show at bottom of sheet
+* Inputs, base cases, scenarios
+* Output comparison across scenarios
+* Results Diff - colors on changed cells
 * Warnings on linked dependencies (links which are just other links)
 
 ### Other
