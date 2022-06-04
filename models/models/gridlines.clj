@@ -148,13 +148,16 @@
 
 (calculation!
  "depreciation"
- :cost-of-solar-asset       [:inputs/cost-of-solar-asset]
+ :cost-of-solar-asset  [:inputs/cost-of-solar-asset]
+
  :useful-life-of-asset [:inputs/useful-life-of-asset]
  :useful-life-end      '(add-days (add-months [:inputs/operating-period-start] (* 12 [:useful-life-of-asset])) -1)
  :useful-life-flag     '(and (date>= [:period/start-date]
                                      [:inputs/operating-period-start])
                              (date<= [:period/end-date]
                                      [:useful-life-end]))
+ :puchase-cashflow     '(when-flag [:period.operating/close-flag]
+                                   [:cost-of-solar-asset])
  :depreciation-pos     '(when-flag [:useful-life-flag]
                                    (/ [:cost-of-solar-asset]
                                       (* [:useful-life-of-asset]
@@ -167,8 +170,7 @@
 
 (corkscrew!
  "depreciation.balance"
- :starter         [:depreciation/cost-of-solar-asset]
- :start-condition [:period.operating/close-flag]
+ :increases       [:depreciation/puchase-cashflow]
  :decreases       [:depreciation/depreciation-pos])
 
 ;; EQUITY
@@ -177,14 +179,15 @@
 (calculation!
  "share-capital"
  :drawdown        '(when-flag [:period.operating/close-flag]
-                              [:inputs/cost-of-solar-asset])
+                              (* (- 1 [:inputs/senior-debt-ltv])
+                                 [:inputs/cost-of-solar-asset]))
  :redemption-pos  '(when-flag [:period.operating/last-flag]
                               [:share-capital.balance/start])
  :redemption       '(- [:redemption-pos]))
 
 (corkscrew!
  "share-capital.balance"
- :starter          [:inputs/cost-of-solar-asset]
+ :starter          [:share-capital/drawdown]
  :start-condition  [:period.operating/close-flag]
  :decreases        [:share-capital/redemption-pos])
 
@@ -239,7 +242,9 @@
  ;; TODO payment term delay for revenue 
  :revenue                        [:ops.revenue/revenue]
  :opex-expense                   [:ops.opex/om-expense]
- :share-capital-redemption       [:share-capital/redemption])
+ :puchase-of-solar-asset         '(- [:depreciation/puchase-cashflow])
+ :debt-principal                 '(+ [:senior-debt/drawdown] [:senior-debt/repayment-amount])
+ :share-capital                  '(+ [:share-capital/drawdown] [:share-capital/redemption]))
 
 (corkscrew!
  "cashflow.retained"
@@ -287,6 +292,7 @@
 
 (totalled-calculation!
  "balance-sheet.liabilities" :total-liabilities
+ :debt              [:senior-debt.balance/end]
  :share-capital     [:share-capital.balance/end]
  :retained-earnings [:income.retained/end])
 
@@ -328,7 +334,7 @@
 
 (print-result-summary! results {:model model
                                 :header :period/end-date
-                                :sheets ["senior-debt"]
+                                :sheets ["cashflow" "depreciation" "balance-sheet"]
                                 :start 1
                                 :charts []
                                 :outputs true})
