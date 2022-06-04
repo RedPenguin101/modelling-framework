@@ -199,7 +199,7 @@
         end   (+ start (or periods 10))
         checks (check-results results header)
         filtered-results (map #(prep-results results (get-in options [:model :meta]) header % start end) (:sheets options))
-        graph-file (when charts (graph-series (map (into {} results) charts)))]
+        graph-file (when (not-empty charts) (graph-series (map (into {} results) charts)))]
     (spit
      "./results.html"
      (html [:html

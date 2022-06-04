@@ -276,6 +276,10 @@
  :share-capital-redemption '(- [:share-capital/redemption])
  :dividend                 [:dividends/dividend-paid-pos])
 
+(metadata!
+ "equity-return"
+ :dividend {:total true})
+
 (outputs!
  :irr {:name "IRR to Equity Holders"
        :units :percent
@@ -289,4 +293,4 @@
                                 :header :period/end-date
                                 :sheets ["share-capital" "equity-return"]
                                 :start 1
-                                :charts [:equity-return/cashflow-for-irr]})
+                                :charts []})
