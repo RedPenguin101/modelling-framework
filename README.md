@@ -114,9 +114,34 @@ DEBT.Interest
 Each 'block' is a calculation block. The capitalized prefix (`TIME`) is equivalent to a 'sheet' in Excel, and the suffice (`Periods`) is the equivalent to a calculation block. Notice that now, where rows are referencing other rows they can either be local (`amount` in the `DEBT.Interest` block), or importing (`DEBT.principal.starting-balance`).
 
 ## Programming DSL
-All of the above have been stated in pseudo-code. The framework implements a DSL for writing these models[^1].
+### Setup
+The general purpose language chosen for writing and running the model is [Clojure](https://clojure.org/). Clojure is a mostly-functional Lisp which is hosted on the JVM. It was chosen for the following reasons:
 
-[^1]: The below code is theoretically executable. You will need to handle imports, and start a running REPL.
+1. REPL driven development, and excellent tooling for it, provides excellent interactive programming capabilities out of the box
+2. [Homoiconicity](https://en.wikipedia.org/wiki/Homoiconicity) means that implementing what is effectively a DSL is extremely easy, and allows users to arbitrarily execute code and extend functionality within that DSL.
+3. JVM hosting gives an excellent runtime, a lot of useful out of the box functionality, especially for date manipulation, and access to lots of libraries.
+
+LISP syntax might be challenging for those coming from Python or R, but it is quite simple, especially since we use a very limited subset here.
+
+You can use any IDE you like, but my recommendation is VSCode, because with [Calva](https://calva.io/get-started-with-clojure/) it has excellent REPL integration. I recommend setting up Calva to 'Evaluate on Save', which will in effect re-run your model whenever you hit Ctrl+S (which you should do a lot). Lastly, install the Microsoft Live Preview Extension (link below), which will be used to display model outputs.
+
+Clone this repo and set up a new model (clj file) in the Models subfolder. At the top, put
+
+```clojure
+(ns models.readme-example
+  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! cork-metadata! corkscrew! totalled-calculation! check! outputs!]]
+            [fmwk.results-display :refer [print-result-summary!]]
+            [fmwk.utils :refer [when-flag when-not-flag round mean]]
+            [fmwk.dates :refer [year-frac-act-360 month-of add-days add-months date= date< date<= date> date>=]]
+            [fmwk.irr :refer [irr-days]]))
+
+(f/reset-model!)
+```
+
+Start the REPL following the Calva instructions. Now you're ready to start building the model.
+
+### Coding and running the model
+All of the above examples have been in pseudo-code. The framework implements a DSL for writing these models. The full source code for this model is at [This link](./models/models/readme_example.clj)
 
 ```clojure
 (base-case!
@@ -126,7 +151,7 @@ All of the above have been stated in pseudo-code. The framework implements a DSL
  :interest-rate    0.05)
 
 (calculation!
- "TIME.periods"
+ "TIME.Periods"
  :number                   '(+ 1 [:number :prev])
  :start-date               '(if (= 1 [:number])
                               [:inputs/model-start-date]
@@ -140,14 +165,20 @@ All of the above have been stated in pseudo-code. The framework implements a DSL
  :calculation-basis       [:DEBT.Principal/starting-balance]
  :annual-rate             [:inputs/interest-rate]
  :year-frac              '(year-frac-act-360
-                           (add-days [:TIME.periods/start-date] -1)
-                           [:TIME.periods/end-date])
+                           (add-days [:TIME.Periods/start-date] -1)
+                           [:TIME.Periods/end-date])
  :amount                 '(* [:calculation-basis]
                              [:annual-rate]
                              [:year-frac]))
 ```
 
-Note that the capitalization of the sheet, and the first-letter capitalizations of the calculation are just conventions which don't need to be followed for the model to work. You can also have more than two 'layers' of calculation if you want, though for legibility the output will only show headings for the first two levels.
+First we define our inputs - actually a "base-case", since we might want to create alternative sets of inputs later. Then we create two calculations: `TIME.Periods` and `DEBT.Interest`. Inside each calculation we define pairs of row-names, and their associated formula. These can either be direct references (like `calculation-basis`) or functions. A function is a Lisp S-Expression. The format is simply `(function-to-apply arg1 arg2 ...)`. It's entirely equivalent to `function-to-apply(arg1, arg2)` in Python, only the opening bracket comes _before_ the function call.
+
+**Note the 'quote' before each S-Expression!** This is important because it defers the evaluation of the expression until you want to run the model. Every formula that isn't a direct reference needs to have one of these[^2].
+
+[^2]: You can put them on references too if you like, but you don't need to.
+
+The capitalization of the sheet, and the first-letter capitalizations of the calculation are just conventions which don't need to be followed for the model to work. You can also have more than two 'layers' of calculation if you want, though for legibility the output will only show headings for the first two levels.
 
 Next, we can run the model with the following code:
 
@@ -172,7 +203,7 @@ We've tried to reference the starting balance of the debt, but we haven't define
  :starting-balance        [:placeholder 1000000])
 ```
 
-Now if we run the model, we don't get any errors, but seemingly nothing happens. What has actually happened is that an html file called _results.html_ has been created and saved to your working directory. A good way to view this if your IDE is VSCode is to install a live-preview extension (Microsoft's [Live Preview](https://marketplace.visualstudio.com/items?itemName=ms-vscode.live-server) works fine), and load the html file. Then whenever you run the model, the results will be displayed in the live preview window.
+Now if we run the model, we don't get any errors, but seemingly nothing happens. What has actually happened is that an html file called _results.html_ has been created and saved to your working directory. A good way to view this if your IDE is VSCode is to install a live-preview extension (Microsoft's [Live Preview](https://marketplace.visualstudio.com/items?itemName=ms-vscode.live-server) works fine), and load the html file. Then whenever you run the model, which if you've followed the above setup will be whenever you hit `Ctrl+s`, the results will be displayed in the live preview window.
 
 ![Results](./docs/ResultsDisplay.png)
 
