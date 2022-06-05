@@ -304,7 +304,6 @@
 
 (cork-metadata! "cashflow.retained" :currency-thousands)
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; INCOME ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (totalled-calculation!
@@ -383,12 +382,7 @@
              :units :factor
              :function '(mean (remove zero? :senior-debt.dscr/dscr))})
 
-(def model (f/compile-model!))
-(def results (time (f/run-model model 183)))
-
-(print-result-summary! results {:model model
-                                :header :period/end-date
-                                :sheets ["senior-debt"]
-                                :start 1
-                                :charts [:senior-debt.dscr/dscr]
-                                :outputs true})
+(f/compile-run-display! 20 {:header :period/end-date
+                            :sheets ["income"]
+                            :start 1
+                            :charts []})

@@ -9,7 +9,7 @@
 
 (defn- outputs [results outputs]
   (for [[_r f] outputs]
-    (assoc f :result ((:function f) results))))
+    (assoc f :result ((eval (:function f)) results))))
 
 (defn- calculation-hierarchy [k]
   (if (qualified-keyword? k)
@@ -213,15 +213,15 @@
                            :href "style.css"}]]
             [:body
              (when (not-empty checks) (check-warning checks))
+             (for [r filtered-results]
+               [:div
+                [:h3 (name->title (sheet (first (second r))))]
+                (results->html-table r)])
              (when (and (:outputs options) (not-empty (:outputs model)))
                [:div
                 [:h3 "Outputs"]
                 (for [{:keys [result name units]} (outputs results (:outputs model))]
                   [:p (str name ": " (display-format result units))])])
-             (for [r filtered-results]
-               [:div
-                [:h3 (name->title (sheet (first (second r))))]
-                (results->html-table r)])
              (when (not-empty charts) [:img.graph {:src graph-file}])]]))))
 
 (comment

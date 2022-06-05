@@ -71,7 +71,7 @@
 (defn make-runner [ordered-rows model]
   (let [row->num (into {} (map-indexed #(vector %2 %1) ordered-rows))
         expressions (keep #(rewrite-expression % (model %) row->num) ordered-rows)]
-    (list 'fn '[rows row-names periods]
+    (list 'fn 'runner '[rows row-names periods]
           (into expressions '([period (range 1 periods)] doseq))
           '(zipmap row-names (map vec rows)))))
 

@@ -216,7 +216,7 @@
                  :runner (eval (tr/make-runner order row-map))
                  :meta (into {} (mapcat qualify-row-names metadata))
                  :outputs (into (array-map) (for [[k v] (partition 2 (apply concat outputs))]
-                                              [k (update v :function (comp eval rewrite-output-expr))]))})))
+                                              [k (update v :function rewrite-output-expr)]))})))
 
 ;; Stateful wrappers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -272,18 +272,37 @@
 (defn outputs! [& row-pairs]
   (add-outputs! row-pairs))
 
-(defn compile-model! []
-  (compile-model (first @case-store) @calculation-store @meta-store @output-store))
-
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defonce model-store (atom {}))
+(defonce results-store (atom []))
+
+(defn compile-model! []
+  (compile-model (first @case-store) @calculation-store @meta-store @output-store))
 
 (defn run-model [{:keys [display-order calculation-order runner rows]} periods]
   (let [array (tr/make-init-table calculation-order rows periods)
         results (runner array calculation-order periods)]
     (map (juxt identity results) display-order)))
 
-;; Result selection and printing
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn model-changed? [m1 m2]
+  (not= (dissoc m1 :runner)
+        (dissoc m2 :runner)))
 
-(def print-result-summary! display/print-result-summary!)
+(defn compile-run-display! [periods options]
+  (let [m (compile-model (first @case-store) @calculation-store @meta-store @output-store)]
+    (def old-model @model-store)
+    (def new-model m)
+    (if (model-changed? m @model-store)
+      (do
+        (reset! model-store m)
+        (println "Model changed, rerunning")
+        (display/print-result-summary! (reset! results-store (time (run-model m periods))) (assoc options :model m)))
+      (display/print-result-summary! @results-store (assoc options :model m)))))
+
+
+(keys @model-store)
+;; => (:display-order :rows :calculation-order :runner :meta :outputs)
+
+(select-keys @model-store [:outputs])
