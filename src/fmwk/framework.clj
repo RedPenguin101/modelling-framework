@@ -277,6 +277,7 @@
 
 (defonce model-store (atom {}))
 (defonce results-store (atom []))
+(defonce period-number-store (atom 0))
 
 (defn compile-model! []
   (compile-model (first @case-store) @calculation-store @meta-store @output-store))
@@ -294,9 +295,10 @@
   (let [m (compile-model (first @case-store) @calculation-store @meta-store @output-store)]
     (def old-model @model-store)
     (def new-model m)
-    (if (model-changed? m @model-store)
+    (if (or (not= periods @period-number-store) (model-changed? m @model-store))
       (do
         (reset! model-store m)
+        (reset! period-number-store periods)
         (println "Model changed, rerunning")
         (display/print-result-summary! (reset! results-store (time (run-model m periods))) (assoc options :model m)))
       (display/print-result-summary! @results-store (assoc options :model m)))))
