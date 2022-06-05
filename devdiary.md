@@ -9,9 +9,7 @@
 * **DONE** UI
 * **DONE** metadata in bulk (e.g. income statement, all totals, all ccy-thousands
 * **DONE** Change corkscrew so starter goes to _end_, not start)
-* **DONE** Improvement to html print
-  * Charting for UI
-  * print multiple sheets
+* **DONE** Improvement to html print - Charting for UI, print multiple sheets
 * Only run on changed model
 * Improve checks - show at bottom of sheet
 * Inputs, base cases, scenarios

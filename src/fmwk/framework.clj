@@ -287,7 +287,3 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def print-result-summary! display/print-result-summary!)
-
-(defn vizi [model]
-  (uber/viz-graph (rows->graph (:rows model)) {:auto-label true
-                                               :save {:filename "graph.png" :format :png}}))
