@@ -3,6 +3,8 @@
 ## Introduction
 This is a program/framework to iteratively build and use 'project finance' type financial models as an alternative to Excel, the dominant method.
 
+This is very much a prototype / proof of concept, and can and will change drastically.
+
 ## Why?
 Excel is very good at building these type of models. In many ways it is one of the only 'killer apps' remaining to Excel as alternatives are found for visualization, reporting, and other types of financial modelling.
 
@@ -145,6 +147,8 @@ All of the above have been stated in pseudo-code. The framework implements a DSL
                              [:year-frac]))
 ```
 
+Note that the capitalization of the sheet, and the first-letter capitalizations of the calculation are just conventions which don't need to be followed for the model to work. You can also have more than two 'layers' of calculation if you want, though for legibility the output will only show headings for the first two levels.
+
 Next, we can run the model with the following code:
 
 ```clojure
@@ -196,4 +200,8 @@ However this doesn't look great. The Annual rate and Year Frac are not showing b
 
 ![Formatted display](./docs/Results2.png)
 
-This looks nicer.
+### More readme things to write
+* Totals and Corkscrews
+* Checks
+* Outputs
+* Charts

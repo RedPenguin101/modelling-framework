@@ -11,11 +11,14 @@
  "base-case"
  :model-start-date "2020-01-01"
  :length-of-period 3
+ :periods-in-year  4
+ :debt-drawdown    1000000
  :interest-rate    0.05)
 
 (calculation!
  "TIME.periods"
  :number                   '(+ 1 [:number :prev])
+ :first-flag               '(= 1 [:number])
  :start-date               '(if (= 1 [:number])
                               [:inputs/model-start-date]
                               (add-days [:end-date :prev] 1))
@@ -25,11 +28,27 @@
 
 (calculation!
  "DEBT.Principal"
- :starting-balance        [:placeholder 1000000])
+ :drawdown             '(when-flag [:TIME.periods/first-flag]
+                                   [:inputs/debt-drawdown])
+ :repayment-term-years [:placeholder 5]
+ :repayment-amount     '(if (pos? [:DEBT.Principal-Balance/start])
+                          (/ [:inputs/debt-drawdown]
+                             (* [:repayment-term-years]
+                                [:inputs/periods-in-year]))
+                          0))
+
+(corkscrew!
+ "DEBT.Principal-Balance"
+ :increases       [:DEBT.Principal/drawdown]
+ :decreases       [:DEBT.Principal/repayment-amount])
+
+(metadata!
+ "DEBT.Principal"
+ :repayment-amount         {:total true})
 
 (calculation!
  "DEBT.Interest"
- :calculation-basis       [:DEBT.Principal/starting-balance]
+ :calculation-basis       [:DEBT.Principal-Balance/start]
  :annual-rate             [:inputs/interest-rate]
  :year-frac              '(year-frac-act-360
                            (add-days [:TIME.periods/start-date] -1)
@@ -45,7 +64,7 @@
  :year-frac         {:units :factor :total true}
  :amount            {:units :currency :total true})
 
-(f/compile-run-display! 20 {:header :TIME.periods/end-date
+(f/compile-run-display! 25 {:header :TIME.periods/end-date
                             :sheets ["DEBT"]
                             :start 1
                             :charts []})
