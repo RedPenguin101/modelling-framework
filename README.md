@@ -141,7 +141,9 @@ Clone this repo and set up a new model (clj file) in the Models subfolder. At th
 Start the REPL following the Calva instructions. Now you're ready to start building the model.
 
 ### Coding and running the model
-All of the above examples have been in pseudo-code. The framework implements a DSL for writing these models. The full source code for this model is at [This link](./models/models/readme_example.clj)
+All of the above examples have been in pseudo-code. The framework implements a DSL for writing these models. The full source code for this model is at [This link](./models/models/readme_example.clj)[^2]
+
+[^2]: That folder also has several other sample models you can look at.
 
 ```clojure
 (base-case!
