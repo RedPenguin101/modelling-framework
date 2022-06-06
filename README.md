@@ -59,7 +59,7 @@ Model Rows:
   period-number = previous period-number + 1
   period-start  = if   (period-number = 1) 
                   then model-start-date
-                  else period-end + 1day
+                  else previous period-end + 1day
   period-end    = period-start + length-of-period
 ```
 
@@ -97,7 +97,7 @@ TIME.Periods:
   number      = previous number + 1
   start-date  = if   (number = 1) 
                 then INPUTS/model-start-date
-                else start-date + 1day
+                else previous end-date + 1day
   end-date    = start-date + INPUTS/length-of-period
 
 DEBT.Interest
