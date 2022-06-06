@@ -11,6 +11,7 @@
 * **DONE** Change corkscrew so starter goes to _end_, not start)
 * **DONE** Improvement to html print - Charting for UI, print multiple sheets
 * **DONE** Only run on changed model
+* **DONE** Display imports option
 * Change outputs to calculate on results, not display
 * Improve checks, show which ones.
 * Display errors (bad refs) in output, not REPL 
