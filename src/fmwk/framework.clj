@@ -42,6 +42,7 @@
 ;; predicates for types of expression, for conditionals
 (def atomic? (complement coll?))
 (def expression? list?)
+(defn placeholder? [ref] (and (vector? ref) (= :placeholder (first ref))))
 (defn- constant-ref? [ref]
   (and (vector? ref) (#{:placeholder :constant :row-literal} (first ref))))
 (def link? (every-pred vector? (complement constant-ref?)))
@@ -137,10 +138,13 @@
 ;; Model helpers
 ;;;;;;;;;;;;;;;;;;;;;;
 
-(defn- sum-expression [rows]
-  (reverse (into '(+) (map vector rows))))
+(defn placeholder-row-names [row-pairs]
+  (set (keep (fn [[row-name expr]] (when (placeholder? expr) row-name)) row-pairs)))
 
-(defn- negative-sum-expression [rows] (list '- (sum-expression rows)))
+(defn- sum-expression [row-names]
+  (reverse (into '(+) (map vector row-names))))
+
+(defn- negative-sum-expression [row-names] (list '- (sum-expression row-names)))
 
 ;; Builders
 ;;;;;;;;;;;;;;;;;;;;;;
