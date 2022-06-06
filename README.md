@@ -218,6 +218,8 @@ Notice the correspondence between the options map and results:
 
 We specified the header as the period end date, and said we wanted to see the Debt sheet, and start at period 1 (The default is to display 10 periods). The results have done all that, including showing sub-headings for the two calculation, Principal and Interest.
 
+Note as well that the Placeholder we put in has been highlighted in yellow. This is a visual indicator that you'll need to go back and fill this in. 
+
 However this doesn't look great. The Annual rate and Year Frac are not showing because they're being rounded to zero, there is no total for the interest amount, and the calculation basis is superfluous. We can fix this by adding some metadata:
 
 ```clojure
@@ -225,7 +227,7 @@ However this doesn't look great. The Annual rate and Year Frac are not showing b
  "DEBT.Interest"
  :calculation-basis {:hidden true}
  :annual-rate       {:units :percent}
- :year-frac         {:units :factor :total true}
+ :year-frac         {:units :factor}
  :amount            {:units :currency :total true})
 ```
 
