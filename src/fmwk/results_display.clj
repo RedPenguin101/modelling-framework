@@ -62,7 +62,7 @@
   (.format factor-format x))
 
 (defn- format-boolean [x]  (when (true? x) "✓"))
-(defn- format-percent [x] (format "%.2f%%" (* 100.0 x)))
+(defn- format-percent [x] (if (zero? x) "-  " (format "%.2f%%" (* 100.0 x))))
 
 (defn- format-date [d]
   (when (string? d)
