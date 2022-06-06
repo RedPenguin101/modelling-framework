@@ -138,7 +138,7 @@ Clone this repo and set up a new model (clj file) in the Models subfolder. At th
 
 Start the REPL following the Calva instructions. Now you're ready to start building the model.
 
-### Coding and running the model
+### Translating the above model definitiosn into the DSL
 All of the above examples have been in pseudo-code. The framework implements a DSL for writing these models. The full source code for this model is at [This link](./models/models/readme_example.clj)[^1]
 
 [^1]: That folder also has several other sample models you can look at.
@@ -220,6 +220,8 @@ We specified the header as the period end date, and said we wanted to see the De
 
 Note as well that the Placeholder we put in has been highlighted in yellow. This is a visual indicator that you'll need to go back and fill this in. 
 
+### Metadata
+
 However this doesn't look great. The Annual rate and Year Frac are not showing because they're being rounded to zero, there is no total for the interest amount, and the calculation basis is superfluous. We can fix this by adding some metadata:
 
 ```clojure
@@ -233,8 +235,89 @@ However this doesn't look great. The Annual rate and Year Frac are not showing b
 
 ![Formatted display](./docs/Results2.png)
 
+### Corkscrew Calculations
+We want to replace that placeholder. What we need is the balance of debt at any given time. To do this we need a _corkscrew_ calculation. These are common calculation patterns that have a start balance, an increase, and a decrease, an end balance based on the sum of these three things. The start balance is then based on the previous start balance. This pattern is so common the framework has a helper function for both creating the calculation and adding metadata to it:
+
+```clojure
+(corkscrew!
+ "DEBT.Principal-Balance"
+ :starter         [:inputs/debt-drawdown]
+ :start-condition [:TIME.periods/first-flag])
+
+(cork-metadata!
+ "DEBT.Principal-Balance"
+ :currency-thousands)
+```
+
+Running the model we now get this.
+
+![](./docs/Results3.png)
+
+### Checks
+
+We need to model the paying off of the debt. Let's say we need to pay it off in equal installments over 3 years. We can model it something like this:
+
+```clojure
+(calculation!
+ "DEBT.Principal"
+ :amortization-periods '(* [:inputs/repayment-term]
+                           [:inputs/periods-in-year])
+ :repayment-amount-pos '(/ [:inputs/debt-drawdown] 
+                           [:amortization-periods]))
+
+(metadata!
+ "DEBT.Principal"
+ :amortization-periods  {:units :counter}
+ :repayment-amount-pos  {:units :currency-thousands})
+```
+
+With the following result.
+
+![](./docs/Results4.png)
+
+But there are a couple of problems here. From the total column, we can see that the amount we're repaying comes to more that the $1m we've borrowed. By running the model starting at period 6:
+
+```clojure
+(f/compile-run-display! 24 {:header :TIME.periods/end-date
+                            :sheets ["DEBT"]
+                            :start 6
+                            :show-imports false
+                            :charts []})
+```
+
+We can see the problem: From the 2023-03-31 period, we've totally paid off the loan, but in our model we continue to make principal repayments. It should be a hard invariant that our debt balance shouldn't go below zero. We can code this in so the model will warn us if that invariant is violated.
+
+```clojure
+(check!
+ :debt-balance-gt-zero
+ '(>= [:DEBT.Principal-Balance/end] 0))
+```
+
+Now running the model, we will see this[^3]
+
+[^3]: This is not very helpful right now. Improving the communicativeness of these checks is on the todo list.
+
+![](./docs/Results6.png)
+
+We can now fix our Principal Payment calc:
+
+```clojure
+
+(calculation!
+ "DEBT.Principal"
+ :amortization-periods '(* [:inputs/repayment-term]
+                           [:inputs/periods-in-year])
+ :repayment-amount-pos '(when-flag
+                         (pos? [:DEBT.Principal-Balance/start])
+                         (/ [:inputs/debt-drawdown]
+                            [:amortization-periods])))
+```
+
+And see the result
+
+![](./docs/Result7.png)
+
 ### More readme things to write
-* Totals and Corkscrews
-* Checks
+* Totals
 * Outputs
 * Charts

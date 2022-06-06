@@ -13,6 +13,7 @@
  :length-of-period 3
  :periods-in-year  4
  :debt-drawdown    1000000
+ :repayment-term   3
  :interest-rate    0.05)
 
 (calculation!
@@ -28,11 +29,35 @@
 
 (calculation!
  "DEBT.Principal"
- :starting-balance        [:placeholder 1000000])
+ :amortization-periods '(* [:inputs/repayment-term]
+                           [:inputs/periods-in-year])
+ :repayment-amount-pos '(when-flag
+                         (pos? [:DEBT.Principal-Balance/start])
+                         (/ [:inputs/debt-drawdown]
+                            [:amortization-periods])))
+
+(metadata!
+ "DEBT.Principal"
+ :amortization-periods  {:units :counter}
+ :repayment-amount-pos  {:units :currency-thousands})
+
+(corkscrew!
+ "DEBT.Principal-Balance"
+ :starter         [:inputs/debt-drawdown]
+ :decreases       [:DEBT.Principal/repayment-amount-pos]
+ :start-condition [:TIME.periods/first-flag])
+
+(cork-metadata!
+ "DEBT.Principal-Balance"
+ :currency-thousands)
+
+(check!
+ :debt-balance-gt-zero
+ '(>= [:DEBT.Principal-Balance/end] 0))
 
 (calculation!
  "DEBT.Interest"
- :calculation-basis       [:DEBT.Principal/starting-balance]
+ :calculation-basis       [:DEBT.Principal-Balance/start]
  :annual-rate             [:inputs/interest-rate]
  :year-frac              '(year-frac-act-360
                            (add-days [:TIME.periods/start-date] -1)
@@ -50,6 +75,6 @@
 
 (f/compile-run-display! 24 {:header :TIME.periods/end-date
                             :sheets ["DEBT"]
-                            :start 1
+                            :start 6
                             :show-imports false
                             :charts []})
