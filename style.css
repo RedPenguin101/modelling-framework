@@ -6,6 +6,10 @@ table {
   border-collapse: collapse;
 }
 
+tr.placeholder {
+  background-color: rgb(255, 239, 175);
+}
+
 tr:first-child {
   background-color: lightgrey;
 }

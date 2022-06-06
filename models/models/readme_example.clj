@@ -51,6 +51,7 @@
  "DEBT.Interest"
  :calculation-basis       [:DEBT.Principal-Balance/start]
  :annual-rate             [:inputs/interest-rate]
+ :blah                    [:placeholder 1]
  :year-frac              '(year-frac-act-360
                            (add-days [:TIME.periods/start-date] -1)
                            [:TIME.periods/end-date])
@@ -61,6 +62,7 @@
 (metadata!
  "DEBT.Interest"
  :calculation-basis {:hidden true}
+ :blah              {:units :percent}
  :annual-rate       {:units :percent}
  :year-frac         {:units :factor :total true}
  :amount            {:units :currency :total true})
@@ -76,3 +78,4 @@
                             :show-imports true
                             :periods 3
                             :charts []})
+

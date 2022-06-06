@@ -152,7 +152,13 @@
 (defn- calculation [calc-name & row-pairs]
   [calc-name (apply array-map row-pairs)])
 
+(defn- implied-metadata [calc-name & row-pairs]
+  (let [ph (placeholder-row-names (apply array-map row-pairs))]
+    (when (not-empty ph)
+      [calc-name (zipmap ph (repeat {:placeholder true}))])))
+
 (defn- totalled-calculation [calc-name total-name & row-pairs]
+  ;; TODO: Implied metadata for totals
   (let [row-pairs (map vec (partition 2 row-pairs))
         total-expression (sum-expression (map first row-pairs))]
     [calc-name (into (array-map) (conj (vec row-pairs) [total-name total-expression]))]))
@@ -209,6 +215,12 @@
                  (qualify-local-references calc-name expr)))
        rows))
 
+(defn prep-metadata [md]
+  (reduce (fn [m [k v]]
+            (update m k merge v))
+          {}
+          (mapcat qualify-row-names md)))
+
 (defn- compile-model [inputs calculations metadata outputs]
   (let [rows (mapcat qualify-all-references (into [(input->calculation inputs)] calculations))
         row-map (into {} rows)
@@ -219,7 +231,7 @@
                  :rows row-map
                  :calculation-order order
                  :runner (eval (tr/make-runner order row-map))
-                 :meta (into {} (mapcat qualify-row-names metadata))
+                 :meta (prep-metadata metadata)
                  :outputs (into (array-map) (for [[k v] (partition 2 (apply concat outputs))]
                                               [k (update v :function rewrite-output-expr)]))})))
 
@@ -246,7 +258,10 @@
 (defn- add-outputs! [md] (swap! output-store conj md))
 
 (defn calculation! [calc-name & row-pairs]
-  (add-calc! (apply calculation calc-name row-pairs)))
+  (let [md (apply implied-metadata calc-name row-pairs)]
+    (when md (add-meta! md))
+    (add-calc! (apply calculation calc-name row-pairs))))
+
 
 (defn totalled-calculation! [calc-name total-name & row-pairs]
   (add-calc! (apply totalled-calculation calc-name total-name row-pairs)))

@@ -15,6 +15,8 @@
 * **DONE** Add units to display outputs
 * **DONE** Allow user to specify specific output string
 * **DONE** Metadata changes don't cause model rerun
+* **DONE** Highlight placeholders
+* Force recalc as option
 * Change outputs to calculate on results, not display
 * Improve checks, show which ones.
 * Display errors (bad refs) in output, not REPL 

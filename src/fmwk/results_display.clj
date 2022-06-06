@@ -189,9 +189,6 @@
        (group-by (comp namespace first))
        (mapcat (fn [[grp rows]] (into [[grp]] rows)))))
 
-(defn row-titles [table]
-  (map #(update % 0 name->title) table))
-
 ;; html 
 
 (defn apply-classes [row]
@@ -199,11 +196,13 @@
         :else             (into [[:td.title (first row)]]
                                 (map #(conj [:td.content] %) (rest row)))))
 
-(defn row->table-row [row]
-  (into [:tr] (apply-classes row)))
+(defn row->table-row [row metadata]
+  (let [phs (set (keep (fn [[rn m]] (when (:placeholder m) rn)) metadata))]
+    (into (if (phs (first row)) [:tr.placeholder] [:tr])
+          (apply-classes (update row 0 name->title)))))
 
-(defn table->html-table [table]
-  (into [:table] (map row->table-row table)))
+(defn table->html-table [table metadata]
+  (into [:table] (map #(row->table-row % metadata) table)))
 
 (defn remove-first-header [html-table]
   (into [:table] (drop 2 html-table)))
@@ -211,12 +210,11 @@
 (defn remove-first-title [html-table]
   (assoc-in html-table [1 1 1] ""))
 
-(defn results->html-table [results]
+(defn results->html-table [results metadata]
   (-> results
       t/series->row-wise-table
       table->calc-grouped-table
-      row-titles
-      table->html-table
+      (table->html-table metadata)
       remove-first-header
       remove-first-title))
 
@@ -231,10 +229,10 @@
     (series-lines-save series filename)
     filename))
 
-(defn results-table [results header]
+(defn results-table [results header metadata]
   [:div
    [:h3 header]
-   (results->html-table results)])
+   (results->html-table results metadata)])
 
 (defn outputs-block [results model]
   [:div
@@ -262,9 +260,9 @@
             head
             [:body
              (when (not-empty checks) (check-warning checks))
-             (when show-imports (results-table import-results "Imports"))
+             (when show-imports (results-table import-results "Imports" metadata))
              (for [r filtered-results]
-               (results-table r (name->title (sheet (first (second r))))))
+               (results-table r (name->title (sheet (first (second r)))) metadata))
              (when (and (:outputs options) (not-empty (:outputs model)))
                (outputs-block results (:model options)))
              (when (not-empty charts) [:img.graph {:src (graph-series (map (into {} results) charts))}])]]))))
