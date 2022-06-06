@@ -313,7 +313,7 @@
 
 (defn compile-run-display! [periods options]
   (let [m (compile-model (first @case-store) @calculation-store @meta-store @output-store)]
-    (if (or (not= periods @period-number-store) (model-changed? m @model-store))
+    (if (or (:force-rerun options) (not= periods @period-number-store) (model-changed? m @model-store))
       (do
         (reset! model-store m)
         (reset! period-number-store periods)
