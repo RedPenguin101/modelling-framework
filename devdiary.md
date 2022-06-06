@@ -19,6 +19,7 @@
 * **DONE** Force recalc as option
 * Change outputs to calculate on results, not display
 * Improve checks, show which ones.
+* Check on rows, so they can be highlighted?
 * Display errors (bad refs) in output, not REPL 
 * Inputs, base cases, scenarios
 * Output comparison across scenarios
