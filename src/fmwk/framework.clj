@@ -293,18 +293,12 @@
 
 (defn compile-run-display! [periods options]
   (let [m (compile-model (first @case-store) @calculation-store @meta-store @output-store)]
-    (def old-model @model-store)
-    (def new-model m)
     (if (or (not= periods @period-number-store) (model-changed? m @model-store))
       (do
         (reset! model-store m)
         (reset! period-number-store periods)
         (println "Model changed, rerunning")
         (display/print-result-summary! (reset! results-store (time (run-model m periods))) (assoc options :model m)))
-      (display/print-result-summary! @results-store (assoc options :model m)))))
-
-
-(keys @model-store)
-;; => (:display-order :rows :calculation-order :runner :meta :outputs)
-
-(select-keys @model-store [:outputs])
+      (do
+        (println "Model unchanged, not rerunning")
+        (display/print-result-summary! @results-store (assoc options :model m))))))
