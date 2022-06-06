@@ -199,6 +199,23 @@
     (series-lines-save series filename)
     filename))
 
+(defn results-table [results]
+  (for [r results]
+    [:div
+     [:h3 (name->title (sheet (first (second r))))]
+     (results->html-table r)]))
+
+(defn outputs-block [results model]
+  [:div
+   [:h3 "Outputs"]
+   (for [{:keys [result name units]} (outputs results (:outputs model))]
+     [:p (str name ": " (display-format result units))])])
+
+(def head
+  [:head [:link {:rel :stylesheet
+                 :type "text/css"
+                 :href "style.css"}]])
+
 (defn print-result-summary! [results {:keys [model start periods header charts] :as options}]
   (let [start (or start 1)
         end   (+ start (or periods 10))
@@ -208,20 +225,12 @@
     (spit
      "./results.html"
      (html [:html
-            [:head [:link {:rel :stylesheet
-                           :type "text/css"
-                           :href "style.css"}]]
+            head
             [:body
              (when (not-empty checks) (check-warning checks))
-             (for [r filtered-results]
-               [:div
-                [:h3 (name->title (sheet (first (second r))))]
-                (results->html-table r)])
+             (results-table filtered-results)
              (when (and (:outputs options) (not-empty (:outputs model)))
-               [:div
-                [:h3 "Outputs"]
-                (for [{:keys [result name units]} (outputs results (:outputs model))]
-                  [:p (str name ": " (display-format result units))])])
+               (outputs-block results (:model options)))
              (when (not-empty charts) [:img.graph {:src graph-file}])]]))))
 
 (comment
