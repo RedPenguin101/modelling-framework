@@ -131,6 +131,11 @@
 (defn- add-total-label [table]
   (assoc-in (vec table) [0 1 0] "TOTAL"))
 
+(defn- import-display [categories model-rows]
+  (let [main-rows (mapcat #(rows-in-hierarchy % (keys model-rows)) categories)]
+    (set/difference (set (flatten (remove fw/input-link? (filter fw/current-period-link? (mapcat fw/extract-refs (vals (select-keys model-rows main-rows)))))))
+                    (set main-rows))))
+
 (defn- prep-results [results metadata header category from to]
   (let [tot (totals results (get-total-rows metadata))
         display-rows (set/difference
