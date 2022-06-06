@@ -290,9 +290,9 @@
  :increases [:CASHFLOW.Financing/available-for-dividends]
  :decreases [:EQUITY.Dividends/dividend-paid-pos])
 
-(check!
- :no-negative-cash-balance
- '(>= [:CASHFLOW.Retained/end] 0))
+#_(check!
+   :no-negative-cash-balance
+   '(>= [:CASHFLOW.Retained/end] 0))
 
 (bulk-metadata!
  "CASHFLOW.Financing"
