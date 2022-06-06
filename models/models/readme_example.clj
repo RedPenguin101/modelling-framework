@@ -70,8 +70,9 @@
 ;; * inputs, debt-drawdown
 ;; * inputs, periods in year
 
-(f/compile-run-display! 24 {:header :TIME.periods/end-date
-                            :sheets ["DEBT"]
+(f/compile-run-display! 25 {:header :TIME.periods/end-date
+                            :sheets ["DEBT.Interest" "DEBT.Principal"]
                             :show-imports true
                             :start 1
+                            :periods 3
                             :charts []})

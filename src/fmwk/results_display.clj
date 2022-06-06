@@ -141,7 +141,7 @@
    (set (conj (rows-in-hierarchy category (map first results)) header))
    (set (hidden-rows metadata))))
 
-(defn- prep-results [results metadata header display-rows from to]
+(defn- prep-results [results metadata display-rows from to]
   (let [tot (totals results (get-total-rows metadata))]
     (-> results
         (select-rows display-rows)
@@ -223,19 +223,22 @@
                  :type "text/css"
                  :href "style.css"}]])
 
-(defn print-result-summary! [results {:keys [model sheets start periods header charts] :as options}]
+(defn print-result-summary! [results {:keys [model sheets start periods header charts show-imports] :as options}]
   (let [start            (or start 1)
         end              (+ start (or periods 10))
         display-rows     (map #(display-rows-temp % (get-in options [:model :meta]) results header) sheets)
-        filtered-results (map #(prep-results results (get-in options [:model :meta]) header % start end) display-rows)
+        import-rows      (conj (import-display sheets (get-in options [:model :rows]))
+                               header)
+        import-results   [(prep-results results (get-in options [:model :meta]) import-rows start end)]
+        filtered-results (map #(prep-results results (get-in options [:model :meta]) % start end) display-rows)
         checks           (check-results results header)]
-    (println filtered-results)
     (spit
      "./results.html"
      (html [:html
             head
             [:body
              (when (not-empty checks) (check-warning checks))
+             (when show-imports (results-table import-results))
              (results-table filtered-results)
              (when (and (:outputs options) (not-empty (:outputs model)))
                (outputs-block results (:model options)))
