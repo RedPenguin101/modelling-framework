@@ -49,7 +49,7 @@
  :amount            {:units :currency :total true})
 
 (f/compile-run-display! 24 {:header :TIME.periods/end-date
-                            :sheets ["DEBT.Interest"]
+                            :sheets ["DEBT"]
                             :start 1
-                            :show-imports true
+                            :show-imports false
                             :charts []})

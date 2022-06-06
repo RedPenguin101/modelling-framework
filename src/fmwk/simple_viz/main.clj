@@ -80,7 +80,7 @@
 (defn lines-from-points [points]
   (map vector points (rest points)))
 
-(def colors [:red :blue :green])
+(def colors [:red :blue :green :orange])
 
 (defn series-lines [series]
   (let [canvas (c2d/canvas 1000 1000)

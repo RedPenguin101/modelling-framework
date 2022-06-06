@@ -1,9 +1,8 @@
 (ns models.gridlines
   (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! cork-metadata! corkscrew! totalled-calculation! check! outputs!]]
-            [fmwk.results-display :refer [print-result-summary!]]
             [fmwk.utils :refer [when-flag when-not-flag round mean]]
             [fmwk.dates :refer [year-frac-act-360 month-of add-days add-months date= date< date<= date> date>=]]
-            [fmwk.irr :refer [irr-days]]))
+            [fmwk.irr   :refer [irr-days]]))
 
 (f/reset-model!)
 
@@ -99,12 +98,9 @@
 
 (calculation!
  "OPERATIONS.Revenue"
- :annual-degradation             [:inputs/annual-degradation]
- :contract-year-number           [:TIME.Contract-Year/number]
- :op-period-flag                 [:TIME.Operating-Period/in-flag]
- :compound-degradation           '(when-flag [:op-period-flag]
-                                             (/ 1 (Math/pow (inc [:annual-degradation])
-                                                            (dec [:contract-year-number]))))
+ :compound-degradation           '(when-flag [:TIME.Operating-Period/in-flag]
+                                             (/ 1 (Math/pow (inc [:inputs/annual-degradation])
+                                                            (dec [:TIME.Contract-Year/number]))))
  :seasonality-adjustment         '(case (int [:TIME.Contract-Year/quarter])
                                     0 0
                                     1 [:inputs/seasonal-adjustment-q1]
@@ -126,7 +122,7 @@
  :compound-degradation           {:units :percent}
  :seasonality-adjustment         {:units :percent}
  :electricity-generation         {:total true :units-display "KWh"}
- :revenue {:units :currency-thousands :total true})
+ :revenue                        {:units :currency-thousands :total true})
 
 (calculation!
  "OPERATIONS.Opex"
@@ -139,8 +135,9 @@
 
 (metadata!
  "OPERATIONS.Opex"
- :om-expense-pos {:hidden true}
- :om-expense     {:units :currency-thousands :total true})
+ :escalation-factor {:units :factor}
+ :om-expense-pos    {:hidden true}
+ :om-expense        {:units :currency-thousands :total true})
 
 
 ;; Accounting
@@ -193,10 +190,15 @@
 
 (calculation!
  "EQUITY.Dividends"
- :earnings-available '(max 0 (+ [:INCOME.RETAINED/start] [:INCOME/profit-after-tax]))
+ :earnings-available '(max 0 (+ [:INCOME.Retained/start] [:INCOME/profit-after-tax]))
  :cash-available     '(max 0 (+ [:CASHFLOW.Retained/start] [:CASHFLOW.Financing/available-for-dividends]))
  :dividend-paid-pos  '(min [:earnings-available] [:cash-available])
- :dividend-paid      '(- [:dividend-paid-pos]))
+ :dividend-paid      '(- [:dividend-paid-pos])
+ :cumulative         '(+ [:cumulative :prev] [:dividend-paid-pos]))
+
+(bulk-metadata!
+ "EQUITY.Dividends"
+ {:units :currency-thousands})
 
 (metadata!
  "EQUITY.Dividends"
@@ -314,16 +316,16 @@
  :interest                       [:SENIOR-DEBT/interest])
 
 (corkscrew!
- "INCOME.RETAINED"
+ "INCOME.Retained"
  :increases [:INCOME/profit-after-tax]
  :decreases [:EQUITY.Dividends/dividend-paid-pos])
 
 (bulk-metadata!
- "income"
+ "INCOME"
  {:units :currency-thousands :total true})
 
 (bulk-metadata!
- "INCOME.RETAINED"
+ "INCOME.Retained"
  {:units :currency-thousands})
 
 (totalled-calculation!
@@ -339,7 +341,7 @@
  "BALANCE-SHEET.Liabilities" :total-liabilities
  :debt              [:SENIOR-DEBT.Balance/end]
  :share-capital     [:EQUITY.Share-Capital.Balance/end]
- :retained-earnings [:INCOME.RETAINED/end])
+ :retained-earnings [:INCOME.Retained/end])
 
 (bulk-metadata!
  "BALANCE-SHEET.Liabilities"
@@ -382,9 +384,12 @@
              :units :factor
              :function '(mean (remove zero? :SENIOR-DEBT.Dscr/dscr))})
 
-(f/compile-run-display! 183 {:header :TIME.period/end-date
-                             :sheets ["EQUITY-RETURN"]
+(f/compile-run-display! 183 {:header       :TIME.period/end-date
+                             :sheets       ["EQUITY.Dividends"]
                              :show-imports true
-                             :start 100
-                             :outputs true
-                             :charts []})
+                             :start        100
+                             :outputs      false
+                             :charts       [:CASHFLOW.Retained/end
+                                            :INCOME.Retained/end
+                                            :SENIOR-DEBT.Balance/end
+                                            :EQUITY.Dividends/dividend-paid-pos]})
