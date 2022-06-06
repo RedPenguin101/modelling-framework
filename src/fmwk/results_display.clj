@@ -109,9 +109,11 @@
   (keep (fn [[k v]] (when (:hidden v) k)) metadata))
 
 (defn- select-rows
-  "Order is determined by order of _results_, not rows"
+  "Order is determined by order of rows, not results"
   [results rows]
-  (filter #((set rows) (first %)) results))
+  (let [results-map (into {} results)]
+    (for [row rows]
+      (vector row (get results-map row)))))
 
 (defn- select-periods [results from to]
   (map #(vector (first %) (take (- to from) (drop from (second %)))) results))
