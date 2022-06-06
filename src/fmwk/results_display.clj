@@ -158,14 +158,14 @@
 ;;;;;;;;;;;;;;;;;;;;
 
 (defn name->title [k]
-  (when k (str/join " " (map str/capitalize (str/split (name k) #"-")))))
+  (when k (str/join " " (map str/capitalize (str/split (str/replace-first (name k) "." ":-") #"-")))))
 
 (def sheet (comp first calculation-hierarchy))
 (def calc  (comp second calculation-hierarchy))
 
-(defn table->grouped-table [table]
+(defn table->calc-grouped-table [table]
   (->> table
-       (group-by (comp calc first))
+       (group-by (comp namespace first))
        (mapcat (fn [[grp rows]] (into [[grp]] rows)))))
 
 (defn row-titles [table]
@@ -193,7 +193,7 @@
 (defn results->html-table [results]
   (-> results
       t/series->row-wise-table
-      table->grouped-table
+      table->calc-grouped-table
       row-titles
       table->html-table
       remove-first-header
