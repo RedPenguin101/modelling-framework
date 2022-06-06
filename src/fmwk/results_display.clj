@@ -136,11 +136,14 @@
     (set/difference (set (flatten (remove fw/input-link? (filter fw/current-period-link? (mapcat fw/extract-refs (vals (select-keys model-rows main-rows)))))))
                     (set main-rows))))
 
+(defn display-rows-temp  [category metadata results header]
+  (set/difference
+   (set (conj (rows-in-hierarchy category (map first results)) header))
+   (set (hidden-rows metadata))))
+
 (defn- prep-results [results metadata header category from to]
   (let [tot (totals results (get-total-rows metadata))
-        display-rows (set/difference
-                      (set (conj (rows-in-hierarchy category (map first results)) header))
-                      (set (hidden-rows metadata)))]
+        display-rows (display-rows-temp category metadata results header)]
     (-> results
         (select-rows display-rows)
         (select-periods from to)
