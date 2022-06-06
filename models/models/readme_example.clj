@@ -65,7 +65,13 @@
  :year-frac         {:units :factor :total true}
  :amount            {:units :currency :total true})
 
-(f/compile-run-display! 25 {:header :TIME.periods/end-date
+;; Expect:
+;; * time, first flag
+;; * inputs, debt-drawdown
+;; * inputs, periods in year
+
+(f/compile-run-display! 24 {:header :TIME.periods/end-date
                             :sheets ["DEBT"]
+                            :show-imports true
                             :start 1
                             :charts []})

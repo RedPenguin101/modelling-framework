@@ -46,7 +46,7 @@
   (and (vector? ref) (#{:placeholder :constant :row-literal} (first ref))))
 (def link? (every-pred vector? (complement constant-ref?)))
 (def local-link? (every-pred link? (comp unqualified-keyword? first)))
-(defn- current-period-link? [ref] (and (link? ref) (= 1 (count ref))))
+(defn current-period-link? [ref] (and (link? ref) (= 1 (count ref))))
 
 (comment
   (atomic? [:this :prev]) ;; => false 
@@ -59,7 +59,7 @@
   (local-link? [:something/else :prev]) ;; => false
   )
 
-(defn- extract-refs
+(defn extract-refs
   "Given an expression containing references (defined as a vector), 
    will extract all of the references and return them as a vector"
   ([expr] (if (coll? expr)

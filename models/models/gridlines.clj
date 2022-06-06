@@ -384,5 +384,6 @@
 
 (f/compile-run-display! 20 {:header :period/end-date
                             :sheets ["income"]
+                            :show-imports true
                             :start 1
                             :charts []})

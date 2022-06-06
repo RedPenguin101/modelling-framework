@@ -216,12 +216,11 @@
                  :type "text/css"
                  :href "style.css"}]])
 
-(defn print-result-summary! [results {:keys [model start periods header charts] :as options}]
-  (let [start (or start 1)
-        end   (+ start (or periods 10))
-        checks (check-results results header)
-        filtered-results (map #(prep-results results (get-in options [:model :meta]) header % start end) (:sheets options))
-        graph-file (when (not-empty charts) (graph-series (map (into {} results) charts)))]
+(defn print-result-summary! [results {:keys [model sheets start periods header charts] :as options}]
+  (let [start            (or start 1)
+        end              (+ start (or periods 10))
+        filtered-results (map #(prep-results results (get-in options [:model :meta]) header % start end) sheets)
+        checks           (check-results results header)]
     (spit
      "./results.html"
      (html [:html
@@ -231,7 +230,7 @@
              (results-table filtered-results)
              (when (and (:outputs options) (not-empty (:outputs model)))
                (outputs-block results (:model options)))
-             (when (not-empty charts) [:img.graph {:src graph-file}])]]))))
+             (when (not-empty charts) [:img.graph {:src (graph-series (map (into {} results) charts))}])]]))))
 
 (comment
   (def test-results (clojure.edn/read-string (slurp "test-results.edn")))
