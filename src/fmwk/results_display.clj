@@ -207,10 +207,9 @@
     filename))
 
 (defn results-table [results]
-  (for [r results]
-    [:div
-     [:h3 (name->title (sheet (first (second r))))]
-     (results->html-table r)]))
+  [:div
+   [:h3 (name->title (sheet (first (second results))))]
+   (results->html-table results)])
 
 (defn outputs-block [results model]
   [:div
@@ -229,7 +228,7 @@
         display-rows     (map #(display-rows-temp % (get-in options [:model :meta]) results header) sheets)
         import-rows      (conj (import-display sheets (get-in options [:model :rows]))
                                header)
-        import-results   [(prep-results results (get-in options [:model :meta]) import-rows start end)]
+        import-results   (prep-results results (get-in options [:model :meta]) import-rows start end)
         filtered-results (map #(prep-results results (get-in options [:model :meta]) % start end) display-rows)
         checks           (check-results results header)]
     (spit
@@ -239,7 +238,8 @@
             [:body
              (when (not-empty checks) (check-warning checks))
              (when show-imports (results-table import-results))
-             (results-table filtered-results)
+             (for [r filtered-results]
+               (results-table r))
              (when (and (:outputs options) (not-empty (:outputs model)))
                (outputs-block results (:model options)))
              (when (not-empty charts) [:img.graph {:src (graph-series (map (into {} results) charts))}])]]))))
