@@ -47,6 +47,7 @@
 (def link? (every-pred vector? (complement constant-ref?)))
 (def local-link? (every-pred link? (comp unqualified-keyword? first)))
 (defn current-period-link? [ref] (and (link? ref) (= 1 (count ref))))
+(defn input-link? [ref] (and (link? ref) (= (namespace (first ref)) "inputs")))
 
 (comment
   (atomic? [:this :prev]) ;; => false 
