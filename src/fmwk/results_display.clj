@@ -36,6 +36,8 @@
 ;; Results Formatting
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+
 (def counter-format  (java.text.DecimalFormat. "0"))
 (def ccy-format      (java.text.DecimalFormat. "###,##0 ;(###,##0)"))
 (def ccy-cent-format (java.text.DecimalFormat. "###,##0.00"))
@@ -70,6 +72,16 @@
   (cond (every? number? xs) (mapv format-ccy xs)
         (every? boolean? (rest xs)) (mapv format-boolean xs)
         :else xs))
+
+(def unit-key->display
+  {:currency-thousands "$'000"
+   :currency           "$"
+   :currency-cents     "$"
+   :counter            "Counter"
+   :percent            "Percent"
+   :flag               "Flag"
+   :date               "Date"
+   :factor             "Factor"})
 
 (defn- display-format [x unit]
   (case unit
@@ -132,6 +144,13 @@
 (defn- add-total-label [table]
   (assoc-in (vec table) [0 1 0] "TOTAL"))
 
+(defn- add-units-label [table]
+  (assoc-in (vec table) [0 1 0] "UNITS"))
+
+(defn add-units [results metadata]
+  (vec (for [[r vs] results]
+         [r (vec (concat [(unit-key->display (get-in metadata [r :units]))] vs))])))
+
 (defn- import-rows [categories model-rows]
   (let [main-rows (mapcat #(rows-in-hierarchy % (keys model-rows)) categories)]
     (remove (set main-rows)
@@ -152,7 +171,9 @@
         (select-periods from to)
         (add-totals tot)
         (format-results metadata)
-        (add-total-label))))
+        (add-total-label)
+        (add-units metadata)
+        (add-units-label))))
 
 ;; Table prep
 ;;;;;;;;;;;;;;;;;;;;

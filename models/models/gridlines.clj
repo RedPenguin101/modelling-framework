@@ -383,7 +383,7 @@
              :function '(mean (remove zero? :senior-debt.dscr/dscr))})
 
 (f/compile-run-display! 20 {:header :period/end-date
-                            :sheets ["income"]
+                            :sheets ["ops"]
                             :show-imports true
                             :start 1
                             :charts []})
