@@ -289,8 +289,8 @@
     (map (juxt identity results) display-order)))
 
 (defn model-changed? [m1 m2]
-  (not= (dissoc m1 :runner)
-        (dissoc m2 :runner)))
+  (not= (dissoc m1 :runner :meta)
+        (dissoc m2 :runner :meta)))
 
 (defn compile-run-display! [periods options]
   (let [m (compile-model (first @case-store) @calculation-store @meta-store @output-store)]

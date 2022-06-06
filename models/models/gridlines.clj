@@ -139,7 +139,7 @@
 
 (metadata!
  "ops.opex"
- :om-expense-pos {:units :currency-thousands :total true}
+ :om-expense-pos {:hidden true}
  :om-expense     {:units :currency-thousands :total true})
 
 
