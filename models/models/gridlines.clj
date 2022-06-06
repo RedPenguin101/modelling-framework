@@ -125,7 +125,7 @@
  :annual-degradation             {:units :percent}
  :compound-degradation           {:units :percent}
  :seasonality-adjustment         {:units :percent}
- :electricity-generation         {:total true}
+ :electricity-generation         {:total true :units-display "KWh"}
  :revenue {:units :currency-thousands :total true})
 
 (calculation!
@@ -382,8 +382,8 @@
              :units :factor
              :function '(mean (remove zero? :senior-debt.dscr/dscr))})
 
-(f/compile-run-display! 20 {:header :period/end-date
-                            :sheets ["ops"]
-                            :show-imports true
-                            :start 1
-                            :charts []})
+(f/compile-run-display! 183 {:header :period/end-date
+                             :sheets ["ops"]
+                             :show-imports true
+                             :start 1
+                             :charts []})

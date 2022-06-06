@@ -149,7 +149,7 @@
 
 (defn add-units [results metadata]
   (vec (for [[r vs] results]
-         [r (vec (concat [(unit-key->display (get-in metadata [r :units]))] vs))])))
+         [r (vec (concat [(or (get-in metadata [r :units-display]) (unit-key->display (get-in metadata [r :units])))] vs))])))
 
 (defn- import-rows [categories model-rows]
   (let [main-rows (mapcat #(rows-in-hierarchy % (keys model-rows)) categories)]
