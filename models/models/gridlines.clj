@@ -38,7 +38,7 @@
  )
 
 (calculation!
- "period"
+ "TIME.period"
  :number                   '(inc [:number :prev])
  :first-period-flag        '(= 1 [:number])
  :start-date               '(if [:first-period-flag]
@@ -49,63 +49,63 @@
                                 (add-days -1)))
 
 (metadata!
- "period"
+ "TIME.period"
  :number     {:units :counter}
  :start-date {:units :date}
  :end-date   {:units :date})
 
 (calculation!
- "period.operating"
- :close-flag               '(date= [:period/end-date] [:inputs/financial-close-date])
- :exit-flag                '(date= [:period/end-date]
+ "TIME.Operating-Period"
+ :close-flag               '(date= [:TIME.period/end-date] [:inputs/financial-close-date])
+ :exit-flag                '(date= [:TIME.period/end-date]
                                    (add-months [:inputs/financial-close-date]
                                                (* 12 [:inputs/operating-years-remaining])))
  :start-date               [:inputs/operating-period-start]
  :end-date                 '(-> [:start-date]
                                 (add-months (* 12 [:inputs/operating-years-remaining]))
                                 (add-days -1))
- :in-flag                  '(and (date>= [:period/start-date]
+ :in-flag                  '(and (date>= [:TIME.period/start-date]
                                          [:inputs/operating-period-start])
-                                 (date<= [:period/end-date]
+                                 (date<= [:TIME.period/end-date]
                                          [:end-date]))
  :first-flag               '(date= [:start-date]
-                                   [:period/start-date])
+                                   [:TIME.period/start-date])
  :last-flag                '(date= [:end-date]
-                                   [:period/end-date]))
+                                   [:TIME.period/end-date]))
 
 (metadata!
- "period.operating"
+ "TIME.Operating-Period"
  :start-date {:units :date :hidden true})
 
 (map (fn [x] (inc (quot (dec x) 3))) (range 1 13))
 
 (calculation!
- "period.calendar-year"
- :last-flag      '(= 12 (month-of [:period/end-date]))
- :first-flag     '(= 1 (month-of [:period/start-date]))
- :quarter        '(inc (quot (dec (month-of [:period/end-date])) 3)))
+ "TIME.Calendar-Year"
+ :last-flag      '(= 12 (month-of [:TIME.period/end-date]))
+ :first-flag     '(= 1 (month-of [:TIME.period/start-date]))
+ :quarter        '(inc (quot (dec (month-of [:TIME.period/end-date])) 3)))
 
 (calculation!
- "period.contract-year"
+ "TIME.Contract-Year"
  :end-flag         '(= (month-of [:inputs/financial-close-date])
-                       (month-of [:period/end-date]))
+                       (month-of [:TIME.period/end-date]))
  :start-flag       '(true? [:end-flag :prev])
  :number           '(+ [:number :prev]
-                       (if (and [:start-flag] [:period.operating/in-flag]) 1 0))
- :quarter           '(when-flag [:period.operating/in-flag] (inc (mod [:quarter :prev] 4))))
+                       (if (and [:start-flag] [:TIME.Operating-Period/in-flag]) 1 0))
+ :quarter           '(when-flag [:TIME.Operating-Period/in-flag] (inc (mod [:quarter :prev] 4))))
 
 ;; Operations
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (calculation!
- "ops.revenue"
+ "OPERATIONS.Revenue"
  :annual-degradation             [:inputs/annual-degradation]
- :contract-year-number           [:period.contract-year/number]
- :op-period-flag                 [:period.operating/in-flag]
+ :contract-year-number           [:TIME.Contract-Year/number]
+ :op-period-flag                 [:TIME.Operating-Period/in-flag]
  :compound-degradation           '(when-flag [:op-period-flag]
                                              (/ 1 (Math/pow (inc [:annual-degradation])
                                                             (dec [:contract-year-number]))))
- :seasonality-adjustment         '(case (int [:period.contract-year/quarter])
+ :seasonality-adjustment         '(case (int [:TIME.Contract-Year/quarter])
                                     0 0
                                     1 [:inputs/seasonal-adjustment-q1]
                                     2 [:inputs/seasonal-adjustment-q2]
@@ -121,7 +121,7 @@
               ))
 
 (metadata!
- "ops.revenue"
+ "OPERATIONS.Revenue"
  :annual-degradation             {:units :percent}
  :compound-degradation           {:units :percent}
  :seasonality-adjustment         {:units :percent}
@@ -129,34 +129,34 @@
  :revenue {:units :currency-thousands :total true})
 
 (calculation!
- "ops.opex"
+ "OPERATIONS.Opex"
  :escalation-factor [:placeholder 1] ;; TODO
  :om-expense-pos    '(when-flag
-                      [:period.operating/in-flag]
+                      [:TIME.Operating-Period/in-flag]
                       (/ (* [:inputs/annual-opex-cost] [:escalation-factor])
                          [:inputs/periods-in-year]))
  :om-expense        '(- [:om-expense-pos]))
 
 (metadata!
- "ops.opex"
+ "OPERATIONS.Opex"
  :om-expense-pos {:hidden true}
  :om-expense     {:units :currency-thousands :total true})
 
 
-;; Non-current assets
+;; Accounting
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (calculation!
- "depreciation"
+ "ACCOUNTING.Depreciation"
  :cost-of-solar-asset  [:inputs/cost-of-solar-asset]
 
  :useful-life-of-asset [:inputs/useful-life-of-asset]
  :useful-life-end      '(add-days (add-months [:inputs/operating-period-start] (* 12 [:useful-life-of-asset])) -1)
- :useful-life-flag     '(and (date>= [:period/start-date]
+ :useful-life-flag     '(and (date>= [:TIME.period/start-date]
                                      [:inputs/operating-period-start])
-                             (date<= [:period/end-date]
+                             (date<= [:TIME.period/end-date]
                                      [:useful-life-end]))
- :puchase-cashflow     '(when-flag [:period.operating/close-flag]
+ :puchase-cashflow     '(when-flag [:TIME.Operating-Period/close-flag]
                                    [:cost-of-solar-asset])
  :depreciation-pos     '(when-flag [:useful-life-flag]
                                    (/ [:cost-of-solar-asset]
@@ -165,101 +165,101 @@
  :depreciation         '(- [:depreciation-pos]))
 
 (metadata!
- "depreciation"
+ "ACCOUNTING.Depreciation"
  :depreciation-pos {:units :currency :total true})
 
 (corkscrew!
- "depreciation.balance"
- :increases       [:depreciation/puchase-cashflow]
- :decreases       [:depreciation/depreciation-pos])
+ "ACCOUNTING.Depreciation.Balance"
+ :increases       [:ACCOUNTING.Depreciation/puchase-cashflow]
+ :decreases       [:ACCOUNTING.Depreciation/depreciation-pos])
 
 ;; EQUITY
 ;;;;;;;;;;;;;;;;;;;;
 
 (calculation!
- "share-capital"
- :drawdown        '(when-flag [:period.operating/close-flag]
+ "EQUITY.Share-Capital"
+ :drawdown        '(when-flag [:TIME.Operating-Period/close-flag]
                               (* (- 1 [:inputs/senior-debt-ltv])
                                  [:inputs/cost-of-solar-asset]))
- :redemption-pos  '(when-flag [:period.operating/last-flag]
-                              [:share-capital.balance/start])
+ :redemption-pos  '(when-flag [:TIME.Operating-Period/last-flag]
+                              [:EQUITY.Share-Capital.Balance/start])
  :redemption       '(- [:redemption-pos]))
 
 (corkscrew!
- "share-capital.balance"
- :starter          [:share-capital/drawdown]
- :start-condition  [:period.operating/close-flag]
- :decreases        [:share-capital/redemption-pos])
+ "EQUITY.Share-Capital.Balance"
+ :starter          [:EQUITY.Share-Capital/drawdown]
+ :start-condition  [:TIME.Operating-Period/close-flag]
+ :decreases        [:EQUITY.Share-Capital/redemption-pos])
 
 (calculation!
- "dividends"
- :earnings-available '(max 0 (+ [:income.retained/start] [:income/profit-after-tax]))
- :cash-available     '(max 0 (+ [:cashflow.retained/start] [:cashflow.financing/available-for-dividends]))
+ "EQUITY.Dividends"
+ :earnings-available '(max 0 (+ [:INCOME.RETAINED/start] [:INCOME/profit-after-tax]))
+ :cash-available     '(max 0 (+ [:CASHFLOW.Retained/start] [:CASHFLOW.Financing/available-for-dividends]))
  :dividend-paid-pos  '(min [:earnings-available] [:cash-available])
  :dividend-paid      '(- [:dividend-paid-pos]))
 
 (metadata!
- "dividends"
+ "EQUITY.Dividends"
  :dividend-paid {:total true})
 
 ;; DEBT
 ;;;;;;;;;;;;;;;;;;;;
 
 (calculation!
- "senior-debt"
+ "SENIOR-DEBT"
  :drawdown-amount       '(* [:inputs/senior-debt-ltv] [:inputs/cost-of-solar-asset])
  :drawdown              '(when-flag
-                          [:period.operating/close-flag]
+                          [:TIME.Operating-Period/close-flag]
                           [:drawdown-amount])
  :end-of-repayment       '(add-months [:inputs/financial-close-date]
                                       (* 12 [:inputs/senior-debt-repayment-term]))
- :repayment-period-flag  '(and (date>= [:period/start-date]
+ :repayment-period-flag  '(and (date>= [:TIME.period/start-date]
                                        [:inputs/operating-period-start])
-                               (date<= [:period/end-date]
+                               (date<= [:TIME.period/end-date]
                                        [:end-of-repayment]))
  :repayment-amount-pos    '(when-flag [:repayment-period-flag]
                                       (/ [:drawdown-amount]
                                          (* [:inputs/periods-in-year]
                                             [:inputs/senior-debt-repayment-term])))
  :repayment-amount        '(- [:repayment-amount-pos])
- :year-frac               '(year-frac-act-360 (add-days [:period/start-date] -1)
-                                              [:period/end-date])
- :interest-pos            '(* [:senior-debt.balance/start]
+ :year-frac               '(year-frac-act-360 (add-days [:TIME.period/start-date] -1)
+                                              [:TIME.period/end-date])
+ :interest-pos            '(* [:SENIOR-DEBT.Balance/start]
                               [:year-frac]
                               (+ [:inputs/senior-debt-margin]
                                  [:inputs/senior-debt-swap-rate]))
  :interest                 '(- [:interest-pos]))
 
 (metadata!
- "senior-debt"
+ "SENIOR-DEBT"
  :drawdown             {:total true :units :currency-thousands}
  :drawdown-amount      {:units :currency-thousands}
  :end-of-repayment     {:units :date}
  :repayment-amount-pos {:total true :units :currency-thousands}
  :repayment-amount     {:total true :units :currency-thousands}
- :year-frac            {:units :currency-cents}
+ :year-frac            {:units :factor}
  :interest-pos         {:total true :units :currency-thousands}
  :interest             {:total true :units :currency-thousands})
 
 (corkscrew!
- "senior-debt.balance"
- :increases [:senior-debt/drawdown]
- :decreases [:senior-debt/repayment-amount-pos])
+ "SENIOR-DEBT.Balance"
+ :increases [:SENIOR-DEBT/drawdown]
+ :decreases [:SENIOR-DEBT/repayment-amount-pos])
 
 (cork-metadata!
- "senior-debt.balance" :currency-thousands)
+ "SENIOR-DEBT.Balance" :currency-thousands)
 
 (calculation!
- "senior-debt.dscr"
- :debt-service             '(+ [:senior-debt/repayment-amount-pos]
-                               [:senior-debt/interest-pos])
- :cash-available           [:cashflow.operating/available-for-debt-service]
- :dscr                     '(if (true? [:senior-debt/repayment-period-flag])
+ "SENIOR-DEBT.Dscr"
+ :debt-service             '(+ [:SENIOR-DEBT/repayment-amount-pos]
+                               [:SENIOR-DEBT/interest-pos])
+ :cash-available           [:CASHFLOW.Operating/available-for-debt-service]
+ :dscr                     '(if (true? [:SENIOR-DEBT/repayment-period-flag])
                               (/ [:cash-available]
                                  [:debt-service]) 0))
 
 (metadata!
- "senior-debt.dscr"
+ "SENIOR-DEBT.Dscr"
  :dscr                 {:units :factor})
 
 
@@ -267,123 +267,124 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (totalled-calculation!
- "cashflow.operating" :available-for-debt-service
+ "CASHFLOW.Operating" :available-for-debt-service
  ;; TODO payment term delay for revenue 
- :revenue                        [:ops.revenue/revenue]
- :opex-expense                   [:ops.opex/om-expense]
- :puchase-of-solar-asset         '(- [:depreciation/puchase-cashflow]))
+ :revenue                        [:OPERATIONS.Revenue/revenue]
+ :opex-expense                   [:OPERATIONS.Opex/om-expense]
+ :puchase-of-solar-asset         '(- [:ACCOUNTING.Depreciation/puchase-cashflow]))
 
 (bulk-metadata!
- "cashflow.operating"
+ "CASHFLOW.Operating"
  {:units :currency-thousands :total true})
 
 (totalled-calculation!
- "cashflow.financing" :available-for-dividends
+ "CASHFLOW.Financing" :available-for-dividends
  ;; TODO payment term delay for revenue
- :available-for-debt-service     [:cashflow.operating/available-for-debt-service]
- :debt-principal                 '(+ [:senior-debt/drawdown] [:senior-debt/repayment-amount])
- :interest-paid                  [:senior-debt/interest]
- :share-capital                  '(+ [:share-capital/drawdown] [:share-capital/redemption]))
+ :available-for-debt-service     [:CASHFLOW.Operating/available-for-debt-service]
+ :debt-principal                 '(+ [:SENIOR-DEBT/drawdown] [:SENIOR-DEBT/repayment-amount])
+ :interest-paid                  [:SENIOR-DEBT/interest]
+ :share-capital                  '(+ [:EQUITY.Share-Capital/drawdown] [:EQUITY.Share-Capital/redemption]))
 
 (corkscrew!
- "cashflow.retained"
- :increases [:cashflow.financing/available-for-dividends]
- :decreases [:dividends/dividend-paid-pos])
+ "CASHFLOW.Retained"
+ :increases [:CASHFLOW.Financing/available-for-dividends]
+ :decreases [:EQUITY.Dividends/dividend-paid-pos])
 
 (check!
  :no-negative-cash-balance
- '(>= [:cashflow.retained/end] 0))
+ '(>= [:CASHFLOW.Retained/end] 0))
 
 (bulk-metadata!
- "cashflow.financing"
+ "CASHFLOW.Financing"
  {:units :currency-thousands :total true})
 
 (metadata!
- "cashflow.financing"
+ "CASHFLOW.Financing"
  :available-for-debt-service {:hidden true})
 
-(cork-metadata! "cashflow.retained" :currency-thousands)
+(cork-metadata! "CASHFLOW.Retained" :currency-thousands)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; INCOME ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (totalled-calculation!
- "income" :profit-after-tax
- :revenue                        [:ops.revenue/revenue]
- :opex-expense                   [:ops.opex/om-expense]
- :depreciation-charge            [:depreciation/depreciation]
- :interest                       [:senior-debt/interest])
+ "INCOME" :profit-after-tax
+ :revenue                        [:OPERATIONS.Revenue/revenue]
+ :opex-expense                   [:OPERATIONS.Opex/om-expense]
+ :depreciation-charge            [:ACCOUNTING.Depreciation/depreciation]
+ :interest                       [:SENIOR-DEBT/interest])
 
 (corkscrew!
- "income.retained"
- :increases [:income/profit-after-tax]
- :decreases [:dividends/dividend-paid-pos])
+ "INCOME.RETAINED"
+ :increases [:INCOME/profit-after-tax]
+ :decreases [:EQUITY.Dividends/dividend-paid-pos])
 
 (bulk-metadata!
  "income"
  {:units :currency-thousands :total true})
 
 (bulk-metadata!
- "income.retained"
+ "INCOME.RETAINED"
  {:units :currency-thousands})
 
 (totalled-calculation!
- "balance-sheet.assets" :total-assets
- :non-current-assets [:depreciation.balance/end]
- :retained-cash      [:cashflow.retained/end])
+ "BALANCE-SHEET.Assets" :total-assets
+ :non-current-assets [:ACCOUNTING.Depreciation.Balance/end]
+ :retained-cash      [:CASHFLOW.Retained/end])
 
 (bulk-metadata!
- "balance-sheet.assets"
+ "BALANCE-SHEET.Assets"
  {:units :currency-thousands})
 
 (totalled-calculation!
- "balance-sheet.liabilities" :total-liabilities
- :debt              [:senior-debt.balance/end]
- :share-capital     [:share-capital.balance/end]
- :retained-earnings [:income.retained/end])
+ "BALANCE-SHEET.Liabilities" :total-liabilities
+ :debt              [:SENIOR-DEBT.Balance/end]
+ :share-capital     [:EQUITY.Share-Capital.Balance/end]
+ :retained-earnings [:INCOME.RETAINED/end])
 
 (bulk-metadata!
- "balance-sheet.liabilities"
+ "BALANCE-SHEET.Liabilities"
  {:units :currency-thousands})
 
 (calculation!
- "balance-sheet.check"
- :balance-check '(- [:balance-sheet.assets/total-assets]
-                    [:balance-sheet.liabilities/total-liabilities]))
+ "BALANCE-SHEET.Check"
+ :balance-check '(- [:BALANCE-SHEET.Assets/total-assets]
+                    [:BALANCE-SHEET.Liabilities/total-liabilities]))
 
 (check!
  :balance-sheet-balances
- '(= (round [:balance-sheet.assets/total-assets])
-     (round [:balance-sheet.liabilities/total-liabilities])))
+ '(= (round [:BALANCE-SHEET.Assets/total-assets])
+     (round [:BALANCE-SHEET.Liabilities/total-liabilities])))
 
 ;; Returns to equity holders
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(totalled-calculation!
- "equity-return" :cashflow-for-irr
- :share-capital-drawdown   '(- [:share-capital/drawdown])
- :share-capital-redemption '(- [:share-capital/redemption])
- :dividend                 [:dividends/dividend-paid-pos])
+(calculation!
+ "EQUITY-RETURN"
+ :cashflow-for-irr   '(- (+ [:EQUITY.Dividends/dividend-paid-pos]
+                            [:EQUITY.Share-Capital/redemption-pos])
+                         [:EQUITY.Share-Capital/drawdown]))
 
 (metadata!
- "equity-return"
+ "EQUITY-RETURN"
  :dividend {:total true})
 
 (outputs!
  :irr       {:name "IRR to Equity Holders"
              :units :percent
-             :function '(irr-days :period/end-date :equity-return/cashflow-for-irr)}
+             :function '(irr-days :TIME.period/end-date :EQUITY-RETURN/cashflow-for-irr)}
  :dividends {:name "Dividends paid (thousands)"
              :units :currency-thousands
-             :function '(apply + :dividends/dividend-paid-pos)}
+             :function '(apply + :EQUITY.Dividends/dividend-paid-pos)}
  :min-dscr  {:name "Min DSCR"
              :units :factor
-             :function '(apply min (remove zero? :senior-debt.dscr/dscr))}
+             :function '(apply min (remove zero? :SENIOR-DEBT.Dscr/dscr))}
  :avg-dscr  {:name "Avg DSCR"
              :units :factor
-             :function '(mean (remove zero? :senior-debt.dscr/dscr))})
+             :function '(mean (remove zero? :SENIOR-DEBT.Dscr/dscr))})
 
-(f/compile-run-display! 183 {:header :period/end-date
-                             :sheets ["ops"]
+(f/compile-run-display! 183 {:header :TIME.period/end-date
+                             :sheets ["EQUITY-RETURN"]
                              :show-imports true
-                             :start 1
+                             :start 100
+                             :outputs true
                              :charts []})

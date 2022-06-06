@@ -47,7 +47,7 @@
          bisection (/ (+ guess1 guess2) 2)
          n3 (npv-days yfs cashflows bisection)]
      (cond (> iteration 100)            :iteration-limit
-           (= (pos? n1) (pos? n2))      :no-interval
+           (= (pos? n1) (pos? n2))      0
            (<= (Math/abs n3) threshold) (float bisection)
            (= (pos? n1) (pos? n3))      (recur dates cashflows [bisection guess2] threshold (inc iteration))
            :else                        (recur dates cashflows [guess1 bisection] threshold (inc iteration))))))
