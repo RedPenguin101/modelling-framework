@@ -28,30 +28,12 @@
 
 (calculation!
  "DEBT.Principal"
- :drawdown             '(when-flag [:TIME.periods/first-flag]
-                                   [:inputs/debt-drawdown])
- :repayment-term-years [:placeholder 5]
- :repayment-amount     '(if (pos? [:DEBT.Principal-Balance/start])
-                          (min [:DEBT.Principal-Balance/start]
-                               (/ [:inputs/debt-drawdown]
-                                  (* [:repayment-term-years]
-                                     [:inputs/periods-in-year])))
-                          0))
-
-(corkscrew!
- "DEBT.Principal-Balance"
- :increases       [:DEBT.Principal/drawdown]
- :decreases       [:DEBT.Principal/repayment-amount])
-
-(metadata!
- "DEBT.Principal"
- :repayment-amount         {:total true})
+ :starting-balance        [:placeholder 1000000])
 
 (calculation!
  "DEBT.Interest"
- :calculation-basis       [:DEBT.Principal-Balance/start]
+ :calculation-basis       [:DEBT.Principal/starting-balance]
  :annual-rate             [:inputs/interest-rate]
- :blah                    [:placeholder 1]
  :year-frac              '(year-frac-act-360
                            (add-days [:TIME.periods/start-date] -1)
                            [:TIME.periods/end-date])
@@ -62,20 +44,12 @@
 (metadata!
  "DEBT.Interest"
  :calculation-basis {:hidden true}
- :blah              {:units :percent}
  :annual-rate       {:units :percent}
- :year-frac         {:units :factor :total true}
+ :year-frac         {:units :factor}
  :amount            {:units :currency :total true})
-
-;; Expect:
-;; * time, first flag
-;; * inputs, debt-drawdown
-;; * inputs, periods in year
 
 (f/compile-run-display! 24 {:header :TIME.periods/end-date
                             :sheets ["DEBT.Interest"]
                             :start 1
                             :show-imports true
-                            :periods 3
                             :charts []})
-
