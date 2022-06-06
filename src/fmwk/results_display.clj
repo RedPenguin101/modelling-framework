@@ -133,13 +133,13 @@
 
 (defn- import-display [categories model-rows]
   (let [main-rows (mapcat #(rows-in-hierarchy % (keys model-rows)) categories)]
-    (set/difference (set (flatten (remove fw/input-link? (filter fw/current-period-link? (mapcat fw/extract-refs (vals (select-keys model-rows main-rows)))))))
-                    (set main-rows))))
+    (remove (set main-rows)
+            (set (flatten (remove fw/input-link? (filter fw/current-period-link? (mapcat fw/extract-refs (vals (select-keys model-rows main-rows))))))))))
 
 (defn display-rows-temp  [category metadata results header]
-  (set/difference
-   (set (conj (rows-in-hierarchy category (map first results)) header))
-   (set (hidden-rows metadata))))
+  (remove
+   (set (hidden-rows metadata))
+   (conj (rows-in-hierarchy category (map first results)) header)))
 
 (defn- prep-results [results metadata display-rows from to]
   (let [tot (totals results (get-total-rows metadata))]
@@ -231,6 +231,7 @@
         import-results   (prep-results results (get-in options [:model :meta]) import-rows start end)
         filtered-results (map #(prep-results results (get-in options [:model :meta]) % start end) display-rows)
         checks           (check-results results header)]
+    (print import-rows)
     (spit
      "./results.html"
      (html [:html
