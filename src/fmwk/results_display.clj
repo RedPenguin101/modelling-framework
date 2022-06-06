@@ -1,7 +1,6 @@
 (ns fmwk.results-display
   (:require [fmwk.tables :as t]
             [fmwk.simple-viz.main :refer [series-lines-save]]
-            [clojure.set :as set]
             [clojure.string :as str]
             [hiccup.core :refer [html]]))
 
@@ -133,20 +132,23 @@
 (defn- add-total-label [table]
   (assoc-in (vec table) [0 1 0] "TOTAL"))
 
-(defn- import-display [categories model-rows]
+(defn- import-rows [categories model-rows]
   (let [main-rows (mapcat #(rows-in-hierarchy % (keys model-rows)) categories)]
     (remove (set main-rows)
             (set (flatten (remove fw/input-link? (filter fw/current-period-link? (mapcat fw/extract-refs (vals (select-keys model-rows main-rows))))))))))
 
-(defn display-rows-temp  [category metadata results header]
-  (remove
-   (set (hidden-rows metadata))
-   (conj (rows-in-hierarchy category (map first results)) header)))
+(defn display-rows [category results]
+  (rows-in-hierarchy category (map first results)))
+
+(defn remove-hidden-rows [results metadata]
+  (select-rows results (remove (set (hidden-rows metadata))
+                               (map first results))))
 
 (defn- prep-results [results metadata display-rows from to]
   (let [tot (totals results (get-total-rows metadata))]
     (-> results
         (select-rows display-rows)
+        (remove-hidden-rows metadata)
         (select-periods from to)
         (add-totals tot)
         (format-results metadata)
@@ -227,13 +229,12 @@
 (defn print-result-summary! [results {:keys [model sheets start periods header charts show-imports] :as options}]
   (let [start            (or start 1)
         end              (+ start (or periods 10))
-        display-rows     (map #(display-rows-temp % (get-in options [:model :meta]) results header) sheets)
-        import-rows      (conj (import-display sheets (get-in options [:model :rows]))
-                               header)
-        import-results   (prep-results results (get-in options [:model :meta]) import-rows start end)
-        filtered-results (map #(prep-results results (get-in options [:model :meta]) % start end) display-rows)
+        metadata         (get-in options [:model :meta])
+        display-rows     (map #(conj (display-rows % results) header) sheets)
+        filtered-results (map #(prep-results results metadata % start end) display-rows)
+        import-rows      (conj (import-rows sheets (get-in options [:model :rows])) header)
+        import-results   (prep-results results metadata import-rows start end)
         checks           (check-results results header)]
-    (print import-rows)
     (spit
      "./results.html"
      (html [:html
