@@ -141,9 +141,8 @@
    (set (conj (rows-in-hierarchy category (map first results)) header))
    (set (hidden-rows metadata))))
 
-(defn- prep-results [results metadata header category from to]
-  (let [tot (totals results (get-total-rows metadata))
-        display-rows (display-rows-temp category metadata results header)]
+(defn- prep-results [results metadata header display-rows from to]
+  (let [tot (totals results (get-total-rows metadata))]
     (-> results
         (select-rows display-rows)
         (select-periods from to)
@@ -227,8 +226,10 @@
 (defn print-result-summary! [results {:keys [model sheets start periods header charts] :as options}]
   (let [start            (or start 1)
         end              (+ start (or periods 10))
-        filtered-results (map #(prep-results results (get-in options [:model :meta]) header % start end) sheets)
+        display-rows     (map #(display-rows-temp % (get-in options [:model :meta]) results header) sheets)
+        filtered-results (map #(prep-results results (get-in options [:model :meta]) header % start end) display-rows)
         checks           (check-results results header)]
+    (println filtered-results)
     (spit
      "./results.html"
      (html [:html
