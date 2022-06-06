@@ -206,9 +206,9 @@
     (series-lines-save series filename)
     filename))
 
-(defn results-table [results]
+(defn results-table [results header]
   [:div
-   [:h3 (name->title (sheet (first (second results))))]
+   [:h3 header]
    (results->html-table results)])
 
 (defn outputs-block [results model]
@@ -238,9 +238,9 @@
             head
             [:body
              (when (not-empty checks) (check-warning checks))
-             (when show-imports (results-table import-results))
+             (when show-imports (results-table import-results "Imports"))
              (for [r filtered-results]
-               (results-table r))
+               (results-table r (name->title (sheet (first (second r))))))
              (when (and (:outputs options) (not-empty (:outputs model)))
                (outputs-block results (:model options)))
              (when (not-empty charts) [:img.graph {:src (graph-series (map (into {} results) charts))}])]]))))
