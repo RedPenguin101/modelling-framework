@@ -11,7 +11,9 @@
 * **DONE** Change corkscrew so starter goes to _end_, not start)
 * **DONE** Improvement to html print - Charting for UI, print multiple sheets
 * **DONE** Only run on changed model
-* Improve checks - show at bottom of sheet
+* Change outputs to calculate on results, not display
+* Improve checks, show which ones.
+* Display errors (bad refs) in output, not REPL 
 * Inputs, base cases, scenarios
 * Output comparison across scenarios
 * Save run outputs, display last x (like gridlines output sheet)

@@ -32,9 +32,10 @@
                                    [:inputs/debt-drawdown])
  :repayment-term-years [:placeholder 5]
  :repayment-amount     '(if (pos? [:DEBT.Principal-Balance/start])
-                          (/ [:inputs/debt-drawdown]
-                             (* [:repayment-term-years]
-                                [:inputs/periods-in-year]))
+                          (min [:DEBT.Principal-Balance/start]
+                               (/ [:inputs/debt-drawdown]
+                                  (* [:repayment-term-years]
+                                     [:inputs/periods-in-year])))
                           0))
 
 (corkscrew!
