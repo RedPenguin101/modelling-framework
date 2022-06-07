@@ -191,7 +191,7 @@ Clone this repo and set up a new model (clj file) in the Models subfolder. At th
 
 Start the REPL following the Calva instructions. Now you're ready to start building the model.
 
-### Translating the above model definitiosn into the DSL
+### Translating the above model definition into the DSL
 We're going to translate the model we defined:
 
 ```
