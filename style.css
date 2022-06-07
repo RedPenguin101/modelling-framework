@@ -2,18 +2,6 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-table {
-  border-collapse: collapse;
-}
-
-tr.placeholder {
-  background-color: rgb(255, 239, 175);
-}
-
-tr:first-child {
-  background-color: lightgrey;
-}
-
 div.warning {
   background-color: rgb(255, 250, 230);
   padding: 0.5em;
@@ -26,6 +14,23 @@ div.warning {
   width: 2em;
   height: 2em;
   margin-right: 1em;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+tr.placeholder {
+  background-color: rgb(255, 239, 175);
+}
+
+tr.total-row {
+  border-top: 0.5 solid black;
+  border-bottom: 0.5 solid black;
+}
+
+tr:first-child {
+  background-color: lightgrey;
 }
 
 td {
