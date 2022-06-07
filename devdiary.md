@@ -1,23 +1,8 @@
 # Dev Diary
 ## Todo
 ### MVP
-* **DONE** Model construction helpers
-* **DONE** reimplement metadata
-* **DONE** Checks and warnings
-* **DONE** "Hidden" metadata
-* **DONE** Outputs
-* **DONE** UI
-* **DONE** metadata in bulk (e.g. income statement, all totals, all ccy-thousands
-* **DONE** Change corkscrew so starter goes to _end_, not start)
-* **DONE** Improvement to html print - Charting for UI, print multiple sheets
-* **DONE** Only run on changed model
-* **DONE** Display imports option
-* **DONE** Add units to display outputs
-* **DONE** Allow user to specify specific output string
-* **DONE** Metadata changes don't cause model rerun
-* **DONE** Highlight placeholders
-* **DONE** Force recalc as option
 * Change outputs to calculate on results, not display
+* Circular dependency - find and display
 * Improve checks, show which ones.
 * Check on rows, so they can be highlighted?
 * Display errors (bad refs) in output, not REPL 

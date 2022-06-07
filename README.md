@@ -1,51 +1,98 @@
 # Financial Modelling Framework
 
 ## Introduction
-This is a program/framework to iteratively build and use 'project finance' type financial models as an alternative to Excel, the dominant method.
+This is a framework to iteratively build and use 'project finance' type financial models. It is an alternative to Excel, the dominant method.
+
+If provides
+
+* An extensible Domain Specific Language (DSL) for building and running models
+* Notebook-like build/run pattern
+* Rich Table display functionality, with formatting, headers and highlighting
+* Time series charting.
 
 This is very much a prototype / proof of concept, and can and will change drastically.
 
+## Quickstart
+TODO
+
 ## Why?
-Excel is very good at building these type of models. In many ways it is one of the only 'killer apps' remaining to Excel as alternatives are found for visualization, reporting, and other types of financial modelling.
+Excel is very good at building project finance type models. Above all, it is very flexible, which is well suited to the diverse project-finance type models.
 
-Above all, it is very flexible, which is well suited to the extremely diverse project-finance type models.
-
-That being said, there are good reasons for looking at alternative ways of doing things. These types of models have grown to be extremely complex, with hundreds of inputs, thousands of rows, and incomprehensible dependency graphs. The modelling community has adapted to this complexity by developing standards and conventions to minimize the problems caused. This includes creating standard formats for different types of sheets, conventions around how formula are constructed, semantics for coloring and shading etc. Here are a few examples that I have seen:
+That being said, there are reasons to look for alternative. These types of models can grow to be extremely complex, with hundreds of inputs, thousands of rows, and incomprehensible dependency graphs. The modelling community has adapted to this complexity by developing standards and conventions to minimize the problems caused. A few examples:
 
 * Formula must be consistent across a time-series
 * Formula that are 'calculations' (i.e. have some arithmetic operations) must not have references to things outside of the sheet. Instead you should use dedicated 'import' rows.
 * Linkages must be 'star' schemas. That is, you can't link to something which itself is a link to something else.
 * The creation of 'template' sheets for common attributes, especially time related measure ("In operating period flag", "period end date") and financial statements.
 * Placeholder have a yellow background.
+* Rows that are exported to other rows have red text
+* User inputs have a particular format
 
-While these conventions are broadly effective, all of these impose structure on the workbook, but rely on the discipline of the modeller to maintain them. This 'removal of flexibility' in exchange for simplicity is typical of the lifecycle of business process as patterns of use emerge and complexity increases. It is generally at that stage of the lifecycle that software emerges that implements and enforces those conventions.
+While these conventions are broadly effective, all of these impose structure on the workbook, but rely on the _discipline_ of the modeller to maintain them. This removal of flexibility in exchange for simplicity and safety is typical of the maturity life-cycle of business process as patterns of common use emerge and complexity increases. 
+
+It is often at that stage of the life-cycle that software emerges that implements and enforces those conventions. This has not, to this point, happened for project finance modelling.
 
 This program is an attempt to do that for this domain.
 
-## Inspiration
-A model is a program, and the modeller is someone who creates that program. Each model is different, though (thanks to the conventions) created from largely homogeneous blocks. In this sense a modeller is more like a programmer than a 'user' of an application, like for example an accountant who is using accounting software to book journal entries. Following this analogy, a modeller doesn't need a 'user' program to help them construct models (such a program would necessarily impose too many restrictions on what a user can and can't do). They need an environment to create programs, in the same way that a software engineer uses an IDE.
+### Modelling is Programming
+A model is, in effect, a program that creates a set of outputs. Every model is different, though (thanks to the conventions) created from largely homogeneous blocks. In this sense a modeller is more like a programmer than a 'user' of an application.
 
-There is a closer analogy that the one between a project finance modeller and a software engineer. In recent years, another type of model - the 'portfolio model' - has shown signs of moving away from Excel as its main modelling tool. These are analytical and predictive models of large portfolios of financial assets, for example credit cards. The credit card provider will send to the prospective financier 'data tapes' with historical data about the underlying assets. The financier will ingest, clean and analyze that data for things such as default rates, then build a predictive model on top of it based on assumed (or probabilistic) future default rates to determine its likely future cash-flows and assess whether it's a good investment for them.
+Following this analogy, a modeller doesn't need a program to help them construct models - such a program would necessarily impose too many restrictions on what a user can and can't do. They need an _environment_ to create programs, in the same way that a software engineer uses an IDE.
 
-The drive away from Excel for these types of models are based partly on increased statistical sophistication, requiring more advanced statistical tools, but mostly on the size of the data tapes. They can get extremely large, with hundreds of thousands of assets. This firstly has the consequence that Excel just can't _handle_ that amount of data well. Secondly, the challenge of cleaning the data is large, and Excel's tools for this are relatively rudimentary. And finally the amount of data means the value of being able to see all of it, on a line-by-line basis, is much diminished. When you have a million credit cards, the value of looking at a single credit card is minimal. Only aggregates are important. Excel... excels at showing you all the data, all the time. Since this is less necessary, the benefit of Excel is less.
+### Taking inspiration from Portfolio Modelling
+In recent years another type of model - the 'portfolio model' - has shown signs of moving away from Excel as its main modelling tool. 
+
+These are analytical and predictive models of large portfolios of financial assets, for example portfolio of credit cards. The credit card provider will send to a prospective financier 'data tapes' with historical data about the underlying assets. The financier will ingest, clean and analyze that data for things such as default rates, then build a predictive model on top of it based on assumed (or probabilistic) future default rates to determine its likely future cash-flows and assess whether it's a good investment for them.[^1]
+
+[^1]: It is, however, often the case that such an asset level model will provide inputs into another model, much more similar to a project finance type model, which will model the liabilities etc.
+
+The drive away from Excel for these types of models are based partly on increased statistical sophistication, requiring more advanced stochastic tools, but mostly on the size of the data tapes. They can get extremely large, with hundreds of thousands of assets. This firstly has the consequence that Excel just can't _handle_ that amount of data well. Secondly, the challenge of cleaning the data is large, and Excel's tools for this are relatively rudimentary. And finally the amount of data means the value of being able to see all of it, on a line-by-line basis, is much diminished. When you have a million credit cards, the value of looking at a single credit card is minimal. Only aggregates are important. Excel... excels at showing you all the data, all the time. Since this is less necessary, the benefit of Excel is less.
 
 The alternative tools to Excel that have been adopted are less like 'user applications', which would not be sufficiently flexible, and more similar to the tools that software engineers use. Data cleaning and manipulation and model building are done in general(ish) purpose programming languages like R and Python, with specialized libraries like R's Tidyverse and Python's Pandas. The tools are IDEs like R-Studio, or 'Notebooks' like Jupyter, which have the functionality of an IDE with integrated runtimes and better options for display. This solution doesn't reduce flexibility available to the user (arguably it increases it, since you have a full general purpose programming language at your disposal), while solving many of the above problems. 
 
-A similar argument holds true for project finance modelling. For this reason the framework is premised on a user writing and running the model in code, from an IDE. The project finance model challenge does differ in several key ways, however. There is little input data, for example, typically just few scalars or vectors which are kept in an 'input' sheet. So the challenge of handling large input data volumes and cleaning that data is practically non-existent. The complexity of the project finance model is managing the large dependency graph between the different modelled attributes. It is easy to create circular dependencies, and hard to find out what they are, let alone fix them. This means the value of being able to see all the rows of a model is _more_ valuable, since you often need to 'debug' a model by following calculations around. This I think is why there has been less of a push to move away from spreadsheets for project finance models.
+Crucially, these tools also retain the fast feedback loops (the length of time between making a change and seeing the impact of that change) that is characteristic of Excel, but not of more traditional programming environments.
 
-There remain some problems with spreadsheets for project finance models, which this framework aims to address:
+## Pros and Cons of Excel for Project Finance Modelling
+For an alternative to Excel to be successful it must retain the positive attributes of Excel while mitigating its negative elements. Here are those pros and cons.
 
+### Pros
+1. Tight feedback loops between making changes and seeing results
+2. Looking at any part of the model, or the results of that model is quite easy.
+3. Excellent visualization capabilities, especially something like quickgraph.
+4. With the cell-reference model, you can directly back-trace the value of a cell to how that cell was generated, which is very useful for debugging.
+5. Rich formatting of both model and results can be highly communicative, if used well.
+6. A good library of standard functions, well suited to this use case.
+
+### Cons
 1. Difficulty of version control
 2. Lack of tools to trace cause (changes to the model) to effect (changes in the results)
 3. Difficulty in handling circular references
 4. Lack of comprehensibility on models above a certain size
 5. A specific case of the above: Close coupling of model and output.
+6. Second class extensibility through VBA macros
+7. "Cell Reference" model of calculation has legibility problems at scale.
+8. Flexibility to 'do anything' requires a lot of discipline to maintain model quality.
 
-## Key concepts
+## The target features of the framework
+* A 'named reference' method of defining models (no more cell references), and a decoupling of model from results
+* Maintain full flexibility of what's _in_ the model, while providing structure and guardrails for _how_ you model.
+* Maintain tight feedback loops between model change and results viewing
+* User can quickly look at any part of the results set
+* At least some timeseries visualization capabilities
+* Rich and configurable formatting of results (colors, formats) to maximize legibility
+* Source-code style version control of _model_
+* Version control of _results_
+* Fully extensible to user for new functions and framework elements.
+
+## Modelling Key Concepts
 There are a few concepts that are core to the understanding of this framework:
 
 ### The Time-series
 All financial models are based on time series: what is the profit over time, what are the dividends over time, what is the balance-sheet over time. Almost everything in a financial model can be represented in a time series. In Excel, this takes the form of a time series 'sheet', with 'periods' across the top, named measures (_rows_) down the side, and the value of those measures in a time-series period in the intersection of these.
+
+Here is an example from Gridlines' [Essential Financial Modelling](https://academy.gridlines.com/p/essential-financial-modelling) course.
+
+![Excel Time-Series Sheet](./docs/Excel.png)
 
 ### The Model: Inputs and Model Rows
 The model is a description of how to generate each row in the time series. For example, a description of a model for generating period start and end dates might be:
@@ -139,9 +186,32 @@ Clone this repo and set up a new model (clj file) in the Models subfolder. At th
 Start the REPL following the Calva instructions. Now you're ready to start building the model.
 
 ### Translating the above model definitiosn into the DSL
-All of the above examples have been in pseudo-code. The framework implements a DSL for writing these models. The full source code for this model is at [This link](./models/models/readme_example.clj)[^1]
+We're going to translate the model we defined:
 
-[^1]: That folder also has several other sample models you can look at.
+```
+INPUTS
+  model-start-date = 2020-01-01
+  length-of-period = 3 months
+
+TIME.Periods:
+  number      = previous number + 1
+  start-date  = if   (number = 1) 
+                then INPUTS/model-start-date
+                else previous end-date + 1day
+  end-date    = start-date + INPUTS/length-of-period
+
+DEBT.Interest
+  calculation-basis = DEBT.principal/starting-balance
+  annual-rate       = INPUTS/interest-rate
+  year-frac         = year-frac-act360
+                        TIME.periods/start-date - 1
+                        TIME.periods/end-date
+  amount            = calculation-basis * annual-rate * year-frac
+```
+
+Into the framework DSL, basically one-for-one[^2].
+
+[^2]: The full source code for this model is at [This link](./models/models/readme_example.clj). That folder also has several other sample models you can look at.
 
 ```clojure
 (base-case!
@@ -174,9 +244,9 @@ All of the above examples have been in pseudo-code. The framework implements a D
 
 First we define our inputs - actually a "base-case", since we might want to create alternative sets of inputs later. Then we create two calculations: `TIME.Periods` and `DEBT.Interest`. Inside each calculation we define pairs of row-names, and their associated formula. These can either be direct references (like `calculation-basis`) or functions. A function is a Lisp S-Expression. The format is simply `(function-to-apply arg1 arg2 ...)`. It's entirely equivalent to `function-to-apply(arg1, arg2)` in Python, only the opening bracket comes _before_ the function call.
 
-**Note the 'quote' before each S-Expression!** This is important because it defers the evaluation of the expression until you want to run the model. Every formula that isn't a direct reference needs to have one of these[^2].
+**Note the 'quote' before each S-Expression!** This is important because it defers the evaluation of the expression until you want to run the model. Every formula that isn't a direct reference needs to have one of these[^3].
 
-[^2]: You can put them on references too if you like, but you don't need to.
+[^3]: You can put them on references too if you like, but you don't need to.
 
 The capitalization of the sheet, and the first-letter capitalizations of the calculation are just conventions which don't need to be followed for the model to work. You can also have more than two 'layers' of calculation if you want, though for legibility the output will only show headings for the first two levels.
 
@@ -293,9 +363,9 @@ We can see the problem: From the 2023-03-31 period, we've totally paid off the l
  '(>= [:DEBT.Principal-Balance/end] 0))
 ```
 
-Now running the model, we will see this[^3]
+Now running the model, we will see this[^4]
 
-[^3]: This is not very helpful right now. Improving the communicativeness of these checks is on the todo list.
+[^4]: This is not very helpful right now. Improving the communicativeness of these checks is on the todo list.
 
 ![](./docs/Results6.png)
 
@@ -333,3 +403,4 @@ A common requirement is to visualize a time-series. You can do this with the cha
 ### More readme things to write
 * Totals
 * Outputs
+* Circular dependencies
