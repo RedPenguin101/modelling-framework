@@ -16,7 +16,7 @@
  :interest-rate    0.05)
 
 (calculation!
- "TIME.periods"
+ "TIME.Periods"
  :number                   '(+ 1 [:number :prev])
  :first-flag               '(= 1 [:number])
  :start-date               '(if (= 1 [:number])
@@ -26,10 +26,17 @@
                                 (add-months [:inputs/length-of-period])
                                 (add-days -1)))
 
+(metadata!
+ "TIME.Periods"
+ :number     {:units :counter}
+ :first-flag {:units :flag}
+ :start-date {:units :date}
+ :end-date   {:units :date})
+
 (calculation!
  "DEBT.Principal"
  :drawdown             '(when-flag
-                         [:TIME.periods/first-flag]
+                         [:TIME.Periods/first-flag]
                          [:inputs/debt-drawdown])
  :amortization-periods '(* [:inputs/repayment-term]
                            [:inputs/periods-in-year])
@@ -48,7 +55,7 @@
  "DEBT.Principal-Balance"
  :starter         [:inputs/debt-drawdown]
  :decreases       [:DEBT.Principal/repayment-amount-pos]
- :start-condition [:TIME.periods/first-flag])
+ :start-condition [:TIME.Periods/first-flag])
 
 (bulk-metadata!
  "DEBT.Principal-Balance"
@@ -64,8 +71,8 @@
  :dummy                   [:placeholder true]
  :annual-rate             [:inputs/interest-rate]
  :year-frac              '(year-frac-act-360
-                           (add-days [:TIME.periods/start-date] -1)
-                           [:TIME.periods/end-date])
+                           (add-days [:TIME.Periods/start-date] -1)
+                           [:TIME.Periods/end-date])
  :amount                 '(* [:calculation-basis]
                              [:annual-rate]
                              [:year-frac]))
@@ -86,12 +93,12 @@
 (outputs!
  :irr       {:name "IRR to Equity Holders"
              :units :percent
-             :function '(irr-days :TIME.periods/end-date
+             :function '(irr-days :TIME.Periods/end-date
                                   :DEBT.Cashflows/cashflow)})
 
-(f/compile-run-display! 24 {:header :TIME.periods/end-date
+(f/compile-run-display! 24 {:header :TIME.Periods/end-date
                             :sheets ["DEBT"]
                             :outputs true
                             :start 1
-                            :show-imports false
+                            :show-imports true
                             :charts [:DEBT.Principal-Balance/end]})
