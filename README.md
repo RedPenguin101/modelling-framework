@@ -121,6 +121,12 @@ period-start:  2020-01-01 2020-04-01 2020-07-01 2020-10-01 ...
 period-end:    2020-03-31 2020-06-30 2020-09-30 2020-12-31 ...
 ```
 
+In Excel, the model and results are closely connected. In fact, they are the same thing: the model _is_ the results. In the below screenshot you can see the model implemented in Excel. The 'results' are just the evaluation of the formula in the cells.
+
+![](./docs/ExcelModel.png)
+
+Our approach is different: we keep the model and results quite separate.
+
 ### Outputs
 A model is run for a reason: to see what the outputs are. These outputs are also useful when building the model to see what, in aggregate, has changed. There are typically stated in terms of aggregations of rows in results. Output definitions are part of the model definition, and are produced alongside the results as a outcome of running the model.
 
