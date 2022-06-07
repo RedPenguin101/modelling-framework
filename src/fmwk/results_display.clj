@@ -60,7 +60,7 @@
 
 
 
-(def counter-format  (java.text.DecimalFormat. "0"))
+(def counter-format  (java.text.DecimalFormat. "0 "))
 (def ccy-format      (java.text.DecimalFormat. "###,##0 ;(###,##0)"))
 (def ccy-cent-format (java.text.DecimalFormat. "###,##0.00"))
 (def factor-format   (java.text.DecimalFormat. "###,##0.0000"))
@@ -83,7 +83,7 @@
 (defn format-factor [x]
   (.format factor-format x))
 
-(defn- format-boolean [x]  (when (true? x) "✓"))
+(defn- format-boolean [x]  (when (true? x) "✓        "))
 (defn- format-percent [x] (if (zero? x) "-  " (format "%.2f%%" (* 100.0 x))))
 
 (defn- format-date [d]
