@@ -267,6 +267,9 @@
   (add-calc! (apply totalled-calculation calc-name total-name row-pairs)))
 
 (defn corkscrew! [calc-name & row-pairs]
+  (add-meta! [calc-name {:increase {:total true}
+                         :decrease {:total true}
+                         :end      {:total-row true}}])
   (add-calc! (apply corkscrew calc-name row-pairs)))
 
 (defn base-case! [case-name & row-pairs]
@@ -281,13 +284,6 @@
 (defn bulk-metadata! [calc-name mp]
   (let [calc (get-calc! calc-name)]
     (add-meta! (bulk-metadata calc-name mp calc))))
-
-(defn cork-metadata! [calc-name units]
-  (metadata! calc-name
-             :start    {:units units}
-             :increase {:total true :units units}
-             :decrease {:total true :units units}
-             :end      {:units units :total-row true}))
 
 (defn outputs! [& row-pairs]
   (add-outputs! row-pairs))

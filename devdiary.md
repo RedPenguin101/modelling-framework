@@ -12,7 +12,6 @@
 * Results Diff - colors on changed cells
 * Warnings on linked dependencies (links which are just other links)
 * different types of col aggregation - sum, avg, etc.
-* Format block total - top and bottom border
 
 ### Other
 * Only-dependencies recalculation? Need to recompile model function
