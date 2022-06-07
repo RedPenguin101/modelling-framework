@@ -4,6 +4,28 @@
             [clojure.string :as str]
             [hiccup.core :refer [html]]))
 
+;; bleh, stealing from framework TODO find better way to do this
+;; predicates for types of expression, for conditionals
+(def expression? list?)
+(defn- constant-ref? [ref]
+  (and (vector? ref) (#{:placeholder :constant :row-literal} (first ref))))
+(def link? (every-pred vector? (complement constant-ref?)))
+(defn current-period-link? [ref] (and (link? ref) (= 1 (count ref))))
+(defn input-link? [ref] (and (link? ref) (= (namespace (first ref)) "inputs")))
+(defn extract-refs
+  "Given an expression containing references (defined as a vector), 
+   will extract all of the references and return them as a vector"
+  ([expr] (if (coll? expr)
+            (extract-refs [] expr)
+            (throw (ex-info "extract-refs: not an expression" {:expr expr}))))
+  ([found [fst & rst :as expr]]
+   (cond (or (constant-ref? expr) (link? expr)) (conj found expr)
+         (nil? fst) found
+         (link? fst) (recur (conj found fst) rst)
+         (expression? fst) (recur (into found (extract-refs [] fst)) rst)
+         :else (recur found rst))))
+
+
 ;; calc-outputs - probably shouldn't be here
 
 (defn- outputs [results outputs]
@@ -154,7 +176,7 @@
 (defn- import-rows [categories model-rows]
   (let [main-rows (mapcat #(rows-in-hierarchy % (keys model-rows)) categories)]
     (remove (set main-rows)
-            (set (flatten (remove fw/input-link? (filter fw/current-period-link? (mapcat fw/extract-refs (vals (select-keys model-rows main-rows))))))))))
+            (set (flatten (remove input-link? (filter current-period-link? (mapcat extract-refs (vals (select-keys model-rows main-rows))))))))))
 
 (defn display-rows [category results]
   (rows-in-hierarchy category (map first results)))
