@@ -54,5 +54,5 @@ td.header {
 
 img.graph {
   width: 500;
-  height: 500;
+  max-height: 300;
 }

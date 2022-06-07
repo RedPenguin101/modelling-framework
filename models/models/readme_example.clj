@@ -29,6 +29,9 @@
 
 (calculation!
  "DEBT.Principal"
+ :drawdown             '(when-flag
+                         [:TIME.periods/first-flag]
+                         [:inputs/debt-drawdown])
  :amortization-periods '(* [:inputs/repayment-term]
                            [:inputs/periods-in-year])
  :repayment-amount-pos '(when-flag
@@ -38,6 +41,7 @@
 
 (metadata!
  "DEBT.Principal"
+
  :amortization-periods  {:units :counter}
  :repayment-amount-pos  {:units :currency-thousands})
 
@@ -73,8 +77,21 @@
  :year-frac         {:units :factor}
  :amount            {:units :currency :total true})
 
+(calculation!
+ "DEBT.Cashflows"
+ :cashflow '(- [:DEBT.Principal/drawdown]
+               (+ [:DEBT.Interest/amount]
+                  [:DEBT.Principal/repayment-amount-pos])))
+
+(outputs!
+ :irr       {:name "IRR to Equity Holders"
+             :units :percent
+             :function '(irr-days :TIME.periods/end-date
+                                  :DEBT.Cashflows/cashflow)})
+
 (f/compile-run-display! 24 {:header :TIME.periods/end-date
                             :sheets ["DEBT"]
-                            :start 6
+                            :outputs true
+                            :start 1
                             :show-imports false
-                            :charts []})
+                            :charts [:DEBT.Principal-Balance/end]})

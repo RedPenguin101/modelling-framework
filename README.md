@@ -313,11 +313,23 @@ We can now fix our Principal Payment calc:
                             [:amortization-periods])))
 ```
 
-And see the result
+And see the result, with the check passing.
 
 ![](./docs/Result7.png)
+
+### Charts
+A common requirement is to visualize a time-series. You can do this with the chart option. Here we see the debt balance charted over time, where we can verify that the balance smoothly decreases to zero over time.
+
+```clojure
+(f/compile-run-display! 24 {:header :TIME.periods/end-date
+                            :sheets ["DEBT"]
+                            :start 6
+                            :show-imports false
+                            :charts [:DEBT.Principal-Balance/end])
+```
+
+![](./docs/ResultChart.png)
 
 ### More readme things to write
 * Totals
 * Outputs
-* Charts
