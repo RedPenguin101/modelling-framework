@@ -50,9 +50,9 @@
  :decreases       [:DEBT.Principal/repayment-amount-pos]
  :start-condition [:TIME.periods/first-flag])
 
-(cork-metadata!
+(bulk-metadata!
  "DEBT.Principal-Balance"
- :currency-thousands)
+ {:units :currency-thousands})
 
 (check!
  :debt-balance-gt-zero
