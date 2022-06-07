@@ -90,6 +90,8 @@ There are a few concepts that are core to the understanding of this framework:
 ### The Time-series
 All financial models are based on time series: what is the profit over time, what are the dividends over time, what is the balance-sheet over time. Almost everything in a financial model can be represented in a time series. In Excel, this takes the form of a time series 'sheet', with 'periods' across the top, named measures (_rows_) down the side, and the value of those measures in a time-series period in the intersection of these.
 
+![Excel Time-Series Sheet](./docs/Excel.png)
+
 ### The Model: Inputs and Model Rows
 The model is a description of how to generate each row in the time series. For example, a description of a model for generating period start and end dates might be:
 
