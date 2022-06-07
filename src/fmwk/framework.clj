@@ -259,11 +259,11 @@
 
 (defn calculation! [calc-name & row-pairs]
   (let [md (apply implied-metadata calc-name row-pairs)]
-    (when md (add-meta! md))
+    (when md (println "Meta" md) (add-meta! md))
     (add-calc! (apply calculation calc-name row-pairs))))
 
-
 (defn totalled-calculation! [calc-name total-name & row-pairs]
+  (add-meta! [calc-name {total-name {:total-row true}}])
   (add-calc! (apply totalled-calculation calc-name total-name row-pairs)))
 
 (defn corkscrew! [calc-name & row-pairs]
@@ -287,7 +287,7 @@
              :start    {:units units}
              :increase {:total true :units units}
              :decrease {:total true :units units}
-             :end      {:units units}))
+             :end      {:units units :total-row true}))
 
 (defn outputs! [& row-pairs]
   (add-outputs! row-pairs))

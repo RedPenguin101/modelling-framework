@@ -40,7 +40,7 @@
 
 (metadata!
  "DEBT.Principal"
-
+ :drawdown              {:units :currency-thousands}
  :amortization-periods  {:units :counter}
  :repayment-amount-pos  {:units :currency-thousands})
 
@@ -61,6 +61,7 @@
 (calculation!
  "DEBT.Interest"
  :calculation-basis       [:DEBT.Principal-Balance/start]
+ :dummy                   [:placeholder true]
  :annual-rate             [:inputs/interest-rate]
  :year-frac              '(year-frac-act-360
                            (add-days [:TIME.periods/start-date] -1)
@@ -76,11 +77,11 @@
  :year-frac         {:units :factor}
  :amount            {:units :currency :total true})
 
-(calculation!
- "DEBT.Cashflows"
- :cashflow '(- [:DEBT.Principal/drawdown]
-               (+ [:DEBT.Interest/amount]
-                  [:DEBT.Principal/repayment-amount-pos])))
+(totalled-calculation!
+ "DEBT.Cashflows" :cashflow
+ :drawdowns   '(- [:DEBT.Principal/drawdown])
+ :redemptions [:DEBT.Principal/repayment-amount-pos]
+ :interest    [:DEBT.Interest/amount])
 
 (outputs!
  :irr       {:name "IRR to Equity Holders"

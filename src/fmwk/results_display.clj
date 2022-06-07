@@ -219,8 +219,11 @@
                                 (map #(conj [:td.content] %) (rest row)))))
 
 (defn row->table-row [row metadata]
-  (let [phs (set (keep (fn [[rn m]] (when (:placeholder m) rn)) metadata))]
-    (into (if (phs (first row)) [:tr.placeholder] [:tr])
+  (let [phs (set (keep (fn [[rn m]] (when (:placeholder m) rn)) metadata))
+        totals (set (keep (fn [[rn m]] (when (:total-row m) rn)) metadata))]
+    (into (cond (phs (first row)) [:tr.placeholder]
+                (totals (first row)) [:tr.total-row]
+                :else [:tr])
           (apply-classes (update row 0 name->title)))))
 
 (defn table->html-table [table metadata]
