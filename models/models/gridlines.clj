@@ -154,8 +154,8 @@
                                      [:inputs/operating-period-start])
                              (date<= [:TIME.period/end-date]
                                      [:useful-life-end]))
- :puchase-cashflow     '(when-flag [:TIME.Operating-Period/close-flag]
-                                   [:cost-of-solar-asset])
+ :purchase-cashflow     '(when-flag [:TIME.Operating-Period/close-flag]
+                                    [:cost-of-solar-asset])
  :depreciation-pos     '(when-flag [:useful-life-flag]
                                    (/ [:cost-of-solar-asset]
                                       (* [:useful-life-of-asset]
@@ -168,7 +168,7 @@
 
 (corkscrew!
  "ACCOUNTING.Depreciation.Balance"
- :increases       [:ACCOUNTING.Depreciation/puchase-cashflow]
+ :increases       [:ACCOUNTING.Depreciation/purchase-cashflow]
  :decreases       [:ACCOUNTING.Depreciation/depreciation-pos])
 
 ;; EQUITY
@@ -280,9 +280,35 @@
  :corp-tax-pos {:units :currency-thousands :total true})
 
 (calculation!
+ "TAX.Depreciation"
+ :purchase-cashflow '(when-flag [:TIME.Operating-Period/close-flag]
+                                [:inputs/cost-of-solar-asset])
+ :depreciation-rate [:placeholder 0.05]
+ :depreciation-pos  '(* [:depreciation-rate]
+                        [:TAX.Depreciation.Balance/start])
+ :depreciation      '(- [:depreciation-pos]))
+
+(bulk-metadata!
+ "TAX.Depreciation"
+ {:units :currency-thousands :total true})
+
+(metadata!
+ "TAX.Depreciation"
+ :depreciation-rate  {:units :percent :total false})
+
+(corkscrew!
+ "TAX.Depreciation.Balance"
+ :increases [:TAX.Depreciation/purchase-cashflow]
+ :decreases [:TAX.Depreciation/depreciation-pos])
+
+(bulk-metadata!
+ "TAX.Depreciation.Balance"
+ {:units :currency-thousands})
+
+(calculation!
  "TAX.Payable"
  :EBITDA                 [:INCOME/EBITDA]
- :tax-depreciation       [:placeholder 0]
+ :tax-depreciation       [:TAX.Depreciation/depreciation-pos]
  :interest-deduction     [:placeholder 0]
  :taxable-income          '(- [:EBITDA]
                               [:tax-depreciation]
@@ -306,7 +332,7 @@
  ;; TODO payment term delay for revenue 
  :revenue                        [:OPERATIONS.Revenue/revenue]
  :opex-expense                   [:OPERATIONS.Opex/om-expense]
- :puchase-of-solar-asset         '(- [:ACCOUNTING.Depreciation/puchase-cashflow]))
+ :puchase-of-solar-asset         '(- [:ACCOUNTING.Depreciation/purchase-cashflow]))
 
 (bulk-metadata!
  "CASHFLOW.Operating"
