@@ -34,7 +34,8 @@
  :senior-debt-swap-rate      0.025
  :senior-debt-margin         0.038
  :senior-debt-repayment-term 10 ;years
- )
+
+ :co-invest-share            0.4)
 
 (calculation!
  "TIME.period"
@@ -372,19 +373,20 @@
 
 (calculation!
  "INVESTMENT-PREMIUM"
- :share [:placeholder 0.4]
  :premium-amount          [:placeholder 10299000]
  :premium                 '(when-flag
                             [:TIME.Operating-Period/close-flag]
                             [:premium-amount])
- :aurelius-share-of-distr '(- (* [:share] (- (+ [:EQUITY.Dividends/dividend-paid-pos]
-                                                [:EQUITY.Share-Capital/redemption-pos])
-                                             [:EQUITY.Share-Capital/drawdown]))
+ :aurelius-share-of-distr '(- (* [:inputs/co-invest-share] (- (+ [:EQUITY.Dividends/dividend-paid-pos]
+                                                                 [:EQUITY.Share-Capital/redemption-pos])
+                                                              [:EQUITY.Share-Capital/drawdown]))
                               [:premium]))
 
 (metadata!
  "INVESTMENT-PREMIUM"
  :share {:units :percent}
+ :premium-amount          {:hidden true}
+ :premium                 {:units :currency-thousands}
  :aurelius-share-of-distr {:units :currency-thousands :total true})
 
 (outputs!
