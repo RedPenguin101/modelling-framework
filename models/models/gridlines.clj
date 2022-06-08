@@ -357,7 +357,7 @@
  '(= (round [:BALANCE-SHEET.Assets/total-assets])
      (round [:BALANCE-SHEET.Liabilities/total-liabilities])))
 
-;; Returns to equity holders
+;; Metrics
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (calculation!
@@ -370,10 +370,30 @@
  "EQUITY-RETURN"
  :dividend {:total true})
 
+(calculation!
+ "INVESTMENT-PREMIUM"
+ :share [:placeholder 0.4]
+ :premium-amount          [:placeholder 10299000]
+ :premium                 '(when-flag
+                            [:TIME.Operating-Period/close-flag]
+                            [:premium-amount])
+ :aurelius-share-of-distr '(- (* [:share] (- (+ [:EQUITY.Dividends/dividend-paid-pos]
+                                                [:EQUITY.Share-Capital/redemption-pos])
+                                             [:EQUITY.Share-Capital/drawdown]))
+                              [:premium]))
+
+(metadata!
+ "INVESTMENT-PREMIUM"
+ :share {:units :percent}
+ :aurelius-share-of-distr {:units :currency-thousands :total true})
+
 (outputs!
  :irr       {:name "IRR to Equity Holders"
              :units :percent
              :function '(irr-days :TIME.period/end-date :EQUITY-RETURN/cashflow-for-irr)}
+ :irr-coinv {:name "IRR to Coinvest"
+             :units :percent
+             :function '(irr-days :TIME.period/end-date :INVESTMENT-PREMIUM/aurelius-share-of-distr)}
  :dividends {:name "Dividends paid (thousands)"
              :units :currency-thousands
              :function '(apply + :EQUITY.Dividends/dividend-paid-pos)}
@@ -385,11 +405,8 @@
              :function '(mean (remove zero? :SENIOR-DEBT.Dscr/dscr))})
 
 (f/compile-run-display! 183 {:header       :TIME.period/end-date
-                             :sheets       ["EQUITY.Dividends"]
+                             :sheets       ["INVESTMENT-PREMIUM"]
                              :show-imports true
-                             :start        100
-                             :outputs      false
-                             :charts       [:CASHFLOW.Retained/end
-                                            :INCOME.Retained/end
-                                            :SENIOR-DEBT.Balance/end
-                                            :EQUITY.Dividends/dividend-paid-pos]})
+                             :start        1
+                             :outputs      true
+                             :charts       []})
