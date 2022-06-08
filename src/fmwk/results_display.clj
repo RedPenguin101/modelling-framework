@@ -81,7 +81,7 @@
 (defn format-factor [x]
   (.format factor-format x))
 
-(defn- format-boolean [x]  (when (true? x) "✓        "))
+(defn- format-boolean [x] (when (true? x) "✓        "))
 (defn- format-percent [x] (if (zero? x) "-  " (format "%.2f%%" (* 100.0 x))))
 
 (defn- format-date [d]
@@ -216,10 +216,13 @@
         :else             (into [[:td.title (first row)]]
                                 (map #(conj [:td.content] %) (rest row)))))
 
+(defn meta-rows [metadata attribute]
+  (set (keep (fn [[rn m]] (when (attribute m) rn)) metadata)))
+
 (defn row->table-row [row metadata]
-  (let [phs (set (keep (fn [[rn m]] (when (:placeholder m) rn)) metadata))
-        imports (set (keep (fn [[rn m]] (when (:import m) rn)) metadata))
-        totals (set (keep (fn [[rn m]] (when (:total-row m) rn)) metadata))]
+  (let [phs     (meta-rows metadata :placeholder)
+        imports (meta-rows metadata :import)
+        totals  (meta-rows metadata :total-row)]
     (into (cond (phs (first row))     [:tr.placeholder]
                 (imports (first row)) [:tr.import]
                 (totals (first row))  [:tr.total-row]
