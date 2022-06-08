@@ -141,6 +141,9 @@
 (defn placeholder-row-names [row-pairs]
   (set (keep (fn [[row-name expr]] (when (placeholder? expr) row-name)) row-pairs)))
 
+(defn import-row-names [row-pairs]
+  (set (keep (fn [[row-name expr]] (when (link? expr) row-name)) row-pairs)))
+
 (defn- sum-expression [row-names]
   (reverse (into '(+) (map vector row-names))))
 
@@ -153,9 +156,12 @@
   [calc-name (apply array-map row-pairs)])
 
 (defn- implied-metadata [calc-name & row-pairs]
-  (let [ph (placeholder-row-names (apply array-map row-pairs))]
-    (when (not-empty ph)
-      [calc-name (zipmap ph (repeat {:placeholder true}))])))
+  (let [ph      (placeholder-row-names (apply array-map row-pairs))
+        imports (import-row-names (apply array-map row-pairs))]
+    (when (or (not-empty imports) (not-empty ph))
+      [calc-name (merge-with merge
+                             (zipmap ph (repeat {:placeholder true}))
+                             (zipmap imports (repeat {:import true})))])))
 
 (defn- totalled-calculation [calc-name total-name & row-pairs]
   ;; TODO: Implied metadata for totals

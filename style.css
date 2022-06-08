@@ -41,6 +41,10 @@ tr.total-row {
 }
 
 
+tr.import {
+  color: blue;
+}
+
 tr.placeholder {
   background-color: rgb(255, 239, 175);
 }

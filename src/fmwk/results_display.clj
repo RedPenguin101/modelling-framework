@@ -58,8 +58,6 @@
 ;; Results Formatting
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
 (def counter-format  (java.text.DecimalFormat. "0 "))
 (def ccy-format      (java.text.DecimalFormat. "###,##0 ;(###,##0)"))
 (def ccy-cent-format (java.text.DecimalFormat. "###,##0.00"))
@@ -220,9 +218,11 @@
 
 (defn row->table-row [row metadata]
   (let [phs (set (keep (fn [[rn m]] (when (:placeholder m) rn)) metadata))
+        imports (set (keep (fn [[rn m]] (when (:import m) rn)) metadata))
         totals (set (keep (fn [[rn m]] (when (:total-row m) rn)) metadata))]
-    (into (cond (phs (first row)) [:tr.placeholder]
-                (totals (first row)) [:tr.total-row]
+    (into (cond (phs (first row))     [:tr.placeholder]
+                (imports (first row)) [:tr.import]
+                (totals (first row))  [:tr.total-row]
                 :else [:tr])
           (apply-classes (update row 0 name->title)))))
 
