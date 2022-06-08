@@ -259,7 +259,7 @@
 
 (defn calculation! [calc-name & row-pairs]
   (let [md (apply implied-metadata calc-name row-pairs)]
-    (when md (println "Meta" md) (add-meta! md))
+    (when md (add-meta! md))
     (add-calc! (apply calculation calc-name row-pairs))))
 
 (defn totalled-calculation! [calc-name total-name & row-pairs]

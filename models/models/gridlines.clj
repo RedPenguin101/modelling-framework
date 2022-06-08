@@ -1,5 +1,5 @@
 (ns models.gridlines
-  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! cork-metadata! corkscrew! totalled-calculation! check! outputs!]]
+  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! corkscrew! totalled-calculation! check! outputs!]]
             [fmwk.utils :refer [when-flag when-not-flag round mean]]
             [fmwk.dates :refer [year-frac-act-360 month-of add-days add-months date= date< date<= date> date>=]]
             [fmwk.irr   :refer [irr-days]]))
@@ -248,8 +248,8 @@
  :increases [:SENIOR-DEBT/drawdown]
  :decreases [:SENIOR-DEBT/repayment-amount-pos])
 
-(cork-metadata!
- "SENIOR-DEBT.Balance" :currency-thousands)
+(bulk-metadata!
+ "SENIOR-DEBT.Balance" {:units :currency-thousands})
 
 (calculation!
  "SENIOR-DEBT.Dscr"
@@ -304,7 +304,7 @@
  "CASHFLOW.Financing"
  :available-for-debt-service {:hidden true})
 
-(cork-metadata! "CASHFLOW.Retained" :currency-thousands)
+(bulk-metadata! "CASHFLOW.Retained" {:units :currency-thousands})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; INCOME ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

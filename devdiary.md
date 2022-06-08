@@ -1,6 +1,7 @@
 # Dev Diary
 ## Todo
 ### MVP
+* Goal seek following 'IRR For Coinvestor' in Gridlines
 * Change outputs to calculate on results, not display
 * Circular dependency - find and display
 * Improve checks, show which ones.
