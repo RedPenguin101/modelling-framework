@@ -266,6 +266,38 @@
  :dscr                 {:units :factor})
 
 
+;; TAX
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(calculation!
+ "TAX.Accounting"
+ :tax-rate     [:placeholder 0.2]
+ :corp-tax-pos '(* [:INCOME/profit-before-tax] [:tax-rate]))
+
+(metadata!
+ "TAX.Accounting"
+ :tax-rate     {:units :percent}
+ :corp-tax-pos {:units :currency-thousands :total true})
+
+(calculation!
+ "TAX.Payable"
+ :EBITDA                 [:INCOME/EBITDA]
+ :tax-depreciation       [:placeholder 0]
+ :interest-deduction     [:placeholder 0]
+ :taxable-income          '(- [:EBITDA]
+                              [:tax-depreciation]
+                              [:interest-deduction])
+ :tax-rate               [:placeholder 0.2]
+ :tax-paid-pos           '(* [:taxable-income] [:tax-rate]))
+
+(bulk-metadata!
+ "TAX.Payable"
+ {:units :currency-thousands :total true})
+
+(metadata!
+ "TAX.Payable"
+ :tax-rate  {:units :percent :total false})
+
 ;; Financial Statements
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -309,21 +341,35 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; INCOME ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(totalled-calculation!
- "INCOME" :profit-after-tax
+(calculation!
+ "INCOME"
  :revenue                        [:OPERATIONS.Revenue/revenue]
  :opex-expense                   [:OPERATIONS.Opex/om-expense]
+ :EBITDA                         '(+ [:revenue]
+                                     [:opex-expense])
  :depreciation-charge            [:ACCOUNTING.Depreciation/depreciation]
- :interest                       [:SENIOR-DEBT/interest])
+ :interest                       [:SENIOR-DEBT/interest]
+ :profit-before-tax              '(+ [:EBITDA]
+                                     [:depreciation-charge]
+                                     [:interest])
+ :corporate-tax                   [:placeholder 0]
+ :profit-after-tax               '(+ [:profit-before-tax]
+                                     [:corporate-tax]))
+
+(bulk-metadata!
+ "INCOME"
+ {:units :currency-thousands :total true})
+
+(metadata!
+ "INCOME"
+ :EBITDA            {:total-row true}
+ :profit-before-tax {:total-row true}
+ :profit-after-tax  {:total-row true})
 
 (corkscrew!
  "INCOME.Retained"
  :increases [:INCOME/profit-after-tax]
  :decreases [:EQUITY.Dividends/dividend-paid-pos])
-
-(bulk-metadata!
- "INCOME"
- {:units :currency-thousands :total true})
 
 (bulk-metadata!
  "INCOME.Retained"
@@ -390,25 +436,28 @@
  :aurelius-share-of-distr {:units :currency-thousands :total true})
 
 (outputs!
- :irr       {:name "IRR to Equity Holders"
-             :units :percent
-             :function '(irr-days :TIME.period/end-date :EQUITY-RETURN/cashflow-for-irr)}
- :irr-coinv {:name "IRR to Coinvest"
-             :units :percent
-             :function '(irr-days :TIME.period/end-date :INVESTMENT-PREMIUM/aurelius-share-of-distr)}
- :dividends {:name "Dividends paid (thousands)"
-             :units :currency-thousands
-             :function '(apply + :EQUITY.Dividends/dividend-paid-pos)}
- :min-dscr  {:name "Min DSCR"
-             :units :factor
-             :function '(apply min (remove zero? :SENIOR-DEBT.Dscr/dscr))}
- :avg-dscr  {:name "Avg DSCR"
-             :units :factor
-             :function '(mean (remove zero? :SENIOR-DEBT.Dscr/dscr))})
+ :effective-tax-rate {:name "Effective Tax Rate"
+                      :units :percent
+                      :function '(/ (apply + :TAX.Payable/tax-paid-pos) (apply + :INCOME/profit-before-tax))}
+ #_#_:irr       {:name "IRR to Equity Holders"
+                 :units :percent
+                 :function '(irr-days :TIME.period/end-date :EQUITY-RETURN/cashflow-for-irr)}
+ #_#_:irr-coinv {:name "IRR to Coinvest"
+                 :units :percent
+                 :function '(irr-days :TIME.period/end-date :INVESTMENT-PREMIUM/aurelius-share-of-distr)}
+ #_#_:dividends {:name "Dividends paid (thousands)"
+                 :units :currency-thousands
+                 :function '(apply + :EQUITY.Dividends/dividend-paid-pos)}
+ #_#_:min-dscr  {:name "Min DSCR"
+                 :units :factor
+                 :function '(apply min (remove zero? :SENIOR-DEBT.Dscr/dscr))}
+ #_#_:avg-dscr  {:name "Avg DSCR"
+                 :units :factor
+                 :function '(mean (remove zero? :SENIOR-DEBT.Dscr/dscr))})
 
-(f/compile-run-display! 183 {:header       :TIME.period/end-date
-                             :sheets       ["INVESTMENT-PREMIUM"]
-                             :show-imports true
-                             :start        1
-                             :outputs      true
-                             :charts       []})
+(f/compile-run-display! 20 {:header       :TIME.period/end-date
+                            :sheets       ["TAX"]
+                            :show-imports false
+                            :start        1
+                            :outputs      false
+                            :charts       []})
