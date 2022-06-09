@@ -349,6 +349,10 @@
  :increases [:TAX.Accounting/corp-tax-expense-pos]
  :decreases [:TAX.Payable/tax-paid-pos])
 
+(bulk-metadata!
+ "TAX.Deferred-Tax-Balance"
+ {:units :currency-thousands :total true})
+
 ;; Financial Statements
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
