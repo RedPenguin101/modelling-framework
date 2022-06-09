@@ -344,6 +344,11 @@
  "TAX.Payable"
  :tax-rate  {:units :percent :total false})
 
+(corkscrew!
+ "TAX.Deferred-Tax-Balance"
+ :increases [:TAX.Accounting/corp-tax-expense-pos]
+ :decreases [:TAX.Payable/tax-paid-pos])
+
 ;; Financial Statements
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -352,7 +357,8 @@
  ;; TODO payment term delay for revenue 
  :revenue                        [:OPERATIONS.Revenue/revenue]
  :opex-expense                   [:OPERATIONS.Opex/om-expense]
- :puchase-of-solar-asset         '(- [:ACCOUNTING.Depreciation/purchase-cashflow]))
+ :puchase-of-solar-asset         '(- [:ACCOUNTING.Depreciation/purchase-cashflow])
+ :tax-paid                       [:TAX.Payable/tax-paid])
 
 (bulk-metadata!
  "CASHFLOW.Operating"
@@ -398,9 +404,9 @@
  :profit-before-tax              '(+ [:EBITDA]
                                      [:depreciation-charge]
                                      [:interest])
- :corporate-tax                   [:placeholder 0]
+ :corporate-tax-expense          [:TAX.Accounting/corp-tax-expense]
  :profit-after-tax               '(+ [:profit-before-tax]
-                                     [:corporate-tax]))
+                                     [:corporate-tax-expense]))
 
 (bulk-metadata!
  "INCOME"
@@ -432,9 +438,10 @@
 
 (totalled-calculation!
  "BALANCE-SHEET.Liabilities" :total-liabilities
- :debt              [:SENIOR-DEBT.Balance/end]
- :share-capital     [:EQUITY.Share-Capital.Balance/end]
- :retained-earnings [:INCOME.Retained/end])
+ :debt                 [:SENIOR-DEBT.Balance/end]
+ :deferred-tax-balance [:TAX.Deferred-Tax-Balance/end]
+ :share-capital        [:EQUITY.Share-Capital.Balance/end]
+ :retained-earnings    [:INCOME.Retained/end])
 
 (bulk-metadata!
  "BALANCE-SHEET.Liabilities"
@@ -485,12 +492,12 @@
  :effective-tax-rate {:name "Effective Tax Rate"
                       :units :percent
                       :function '(/ (apply + :TAX.Payable/tax-paid-pos) (apply + :INCOME/profit-before-tax))}
- #_#_:irr       {:name "IRR to Equity Holders"
-                 :units :percent
-                 :function '(irr-days :TIME.period/end-date :EQUITY-RETURN/cashflow-for-irr)}
- #_#_:irr-coinv {:name "IRR to Coinvest"
-                 :units :percent
-                 :function '(irr-days :TIME.period/end-date :INVESTMENT-PREMIUM/aurelius-share-of-distr)}
+ :irr       {:name "IRR to Equity Holders"
+             :units :percent
+             :function '(irr-days :TIME.period/end-date :EQUITY-RETURN/cashflow-for-irr)}
+ :irr-coinv {:name "IRR to Coinvest"
+             :units :percent
+             :function '(irr-days :TIME.period/end-date :INVESTMENT-PREMIUM/aurelius-share-of-distr)}
  #_#_:dividends {:name "Dividends paid (thousands)"
                  :units :currency-thousands
                  :function '(apply + :EQUITY.Dividends/dividend-paid-pos)}
@@ -502,8 +509,10 @@
                  :function '(mean (remove zero? :SENIOR-DEBT.Dscr/dscr))})
 
 (f/compile-run-display! 183 {:header       :TIME.period/end-date
-                             :sheets       ["TAX"]
+                             :sheets       ["TAX" "BALANCE-SHEET.Check"]
                              :show-imports false
                              :start        1
                              :outputs      true
-                             :charts       []})
+                             :charts       [:BALANCE-SHEET.Check/balance-check
+                                            :ACCOUNTING.Depreciation/depreciation-pos
+                                            :TAX.Depreciation/depreciation-pos]})
