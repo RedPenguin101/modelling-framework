@@ -337,7 +337,8 @@
  :taxable-losses           '(- (min 0 [:taxable-income-or-losses]))
  :tax-losses-utilized      '(min [:taxable-income] [:TAX.Loss-Carry-Forward/start])
  :tax-rate                 [:placeholder 0.2]
- :tax-paid-pos             '(max 0 (* [:taxable-income-or-losses] [:tax-rate]))
+ :taxable-income-less-utilization '(- [:taxable-income] [:tax-losses-utilized])
+ :tax-paid-pos             '(max 0 (* [:taxable-income-less-utilization] [:tax-rate]))
  :tax-paid                 '(- [:tax-paid-pos]))
 
 (bulk-metadata!
