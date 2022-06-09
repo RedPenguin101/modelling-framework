@@ -384,16 +384,23 @@
  "CASHFLOW.Operating"
  {:units :currency-thousands :total true})
 
-(totalled-calculation!
- "CASHFLOW.Financing" :available-for-dividends
+(calculation!
+ "CASHFLOW.Financing"
  ;; TODO payment term delay for revenue
  :available-for-debt-service     [:CASHFLOW.Operating/available-for-debt-service]
  :senior-debt-principal          '(+ [:SENIOR-DEBT/drawdown] [:SENIOR-DEBT/repayment-amount])
- :rcf-principal                  [:placeholder 0]
  :senior-interest-paid           [:SENIOR-DEBT/interest]
+ :available-for-rcf              '(+ [:available-for-debt-service]
+                                     [:senior-debt-principal]
+                                     [:senior-interest-paid])
+ :rcf-principal                  [:placeholder 0]
  :rcf-interest-paid              [:placeholder 0]
- :share-capital                  '(+ [:EQUITY.Share-Capital/drawdown] [:EQUITY.Share-Capital/redemption]))
-
+ :available-for-shareholders     '(+ [:available-for-rcf]
+                                     [:rcf-principal]
+                                     [:rcf-interest-paid])
+ :share-capital                  '(+ [:EQUITY.Share-Capital/drawdown] [:EQUITY.Share-Capital/redemption])
+ :available-for-dividends        '(+ [:available-for-shareholders]
+                                     [:share-capital]))
 (corkscrew!
  "CASHFLOW.Retained"
  :increases [:CASHFLOW.Financing/available-for-dividends]
@@ -409,7 +416,9 @@
 
 (metadata!
  "CASHFLOW.Financing"
- :available-for-debt-service {:hidden true})
+ :available-for-debt-service {:hidden true}
+ :available-for-rcf          {:total-row true}
+ :available-for-shareholders {:total-row true})
 
 (bulk-metadata! "CASHFLOW.Retained" {:units :currency-thousands})
 
@@ -533,9 +542,9 @@
                  :units :factor
                  :function '(mean (remove zero? :SENIOR-DEBT.Dscr/dscr))})
 
-(f/compile-run-display! 183 {:header       :TIME.period/end-date
-                             :sheets       ["INCOME" "CASHFLOW" "BALANCE-SHEET"]
-                             :show-imports false
-                             :start        20
-                             :outputs      true
-                             :charts       [:TAX.Payable/tax-paid-pos]})
+(f/compile-run-display! 10 {:header       :TIME.period/end-date
+                            :sheets       ["CASHFLOW"]
+                            :show-imports false
+                            :start        1
+                            :outputs      false
+                            :charts       []})
