@@ -208,7 +208,7 @@
  "EQUITY.Dividends"
  :dividend-paid {:total true})
 
-;; DEBT
+;; SENIOR DEBT
 ;;;;;;;;;;;;;;;;;;;;
 
 (calculation!
@@ -268,6 +268,48 @@
  "SENIOR-DEBT.Dscr"
  :dscr                 {:units :factor})
 
+;; RCF
+;;;;;;;;;;;;;;;;;;;;
+
+(calculation!
+ "RCF"
+ :retained-cash               [:CASHFLOW.Retained/start]
+ :cashflow                    '(when-not-flag
+                                [:TIME.Operating-Period/close-flag]
+                                [:CASHFLOW.Financing/available-for-rcf])
+ :cash-available-or-shortfall '(+ [:retained-cash] [:cashflow])
+ :cash-deficit                '(- (min 0 [:cash-available-or-shortfall]))
+ :cash-available              '(max 0 [:cash-available-or-shortfall])
+ :drawdown                    [:cash-deficit]
+
+ :year-frac               '(year-frac-act-360 (add-days [:TIME.period/start-date] -1)
+                                              [:TIME.period/end-date])
+ :rcf-interest-rate       [:placeholder 0.12]
+ :interest-expense-pos    '(* [:RCF.Balance/start]
+                              [:year-frac]
+                              [:rcf-interest-rate])
+ :interest-paid-pos       '(min [:interest-expense-pos] [:cash-available])
+ :interest-capitalized    '(- [:interest-expense-pos] [:interest-paid-pos])
+ :cash-after-interest     '(- [:cash-available] [:interest-paid-pos])
+ :repayment-amount-pos    '(min [:RCF.Balance/start] [:cash-after-interest]))
+
+(corkscrew!
+ "RCF.Balance"
+ :increases [:RCF/drawdown :RCF/interest-capitalized]
+ :decreases [:RCF/repayment-amount-pos])
+
+(bulk-metadata!
+ "RCF"
+ {:total true :units :currency-thousands})
+
+(metadata!
+ "RCF"
+ :cash-available-or-shortfall       {:total-row true}
+ :rcf-interest-rate    {:units :percent :total false}
+ :year-frac            {:hidden true})
+
+(bulk-metadata!
+ "RCF.Balance" {:units :currency-thousands})
 
 ;; TAX
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -318,7 +360,8 @@
 
 (totalled-calculation!
  "TAX.ThinCap" :interest-deduction-for-tax
- :interest-paid         [:SENIOR-DEBT/interest-pos]
+ :senior-interest [:SENIOR-DEBT/interest-pos]
+ :RCF-interest    [:RCF/interest-expense-pos]
  :other-allowable-interest [:placeholder 0])
 
 (bulk-metadata!
@@ -393,8 +436,8 @@
  :available-for-rcf              '(+ [:available-for-debt-service]
                                      [:senior-debt-principal]
                                      [:senior-interest-paid])
- :rcf-principal                  [:placeholder 0]
- :rcf-interest-paid              [:placeholder 0]
+ :rcf-principal                  '(- [:RCF/drawdown] [:RCF/repayment-amount-pos])
+ :rcf-interest-paid              '(- [:RCF/interest-paid-pos])
  :available-for-shareholders     '(+ [:available-for-rcf]
                                      [:rcf-principal]
                                      [:rcf-interest-paid])
@@ -432,7 +475,7 @@
                                      [:opex-expense])
  :depreciation-charge            [:ACCOUNTING.Depreciation/depreciation]
  :senior-debt-interest           [:SENIOR-DEBT/interest]
- :rcf-interest                   [:placeholder 0]
+ :rcf-interest                   '(- [:RCF/interest-expense-pos])
  :profit-before-tax              '(+ [:EBITDA]
                                      [:depreciation-charge]
                                      [:senior-debt-interest]
@@ -472,7 +515,7 @@
 (totalled-calculation!
  "BALANCE-SHEET.Liabilities" :total-liabilities
  :senior-debt          [:SENIOR-DEBT.Balance/end]
- :rcf-balance          [:placeholder 0]
+ :rcf-balance          [:RCF.Balance/end]
  :deferred-tax-balance [:TAX.Deferred-Tax-Balance/end]
  :share-capital        [:EQUITY.Share-Capital.Balance/end]
  :retained-earnings    [:INCOME.Retained/end])
@@ -542,9 +585,9 @@
                  :units :factor
                  :function '(mean (remove zero? :SENIOR-DEBT.Dscr/dscr))})
 
-(f/compile-run-display! 10 {:header       :TIME.period/end-date
-                            :sheets       ["CASHFLOW"]
+(f/compile-run-display! 50 {:header       :TIME.period/end-date
+                            :sheets       ["RCF"]
                             :show-imports false
                             :start        1
-                            :outputs      false
-                            :charts       []})
+                            :outputs      true
+                            :charts       [:RCF.Balance/end]})

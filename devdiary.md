@@ -4,6 +4,8 @@
 * **DONE** Blue text for imports
 * Fix charting to handle negative numbers
 * Totalled calc placeholder yellow 
+* Expand corkscrews - line item for each increase/decrease, not sum
+* Different color for local link as opposed to import?
 * Select outputs to show
 * Goal seek following 'IRR For Coinvestor' in Gridlines
 * Change outputs to calculate on results, not display
