@@ -35,7 +35,10 @@
  :senior-debt-margin         0.038
  :senior-debt-repayment-term 10 ;years
 
- :co-invest-share            0.4)
+ :co-invest-share            0.4
+
+ :corporate-tax-rate         0.2
+ :tax-depreciation-rate      0.05)
 
 (calculation!
  "TIME.period"
@@ -271,7 +274,7 @@
 
 (calculation!
  "TAX.Accounting"
- :tax-rate             [:placeholder 0.2]
+ :tax-rate             [:inputs/corporate-tax-rate]
  :PBT                  [:INCOME/profit-before-tax]
  :corp-tax-expense-pos '(* [:INCOME/profit-before-tax] [:tax-rate])
  :corp-tax-expense     '(- [:corp-tax-expense-pos]))
@@ -291,7 +294,7 @@
  "TAX.Depreciation"
  :purchase-cashflow '(when-flag [:TIME.Operating-Period/close-flag]
                                 [:inputs/cost-of-solar-asset])
- :depreciation-rate [:placeholder 0.05]
+ :depreciation-rate [:inputs/tax-depreciation-rate]
  :depreciation-pos  '(if [:TIME.Operating-Period/last-flag]
                        [:TAX.Depreciation.Balance/start]
                        (* [:depreciation-rate]
@@ -336,8 +339,8 @@
  :taxable-income           '(max 0 [:taxable-income-or-losses])
  :taxable-losses           '(- (min 0 [:taxable-income-or-losses]))
  :tax-losses-utilized      '(min [:taxable-income] [:TAX.Loss-Carry-Forward/start])
- :tax-rate                 [:placeholder 0.2]
  :taxable-income-less-utilization '(- [:taxable-income] [:tax-losses-utilized])
+ :tax-rate                 [:inputs/corporate-tax-rate]
  :tax-paid-pos             '(max 0 (* [:taxable-income-less-utilization] [:tax-rate]))
  :tax-paid                 '(- [:tax-paid-pos]))
 
@@ -529,6 +532,6 @@
 (f/compile-run-display! 183 {:header       :TIME.period/end-date
                              :sheets       ["TAX" "BALANCE-SHEET.Check"]
                              :show-imports false
-                             :start        1
+                             :start        20
                              :outputs      true
-                             :charts       [:TAX.Loss-Carry-Forward/end]})
+                             :charts       [:TAX.Payable/tax-paid-pos]})
