@@ -274,30 +274,27 @@
 
 (calculation!
  "TAX.Accounting"
- :tax-rate             [:inputs/corporate-tax-rate]
- :PBT                  [:INCOME/profit-before-tax]
- :corp-tax-expense-pos '(* [:INCOME/profit-before-tax] [:tax-rate])
+ :corp-tax-expense-pos '(* [:INCOME/profit-before-tax] [:inputs/corporate-tax-rate])
  :corp-tax-expense     '(- [:corp-tax-expense-pos]))
 
 (metadata!
  "TAX.Accounting"
- :tax-rate             {:units :percent}
  :corp-tax-expense-pos  {:units :currency-thousands :total true}
  :corp-tax-expense      {:units :currency-thousands :total true})
 
 (metadata!
  "TAX.Accounting"
- :tax-rate     {:units :percent}
- :corp-tax-pos {:units :currency-thousands :total true})
+ :tax-rate             {:units :percent}
+ :corp-tax-expense     {:hidden true}
+ :corp-tax-expense-pos {:units :currency-thousands :total true})
 
 (calculation!
  "TAX.Depreciation"
  :purchase-cashflow '(when-flag [:TIME.Operating-Period/close-flag]
                                 [:inputs/cost-of-solar-asset])
- :depreciation-rate [:inputs/tax-depreciation-rate]
  :depreciation-pos  '(if [:TIME.Operating-Period/last-flag]
                        [:TAX.Depreciation.Balance/start]
-                       (* [:depreciation-rate]
+                       (* [:inputs/tax-depreciation-rate]
                           [:TAX.Depreciation.Balance/start]))
  :depreciation      '(- [:depreciation-pos]))
 
@@ -307,7 +304,8 @@
 
 (metadata!
  "TAX.Depreciation"
- :depreciation-rate  {:units :percent :total false})
+ :depreciation-rate  {:units :percent :total false}
+ :depreciation       {:hidden true})
 
 (corkscrew!
  "TAX.Depreciation.Balance"
@@ -340,8 +338,7 @@
  :taxable-losses           '(- (min 0 [:taxable-income-or-losses]))
  :tax-losses-utilized      '(min [:taxable-income] [:TAX.Loss-Carry-Forward/start])
  :taxable-income-less-utilization '(- [:taxable-income] [:tax-losses-utilized])
- :tax-rate                 [:inputs/corporate-tax-rate]
- :tax-paid-pos             '(max 0 (* [:taxable-income-less-utilization] [:tax-rate]))
+ :tax-paid-pos             '(max 0 (* [:taxable-income-less-utilization] [:inputs/corporate-tax-rate]))
  :tax-paid                 '(- [:tax-paid-pos]))
 
 (bulk-metadata!
@@ -350,7 +347,9 @@
 
 (metadata!
  "TAX.Payable"
- :tax-rate  {:units :percent :total false})
+ :taxable-income-or-losses {:hidden true}
+ :tax-rate  {:units :percent :total false}
+ :tax-paid  {:hidden true})
 
 (corkscrew!
  "TAX.Loss-Carry-Forward"

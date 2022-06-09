@@ -2,7 +2,8 @@
 ## Todo
 ### MVP
 * **DONE** Blue text for imports
-* Fix charting to handle negative numbers 
+* Fix charting to handle negative numbers
+* Totalled calc placeholder yellow 
 * Select outputs to show
 * Goal seek following 'IRR For Coinvestor' in Gridlines
 * Change outputs to calculate on results, not display
