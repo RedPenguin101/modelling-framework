@@ -271,8 +271,15 @@
 
 (calculation!
  "TAX.Accounting"
- :tax-rate     [:placeholder 0.2]
- :corp-tax-pos '(* [:INCOME/profit-before-tax] [:tax-rate]))
+ :tax-rate             [:placeholder 0.2]
+ :corp-tax-expense-pos '(* [:INCOME/profit-before-tax] [:tax-rate])
+ :corp-tax-expense     '(- [:corp-tax-expense-pos]))
+
+(metadata!
+ "TAX.Accounting"
+ :tax-rate             {:units :percent}
+ :corp-tax-expense-pos  {:units :currency-thousands :total true}
+ :corp-tax-expense      {:units :currency-thousands :total true})
 
 (metadata!
  "TAX.Accounting"
@@ -307,16 +314,27 @@
  "TAX.Depreciation.Balance"
  {:units :currency-thousands})
 
+(totalled-calculation!
+ "TAX.ThinCap" :interest-deduction-for-tax
+ :interest-paid         [:SENIOR-DEBT/interest-pos]
+ :other-allowable-interest [:placeholder 0])
+
+(bulk-metadata!
+ "TAX.ThinCap"
+ {:units :currency-thousands :total true})
+
+(metadata!
+ "TAX.ThinCap"
+ :arms-length-rate  {:units :percent :total false})
+
 (calculation!
  "TAX.Payable"
- :EBITDA                 [:INCOME/EBITDA]
- :tax-depreciation       [:TAX.Depreciation/depreciation-pos]
- :interest-deduction     [:placeholder 0]
- :taxable-income          '(- [:EBITDA]
-                              [:tax-depreciation]
-                              [:interest-deduction])
+ :taxable-income          '(- [:INCOME/EBITDA]
+                              [:TAX.Depreciation/depreciation-pos]
+                              [:TAX.ThinCap/interest-deduction-for-tax])
  :tax-rate               [:placeholder 0.2]
- :tax-paid-pos           '(* [:taxable-income] [:tax-rate]))
+ :tax-paid-pos           '(* [:taxable-income] [:tax-rate])
+ :tax-paid              '(- [:tax-paid-pos]))
 
 (bulk-metadata!
  "TAX.Payable"
@@ -483,9 +501,9 @@
                  :units :factor
                  :function '(mean (remove zero? :SENIOR-DEBT.Dscr/dscr))})
 
-(f/compile-run-display! 20 {:header       :TIME.period/end-date
-                            :sheets       ["TAX"]
-                            :show-imports false
-                            :start        1
-                            :outputs      false
-                            :charts       []})
+(f/compile-run-display! 183 {:header       :TIME.period/end-date
+                             :sheets       ["TAX"]
+                             :show-imports false
+                             :start        1
+                             :outputs      true
+                             :charts       []})
