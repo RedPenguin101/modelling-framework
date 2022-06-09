@@ -388,8 +388,10 @@
  "CASHFLOW.Financing" :available-for-dividends
  ;; TODO payment term delay for revenue
  :available-for-debt-service     [:CASHFLOW.Operating/available-for-debt-service]
- :debt-principal                 '(+ [:SENIOR-DEBT/drawdown] [:SENIOR-DEBT/repayment-amount])
- :interest-paid                  [:SENIOR-DEBT/interest]
+ :senior-debt-principal          '(+ [:SENIOR-DEBT/drawdown] [:SENIOR-DEBT/repayment-amount])
+ :rcf-principal                  [:placeholder 0]
+ :senior-interest-paid           [:SENIOR-DEBT/interest]
+ :rcf-interest-paid              [:placeholder 0]
  :share-capital                  '(+ [:EQUITY.Share-Capital/drawdown] [:EQUITY.Share-Capital/redemption]))
 
 (corkscrew!
@@ -420,10 +422,12 @@
  :EBITDA                         '(+ [:revenue]
                                      [:opex-expense])
  :depreciation-charge            [:ACCOUNTING.Depreciation/depreciation]
- :interest                       [:SENIOR-DEBT/interest]
+ :senior-debt-interest           [:SENIOR-DEBT/interest]
+ :rcf-interest                   [:placeholder 0]
  :profit-before-tax              '(+ [:EBITDA]
                                      [:depreciation-charge]
-                                     [:interest])
+                                     [:senior-debt-interest]
+                                     [:rcf-interest])
  :corporate-tax-expense          [:TAX.Accounting/corp-tax-expense]
  :profit-after-tax               '(+ [:profit-before-tax]
                                      [:corporate-tax-expense]))
@@ -458,7 +462,8 @@
 
 (totalled-calculation!
  "BALANCE-SHEET.Liabilities" :total-liabilities
- :debt                 [:SENIOR-DEBT.Balance/end]
+ :senior-debt          [:SENIOR-DEBT.Balance/end]
+ :rcf-balance          [:placeholder 0]
  :deferred-tax-balance [:TAX.Deferred-Tax-Balance/end]
  :share-capital        [:EQUITY.Share-Capital.Balance/end]
  :retained-earnings    [:INCOME.Retained/end])
@@ -529,7 +534,7 @@
                  :function '(mean (remove zero? :SENIOR-DEBT.Dscr/dscr))})
 
 (f/compile-run-display! 183 {:header       :TIME.period/end-date
-                             :sheets       ["TAX" "BALANCE-SHEET.Check"]
+                             :sheets       ["INCOME" "CASHFLOW" "BALANCE-SHEET"]
                              :show-imports false
                              :start        20
                              :outputs      true
