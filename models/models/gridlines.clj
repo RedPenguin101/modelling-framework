@@ -272,6 +272,7 @@
 (calculation!
  "TAX.Accounting"
  :tax-rate             [:placeholder 0.2]
+ :PBT                  [:INCOME/profit-before-tax]
  :corp-tax-expense-pos '(* [:INCOME/profit-before-tax] [:tax-rate])
  :corp-tax-expense     '(- [:corp-tax-expense-pos]))
 
@@ -329,12 +330,15 @@
 
 (calculation!
  "TAX.Payable"
- :taxable-income          '(- [:INCOME/EBITDA]
-                              [:TAX.Depreciation/depreciation-pos]
-                              [:TAX.ThinCap/interest-deduction-for-tax])
- :tax-rate               [:placeholder 0.2]
- :tax-paid-pos           '(* [:taxable-income] [:tax-rate])
- :tax-paid              '(- [:tax-paid-pos]))
+ :taxable-income-or-losses '(- [:INCOME/EBITDA]
+                               [:TAX.Depreciation/depreciation-pos]
+                               [:TAX.ThinCap/interest-deduction-for-tax])
+ :taxable-income           '(max 0 [:taxable-income-or-losses])
+ :taxable-losses           '(- (min 0 [:taxable-income-or-losses]))
+ :tax-losses-utilized      '(min [:taxable-income] [:TAX.Loss-Carry-Forward/start])
+ :tax-rate                 [:placeholder 0.2]
+ :tax-paid-pos             '(max 0 (* [:taxable-income-or-losses] [:tax-rate]))
+ :tax-paid                 '(- [:tax-paid-pos]))
 
 (bulk-metadata!
  "TAX.Payable"
@@ -343,6 +347,15 @@
 (metadata!
  "TAX.Payable"
  :tax-rate  {:units :percent :total false})
+
+(corkscrew!
+ "TAX.Loss-Carry-Forward"
+ :increases [:TAX.Payable/taxable-losses]
+ :decreases [:TAX.Payable/tax-losses-utilized])
+
+(bulk-metadata!
+ "TAX.Loss-Carry-Forward"
+ {:units :currency-thousands :total true})
 
 (corkscrew!
  "TAX.Deferred-Tax-Balance"
@@ -517,6 +530,4 @@
                              :show-imports false
                              :start        1
                              :outputs      true
-                             :charts       [:BALANCE-SHEET.Check/balance-check
-                                            :ACCOUNTING.Depreciation/depreciation-pos
-                                            :TAX.Depreciation/depreciation-pos]})
+                             :charts       [:TAX.Loss-Carry-Forward/end]})
