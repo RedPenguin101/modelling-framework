@@ -284,8 +284,10 @@
  :purchase-cashflow '(when-flag [:TIME.Operating-Period/close-flag]
                                 [:inputs/cost-of-solar-asset])
  :depreciation-rate [:placeholder 0.05]
- :depreciation-pos  '(* [:depreciation-rate]
-                        [:TAX.Depreciation.Balance/start])
+ :depreciation-pos  '(if [:TIME.Operating-Period/last-flag]
+                       [:TAX.Depreciation.Balance/start]
+                       (* [:depreciation-rate]
+                          [:TAX.Depreciation.Balance/start]))
  :depreciation      '(- [:depreciation-pos]))
 
 (bulk-metadata!
