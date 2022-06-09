@@ -269,6 +269,7 @@
     (add-calc! (apply calculation calc-name row-pairs))))
 
 (defn totalled-calculation! [calc-name total-name & row-pairs]
+  (add-meta! (apply implied-metadata calc-name row-pairs))
   (add-meta! [calc-name {total-name {:total-row true}}])
   (add-calc! (apply totalled-calculation calc-name total-name row-pairs)))
 
