@@ -551,14 +551,15 @@
 
 (calculation!
  "INVESTMENT-PREMIUM"
- :premium-amount          [:placeholder 6990000]
- :premium                 '(when-flag
-                            [:TIME.Operating-Period/close-flag]
-                            [:premium-amount])
- :aurelius-share-of-distr '(- (* [:inputs/co-invest-share] (- (+ [:EQUITY.Dividends/dividend-paid-pos]
-                                                                 [:EQUITY.Share-Capital/redemption-pos])
-                                                              [:EQUITY.Share-Capital/drawdown]))
-                              [:premium]))
+ :premium-amount           [:placeholder 6990000]
+ :premium                  '(when-flag
+                             [:TIME.Operating-Period/close-flag]
+                             [:premium-amount])
+ :equity-cashflows         '(- (+ [:EQUITY.Dividends/dividend-paid-pos]
+                                  [:EQUITY.Share-Capital/redemption-pos])
+                               [:EQUITY.Share-Capital/drawdown])
+ :aurelius-share-of-distr  '(- (* [:inputs/co-invest-share] [:equity-cashflows])
+                               [:premium]))
 
 (metadata!
  "INVESTMENT-PREMIUM"
@@ -567,13 +568,23 @@
  :premium                 {:units :currency-thousands}
  :aurelius-share-of-distr {:units :currency-thousands :total true})
 
-(metric! :irr '(irr-days [:TIME.period/end-date :row]
-                         [:INVESTMENT-PREMIUM/aurelius-share-of-distr :row]))
+(metric!
+ :blended-irr
+ '(irr-days [:TIME.period/end-date :row]
+            [:INVESTMENT-PREMIUM/equity-cashflows :row]))
+
+(metric!
+ :coinv-irr
+ '(irr-days [:TIME.period/end-date :row]
+            [:INVESTMENT-PREMIUM/aurelius-share-of-distr :row]))
 
 (metric-meta!
- :irr
+ :coinv-irr
  {:units :percent
-  :display-name "Co-invest IRR"})
+  :display-name "Co-invest IRR"}
+ :blended-irr
+ {:units :percent
+  :display-name "Blended Equity IRR"})
 
 (f/compile-run-display! 183 {:header        :TIME.period/end-date
                              :sheets        ["INVESTMENT-PREMIUM"]
