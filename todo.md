@@ -1,8 +1,8 @@
 # Todo
 * Refactor: When generating table row, only pass the meta for that row to `row->table-row`
-* Output comparison across runs
 * Something about exports - either highlight or make declares?
-* Generalize the output dsl so it's not different to the main expression DSL. Something like `[:measure :row]`, which will evaluate to the full row. Other potential additions:
+* factor expression parsing/replacement to include following
+    * `:row`
     * `:mean`
     * `:first`
     * `:window-mean 3`
