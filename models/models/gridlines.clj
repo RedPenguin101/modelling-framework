@@ -1,5 +1,5 @@
 (ns models.gridlines
-  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! corkscrew! totalled-calculation! check! metric!]]
+  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! corkscrew! totalled-calculation! check! metric! metric-meta!]]
             [fmwk.utils :refer [when-flag when-not-flag round mean]]
             [fmwk.dates :refer [year-frac-act-360 month-of add-days add-months date= date< date<= date> date>=]]
             [fmwk.irr   :refer [irr-days]]))
@@ -570,12 +570,10 @@
 (metric! :irr '(irr-days [:TIME.period/end-date :row]
                          [:INVESTMENT-PREMIUM/aurelius-share-of-distr :row]))
 
-(comment
-  (output-meta!
-   :irr
-   {:units :percent
-    :display-name "Co-invest IRR"}))
-
+(metric-meta!
+ :irr
+ {:units :percent
+  :display-name "Co-invest IRR"})
 
 (f/compile-run-display! 183 {:header       :TIME.period/end-date
                              :sheets       ["RCF"]

@@ -273,10 +273,11 @@
       (if (= 1 (count row))
         [:tr [:td.header (name->title (first row))]]
         (let [[rw [nw dl dlp old]] row
-              fmt (get-in metadata [rw :units])]
+              fmt (get-in metadata [rw :units])
+              display-name (get-in metadata [rw :display-name])]
           (when-not (zero? dl)
             [:tr
-             [:td.title (name->title rw)]
+             [:td.title (or display-name (name->title rw))]
              [:td.content (display-format nw fmt)]
              (up-down-arrow dl)
              [:td.delta (display-format dl fmt)]

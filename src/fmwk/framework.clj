@@ -194,6 +194,9 @@
 (defn metric [nm expr]
   ["METRICS" [[nm expr]]])
 
+(defn metric-meta [& row-pairs]
+  ["METRICS" (apply hash-map row-pairs)])
+
 ;; Calculation and input preparation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Up to this points all inputs to the model have had the format
@@ -291,6 +294,9 @@
 
 (defn metadata! [calc-name & row-pairs]
   (add-meta! (apply metadata calc-name row-pairs)))
+
+(defn metric-meta! [& row-pairs]
+  (add-meta! (apply metric-meta row-pairs)))
 
 (defn bulk-metadata! [calc-name mp]
   (let [calc (get-calc! calc-name)]
