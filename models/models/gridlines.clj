@@ -575,10 +575,9 @@
  {:units :percent
   :display-name "Co-invest IRR"})
 
-(f/compile-run-display! 183 {:header       :TIME.period/end-date
-                             :sheets       ["INVESTMENT-PREMIUM"]
-                             :show-imports false
+(f/compile-run-display! 183 {:header        :TIME.period/end-date
+                             :sheets        ["INVESTMENT-PREMIUM"]
+                             :show-imports  false
                              :force-outputs true
-                             :force-rerun true
-                             :start        1
-                             :charts       []})
+                             :start         1
+                             :charts        []})

@@ -339,4 +339,8 @@
                                          (assoc options :model m))))
       (do
         (println "Model unchanged, not rerunning")
-        (display/print-result-summary! @results-store [] (assoc options :model m))))))
+        (let [results @results-store
+              new-outputs (out/calculate-outputs results m)
+              outputs (out/collate-outputs new-outputs @old-outputs)
+              outputs (if (:force-outputs options) outputs (out/filter-for-change outputs))]
+          (display/print-result-summary! @results-store outputs (assoc options :model m)))))))
