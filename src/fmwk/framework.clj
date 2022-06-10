@@ -322,25 +322,22 @@
   (not= (dissoc m1 :runner :meta)
         (dissoc m2 :runner :meta)))
 
+(defn rerun? [model periods options]
+  (or (:force-rerun options) (not= periods @period-number-store) (model-changed? model @model-store)))
+
 (defn compile-run-display! [periods options]
-  (let [m (compile-model (first @case-store) @calculation-store @meta-store @metric-store)]
-    (if (or (:force-rerun options) (not= periods @period-number-store) (model-changed? m @model-store))
-      (do
-        (reset! model-store m)
-        (reset! period-number-store periods)
-        (println "Model changed, rerunning")
-        (let [results (reset! results-store (time (run-model m periods)))
-              new-outputs (out/calculate-outputs results m)
-              outputs (out/collate-outputs new-outputs @old-outputs)
-              outputs (if (:force-outputs options) outputs (out/filter-for-change outputs))]
-          (reset! old-outputs new-outputs)
-          (display/print-result-summary! results
-                                         outputs
-                                         (assoc options :model m))))
-      (do
-        (println "Model unchanged, not rerunning")
-        (let [results @results-store
-              new-outputs (out/calculate-outputs results m)
-              outputs (out/collate-outputs new-outputs @old-outputs)
-              outputs (if (:force-outputs options) outputs (out/filter-for-change outputs))]
-          (display/print-result-summary! @results-store outputs (assoc options :model m)))))))
+  (let [m (compile-model (first @case-store) @calculation-store @meta-store @metric-store)
+        rr? (rerun? m periods options)]
+
+    (if rr?
+      (do (reset! model-store m)
+          (reset! period-number-store periods)
+          (println "Model changed, rerunning"))
+      (println "Model unchanged, not rerunning"))
+
+    (let [results (if rr? (reset! results-store (time (run-model m periods))) @results-store)
+          new-outputs (out/calculate-outputs results m)
+          outputs (out/collate-outputs new-outputs @old-outputs)
+          outputs (if (:force-outputs options) outputs (out/filter-for-change outputs))]
+      (when rr? (reset! old-outputs new-outputs))
+      (display/print-result-summary! results outputs (assoc options :model m)))))
