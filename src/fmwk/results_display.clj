@@ -255,6 +255,31 @@
    [:h3 header]
    (results->html-table results metadata)])
 
+(defn output-table [outputs]
+  [:div
+   [:h3 "Summary: Income"]
+   [:table.output
+    [:tr
+     [:td] [:td "Current"] [:td] [:td "Diff"] [:td] [:td "Diff %"] [:td "Previous"]]
+    [:tr
+     [:td.header "Income"]]
+    [:tr
+     [:td.title "Revenue"]
+     [:td.content "375,239 "]
+     [:td.up-arrow "▲"]
+     [:td.delta "3,829 "]
+     [:td.up-arrow "▲"]
+     [:td.delta "1.03% "]
+     [:td.content "371,410 "]]
+    [:tr
+     [:td.title "Expense"]
+     [:td.content "(123,456)"]
+     [:td.down-arrow "▼"]
+     [:td.delta  "(1,000) "]
+     [:td.down-arrow "▼"]
+     [:td.delta "(1.03%)"]
+     [:td.content "(122,456)"]]]])
+
 (def head
   [:head [:link {:rel :stylesheet
                  :type "text/css"
@@ -276,6 +301,7 @@
             [:body
              (when (not-empty checks) (check-warning checks))
              (when show-imports (results-table import-results "Imports" metadata))
+             (output-table nil)
              (for [r filtered-results]
                (results-table r (name->title (sheet (first (second r)))) metadata))
              (when (not-empty charts) [:img.graph {:src (graph-series (map (into {} results) charts))}])]]))))

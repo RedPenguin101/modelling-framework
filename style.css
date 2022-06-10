@@ -34,12 +34,10 @@ tr:last-child {
   border-bottom: 0.5px solid var(--cell-border);
 }
 
-
 tr.total-row {
   border-top: 0.5px solid var(--total-cell-border);
   border-bottom: 0.5px solid var(--total-cell-border);
 }
-
 
 tr.import {
   color: blue;
@@ -55,11 +53,6 @@ td {
   font-size: 0.8em;
 }
 
-td:nth-child(2),
-td:nth-child(3) {
-  background-color: rgb(250, 250, 250);
-}
-
 tr:first-child {
   background-color: lightgrey;
 }
@@ -69,6 +62,27 @@ td.content {
   white-space: pre-wrap;
   text-align: right;
   padding-right: 5px;
+}
+
+td.delta {
+  background-color: aliceblue;
+  font-style: italic;
+  width: 5em;
+  white-space: pre-wrap;
+  text-align: right;
+  padding-right: 5px;
+}
+
+td.up-arrow {
+  background-color: aliceblue;
+  color: lawngreen;
+  border-right: 1px solid white;
+}
+
+td.down-arrow {
+  background-color: aliceblue;
+  color: red;
+  border-right: 1px solid white;
 }
 
 td.title {
