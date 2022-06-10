@@ -25,13 +25,6 @@
          (expression? fst) (recur (into found (extract-refs [] fst)) rst)
          :else (recur found rst))))
 
-
-;; calc-outputs - probably shouldn't be here
-
-(defn- outputs [results outputs]
-  (for [[_r f] outputs]
-    (assoc f :result ((eval (:function f)) results))))
-
 (defn- calculation-hierarchy [k]
   (if (qualified-keyword? k)
     (vec (str/split (namespace k) #"\."))
@@ -262,12 +255,6 @@
    [:h3 header]
    (results->html-table results metadata)])
 
-(defn outputs-block [results model]
-  [:div
-   [:h3 "Outputs"]
-   (for [{:keys [result name units]} (outputs results (:outputs model))]
-     [:p (str name ": " (display-format result units))])])
-
 (def head
   [:head [:link {:rel :stylesheet
                  :type "text/css"
@@ -291,8 +278,6 @@
              (when show-imports (results-table import-results "Imports" metadata))
              (for [r filtered-results]
                (results-table r (name->title (sheet (first (second r)))) metadata))
-             (when (and (:outputs options) (not-empty (:outputs model)))
-               (outputs-block results (:model options)))
              (when (not-empty charts) [:img.graph {:src (graph-series (map (into {} results) charts))}])]]))))
 
 (comment

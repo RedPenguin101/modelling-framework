@@ -90,15 +90,8 @@
  :redemptions [:DEBT.Principal/repayment-amount-pos]
  :interest    [:DEBT.Interest/amount])
 
-(outputs!
- :irr       {:name "IRR to Equity Holders"
-             :units :percent
-             :function '(irr-days :TIME.Periods/end-date
-                                  :DEBT.Cashflows/cashflow)})
-
 (f/compile-run-display! 24 {:header :TIME.Periods/end-date
                             :sheets ["DEBT"]
-                            :outputs true
                             :start 1
                             :show-imports true
                             :charts [:DEBT.Principal-Balance/end]})
