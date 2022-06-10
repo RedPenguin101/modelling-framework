@@ -1,5 +1,5 @@
 (ns models.gridlines
-  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! corkscrew! totalled-calculation! check! outputs!]]
+  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! corkscrew! totalled-calculation! check!]]
             [fmwk.utils :refer [when-flag when-not-flag round mean]]
             [fmwk.dates :refer [year-frac-act-360 month-of add-days add-months date= date< date<= date> date>=]]
             [fmwk.irr   :refer [irr-days]]))
@@ -425,7 +425,7 @@
 
 (bulk-metadata!
  "CASHFLOW.Operating"
- {:units :currency-thousands :total true})
+ {:units :currency-thousands :total true :output true})
 
 (calculation!
  "CASHFLOW.Financing"
@@ -455,7 +455,7 @@
 
 (bulk-metadata!
  "CASHFLOW.Financing"
- {:units :currency-thousands :total true})
+ {:units :currency-thousands :total true :output true})
 
 (metadata!
  "CASHFLOW.Financing"
@@ -486,7 +486,9 @@
 
 (bulk-metadata!
  "INCOME"
- {:units :currency-thousands :total true})
+ {:units  :currency-thousands
+  :total  true
+  :output true})
 
 (metadata!
  "INCOME"
@@ -565,29 +567,9 @@
  :premium                 {:units :currency-thousands}
  :aurelius-share-of-distr {:units :currency-thousands :total true})
 
-(outputs!
- :effective-tax-rate {:name "Effective Tax Rate"
-                      :units :percent
-                      :function '(/ (apply + :TAX.Payable/tax-paid-pos) (apply + :INCOME/profit-before-tax))}
- :irr       {:name "IRR to Equity Holders"
-             :units :percent
-             :function '(irr-days :TIME.period/end-date :EQUITY-RETURN/cashflow-for-irr)}
- :irr-coinv {:name "IRR to Coinvest"
-             :units :percent
-             :function '(irr-days :TIME.period/end-date :INVESTMENT-PREMIUM/aurelius-share-of-distr)}
- #_#_:dividends {:name "Dividends paid (thousands)"
-                 :units :currency-thousands
-                 :function '(apply + :EQUITY.Dividends/dividend-paid-pos)}
- #_#_:min-dscr  {:name "Min DSCR"
-                 :units :factor
-                 :function '(apply min (remove zero? :SENIOR-DEBT.Dscr/dscr))}
- #_#_:avg-dscr  {:name "Avg DSCR"
-                 :units :factor
-                 :function '(mean (remove zero? :SENIOR-DEBT.Dscr/dscr))})
 
-(f/compile-run-display! 50 {:header       :TIME.period/end-date
+(f/compile-run-display! 10 {:header       :TIME.period/end-date
                             :sheets       ["RCF"]
                             :show-imports false
                             :start        1
-                            :outputs      true
                             :charts       [:RCF.Balance/end]})

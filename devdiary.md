@@ -23,6 +23,36 @@ Is there a better way to show it than like the spreadsheet? Maybe I can show 'on
 
 Aside from the output sheet, how about a "what's changed" table view. The only rows displayed are the ones that have changed, and you can flip back and forth between the previous and current version. Or the previous and new are overlaid or something.
 
+So how to do this?
+
+```clojure
+(bulk-meta! "INCOME" {:output true}) ;; should be enough for the sheet
+
+(output! :irr '(irr-days [:end-date :row] [:cashflows :row]))
+(output-meta! :irr {:units :percent :display-name "IRR to Equity Holders"})
+
+(calculate-outputs results model)
+
+;; output is either meta
+(get-row-outputs metadata) ;;=> (:INCOME.x :INCOME.y ,,,)
+;; in which case
+(get-totals results output-rows) ;; => [[:hello 1] [:world 2]]
+
+;; or actual storage
+@output-store
+[:outputs/irr '(irr-days [:end-date :row] [:cashflows :row])]
+;; in which case
+[:hello (eval (rewrite expr results))]
+```
+
+That seems fine. The process will be:
+
+* Run model
+* Calculate outputs (just a map or tuple sequence)
+* Add outputs to `@outputs-store` - series
+* outputs store will truncate to, say, 10
+* outputs store series passed to results display
+
 ### Front end
 A list of stuff that would be nice to have a dynamic frontend for
 * Keyboard navigation

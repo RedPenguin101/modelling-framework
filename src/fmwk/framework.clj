@@ -4,7 +4,8 @@
             [ubergraph.core :as uber]
             [ubergraph.alg :as uberalg]
             [fmwk.table-runner :as tr]
-            [fmwk.results-display :as display]))
+            [fmwk.results-display :as display]
+            [fmwk.outputs :as out]))
 
 ;; utils
 ;;;;;;;;;;;;;;
@@ -91,22 +92,6 @@
   (qualify-local-references "foo" '(if [:bar/baz] [:hello :prev] [:world]))
   ;; => (if [:bar/baz] [:foo/hello :prev] [:foo/world])
   )
-
-(def reference? qualified-keyword?)
-
-(defn rewrite-output-ref [ref]
-  (list 'rest (list ref '(into {} r))))
-
-(defn rewrite-output-expr [expr]
-  (reverse
-   (conj
-    '([r] fn)
-    (clojure.walk/postwalk
-     #(if (reference? %) (rewrite-output-ref %) %)
-     expr))))
-
-(rewrite-output-expr '(irr-days :period/end-date :equity-return/cashflow-for-irr))
-'(fn [r] (irr-days (rest (:period/end-date (into {} r))) (rest (:equity-return/cashflow-for-irr (into {} r)))))
 
 ;; Graphing and dependecies
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -227,7 +212,7 @@
           {}
           (mapcat qualify-row-names md)))
 
-(defn- compile-model [inputs calculations metadata outputs]
+(defn- compile-model [inputs calculations metadata]
   (let [rows (mapcat qualify-all-references (into [(input->calculation inputs)] calculations))
         row-map (into {} rows)
         order (calculate-order row-map)]
@@ -237,9 +222,7 @@
                  :rows row-map
                  :calculation-order order
                  :runner (eval (tr/make-runner order row-map))
-                 :meta (prep-metadata metadata)
-                 :outputs (into (array-map) (for [[k v] (partition 2 (apply concat outputs))]
-                                              [k (update v :function rewrite-output-expr)]))})))
+                 :meta (prep-metadata metadata)})))
 
 ;; Stateful wrappers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -247,7 +230,6 @@
 (defonce calculation-store (atom []))
 (defonce case-store (atom []))
 (defonce meta-store (atom []))
-(defonce output-store (atom []))
 
 (defn- get-calc! [calc-name]
   (get (into {} @calculation-store) calc-name))
@@ -255,13 +237,11 @@
 (defn reset-model! []
   (reset! calculation-store [])
   (reset! case-store [])
-  (reset! meta-store [])
-  (reset! output-store []))
+  (reset! meta-store []))
 
 (defn- add-calc! [calc] (swap! calculation-store conj calc))
 (defn- add-case! [cas] (swap! case-store conj cas))
 (defn- add-meta! [md] (swap! meta-store conj md))
-(defn- add-outputs! [md] (swap! output-store conj md))
 
 (defn calculation! [calc-name & row-pairs]
   (let [md (apply implied-metadata calc-name row-pairs)]
@@ -292,18 +272,16 @@
   (let [calc (get-calc! calc-name)]
     (add-meta! (bulk-metadata calc-name mp calc))))
 
-(defn outputs! [& row-pairs]
-  (add-outputs! row-pairs))
-
 ;; Model running
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defonce model-store (atom {}))
 (defonce results-store (atom []))
 (defonce period-number-store (atom 0))
+(defonce old-outputs (atom []))
 
 (defn compile-model! []
-  (compile-model (first @case-store) @calculation-store @meta-store @output-store))
+  (compile-model (first @case-store) @calculation-store @meta-store))
 
 (defn run-model [{:keys [display-order calculation-order runner rows]} periods]
   (let [array (tr/make-init-table calculation-order rows periods)
@@ -315,13 +293,19 @@
         (dissoc m2 :runner :meta)))
 
 (defn compile-run-display! [periods options]
-  (let [m (compile-model (first @case-store) @calculation-store @meta-store @output-store)]
+  (let [m (compile-model (first @case-store) @calculation-store @meta-store)]
     (if (or (:force-rerun options) (not= periods @period-number-store) (model-changed? m @model-store))
       (do
         (reset! model-store m)
         (reset! period-number-store periods)
         (println "Model changed, rerunning")
-        (display/print-result-summary! (reset! results-store (time (run-model m periods))) (assoc options :model m)))
+        (let [results (reset! results-store (time (run-model m periods)))
+              new-outputs (out/calculate-outputs results m)
+              outputs (out/filter-for-change (out/collate-outputs new-outputs @old-outputs))]
+          (reset! old-outputs new-outputs)
+          (display/print-result-summary! results
+                                         outputs
+                                         (assoc options :model m))))
       (do
         (println "Model unchanged, not rerunning")
-        (display/print-result-summary! @results-store (assoc options :model m))))))
+        (display/print-result-summary! @results-store [] (assoc options :model m))))))
