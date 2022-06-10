@@ -289,14 +289,13 @@
                  :type "text/css"
                  :href "style.css"}]])
 
-(defn print-result-summary! [results outputs {:keys [model sheets start periods header charts show-imports] :as options}]
+(defn print-result-summary! [results outputs {:keys [model sheets start periods header charts show-imports] :as _options}]
   (let [start            (or start 1)
         end              (+ start (or periods 10))
-        metadata         (get-in options [:model :meta])
         display-rows     (map #(conj (display-rows % results) header) sheets)
-        filtered-results (map #(prep-results results metadata % start end) display-rows)
-        import-rows      (conj (import-rows sheets (get-in options [:model :rows])) header)
-        import-results   (prep-results results metadata import-rows start end)
+        filtered-results (map #(prep-results results (:meta model) % start end) display-rows)
+        import-rows      (conj (import-rows sheets (:rows model)) header)
+        import-results   (prep-results results (:meta model) import-rows start end)
         checks           (check-results results header)]
     (spit
      "./results.html"
@@ -304,10 +303,10 @@
             head
             [:body
              (when (not-empty checks) (check-warning checks))
-             (when show-imports (results-table import-results "Imports" metadata))
+             (when show-imports (results-table import-results "Imports" (:meta model)))
              (for [r filtered-results]
-               (results-table r (name->title (sheet (first (second r)))) metadata))
-             (when (not-empty outputs) (output-table outputs metadata))
+               (results-table r (name->title (sheet (first (second r)))) (:meta model)))
+             (when (not-empty outputs) (output-table outputs (:meta model)))
              (when (not-empty charts) [:img.graph {:src (graph-series (map (into {} results) charts))}])]]))))
 
 (comment
