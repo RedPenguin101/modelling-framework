@@ -275,15 +275,14 @@
         (let [[rw [nw dl dlp old]] row
               fmt (get-in metadata [rw :units])
               display-name (get-in metadata [rw :display-name])]
-          (when-not (zero? dl)
-            [:tr
-             [:td.title (or display-name (name->title rw))]
-             [:td.content (display-format nw fmt)]
-             (up-down-arrow dl)
-             [:td.delta (display-format dl fmt)]
-             (up-down-arrow dl)
-             [:td.delta (format-percent dlp)]
-             [:td.content (display-format old fmt)]]))))]])
+          [:tr
+           [:td.title (or display-name (name->title rw))]
+           [:td.content (display-format nw fmt)]
+           (up-down-arrow dl)
+           [:td.delta (display-format dl fmt)]
+           (up-down-arrow dl)
+           [:td.delta (format-percent dlp)]
+           [:td.content (display-format old fmt)]])))]])
 
 (def head
   [:head [:link {:rel :stylesheet
@@ -306,9 +305,9 @@
             [:body
              (when (not-empty checks) (check-warning checks))
              (when show-imports (results-table import-results "Imports" metadata))
-             (when (not-empty outputs) (output-table outputs metadata))
              (for [r filtered-results]
                (results-table r (name->title (sheet (first (second r)))) metadata))
+             (when (not-empty outputs) (output-table outputs metadata))
              (when (not-empty charts) [:img.graph {:src (graph-series (map (into {} results) charts))}])]]))))
 
 (comment

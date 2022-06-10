@@ -578,5 +578,6 @@
 (f/compile-run-display! 183 {:header       :TIME.period/end-date
                              :sheets       ["RCF"]
                              :show-imports false
+                             :force-outputs true
                              :start        1
                              :charts       [:RCF.Balance/end]})

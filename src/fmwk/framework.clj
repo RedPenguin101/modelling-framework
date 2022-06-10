@@ -331,7 +331,8 @@
         (println "Model changed, rerunning")
         (let [results (reset! results-store (time (run-model m periods)))
               new-outputs (out/calculate-outputs results m)
-              outputs (out/filter-for-change (out/collate-outputs new-outputs @old-outputs))]
+              outputs (out/collate-outputs new-outputs @old-outputs)
+              outputs (if (:force-outputs options) outputs (out/filter-for-change outputs))]
           (reset! old-outputs new-outputs)
           (display/print-result-summary! results
                                          outputs
