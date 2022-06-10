@@ -8,7 +8,7 @@
         output-rows (meta-rows (:meta model) :output)]
     (concat
      (for [[nm f] metrics]
-       [nm (f results)])
+       [nm ((eval f) results)])
      (keep (fn [[rw series]]
              (when (output-rows rw)
                [rw (apply + series)]))

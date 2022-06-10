@@ -579,5 +579,6 @@
                              :sheets       ["INVESTMENT-PREMIUM"]
                              :show-imports false
                              :force-outputs true
+                             :force-rerun true
                              :start        1
-                             :charts       [:RCF.Balance/end]})
+                             :charts       []})

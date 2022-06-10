@@ -242,7 +242,7 @@
                  :rows row-map
                  :calculation-order order
                  :runner (eval (tr/make-runner order row-map))
-                 :metrics (map #(update % 1 (comp eval rewrite-metric-expr)) (mapcat qualify-row-names metrics))
+                 :metrics (map #(update % 1 rewrite-metric-expr) (mapcat qualify-row-names metrics))
                  :meta (prep-metadata metadata)})))
 
 ;; Stateful wrappers
