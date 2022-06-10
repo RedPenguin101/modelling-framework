@@ -425,7 +425,7 @@
 
 (bulk-metadata!
  "CASHFLOW.Operating"
- {:units :currency-thousands :total true})
+ {:units :currency-thousands :total true :output true})
 
 (calculation!
  "CASHFLOW.Financing"
@@ -455,7 +455,7 @@
 
 (bulk-metadata!
  "CASHFLOW.Financing"
- {:units :currency-thousands :total true})
+ {:units :currency-thousands :total true :output true})
 
 (metadata!
  "CASHFLOW.Financing"
@@ -486,7 +486,9 @@
 
 (bulk-metadata!
  "INCOME"
- {:units :currency-thousands :total true})
+ {:units  :currency-thousands
+  :total  true
+  :output true})
 
 (metadata!
  "INCOME"

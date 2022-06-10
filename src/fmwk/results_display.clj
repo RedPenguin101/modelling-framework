@@ -197,7 +197,10 @@
 (def sheet (comp first calculation-hierarchy))
 (def calc  (comp second calculation-hierarchy))
 
-(defn table->calc-grouped-table [table]
+(defn table->calc-grouped-table
+  "Given a table where the rows are qualified keywords, will return a table
+   with an additional row for each 'heading' (qualifier)."
+  [table]
   (->> table
        (group-by (comp namespace first))
        (mapcat (fn [[grp rows]] (into [[grp]] rows)))))
@@ -255,37 +258,38 @@
    [:h3 header]
    (results->html-table results metadata)])
 
-(defn output-table [outputs]
+(defn up-down-arrow [det]
+  (cond (zero? det) [:td.up-arrow ""]
+        (pos? det) [:td.up-arrow "▲"]
+        (neg? det) [:td.down-arrow "▼"]))
+
+(defn output-table [outputs metadata]
   [:div
-   [:h3 "Summary: Income"]
+   [:h3 "Outputs"]
    [:table.output
     [:tr
      [:td] [:td "Current"] [:td] [:td "Diff"] [:td] [:td "Diff %"] [:td "Previous"]]
-    [:tr
-     [:td.header "Income"]]
-    [:tr
-     [:td.title "Revenue"]
-     [:td.content "375,239 "]
-     [:td.up-arrow "▲"]
-     [:td.delta "3,829 "]
-     [:td.up-arrow "▲"]
-     [:td.delta "1.03% "]
-     [:td.content "371,410 "]]
-    [:tr
-     [:td.title "Expense"]
-     [:td.content "(123,456)"]
-     [:td.down-arrow "▼"]
-     [:td.delta  "(1,000) "]
-     [:td.down-arrow "▼"]
-     [:td.delta "(1.03%)"]
-     [:td.content "(122,456)"]]]])
+    (for [row (table->calc-grouped-table outputs)]
+      (if (= 1 (count row))
+        [:tr [:td.header (name->title (first row))]]
+        (let [[rw [nw dl dlp old]] row
+              fmt (get-in metadata [rw :units])]
+          (when-not (zero? dl)
+            [:tr
+             [:td.title (name->title rw)]
+             [:td.content (display-format nw fmt)]
+             (up-down-arrow dl)
+             [:td.delta (display-format dl fmt)]
+             (up-down-arrow dl)
+             [:td.delta (format-percent dlp)]
+             [:td.content (display-format old fmt)]]))))]])
 
 (def head
   [:head [:link {:rel :stylesheet
                  :type "text/css"
                  :href "style.css"}]])
 
-(defn print-result-summary! [results {:keys [model sheets start periods header charts show-imports] :as options}]
+(defn print-result-summary! [results outputs {:keys [model sheets start periods header charts show-imports] :as options}]
   (let [start            (or start 1)
         end              (+ start (or periods 10))
         metadata         (get-in options [:model :meta])
@@ -301,7 +305,7 @@
             [:body
              (when (not-empty checks) (check-warning checks))
              (when show-imports (results-table import-results "Imports" metadata))
-             (output-table nil)
+             (when (not-empty outputs) (output-table outputs metadata))
              (for [r filtered-results]
                (results-table r (name->title (sheet (first (second r)))) metadata))
              (when (not-empty charts) [:img.graph {:src (graph-series (map (into {} results) charts))}])]]))))

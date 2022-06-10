@@ -4,7 +4,8 @@
             [ubergraph.core :as uber]
             [ubergraph.alg :as uberalg]
             [fmwk.table-runner :as tr]
-            [fmwk.results-display :as display]))
+            [fmwk.results-display :as display]
+            [fmwk.outputs :as out]))
 
 ;; utils
 ;;;;;;;;;;;;;;
@@ -277,6 +278,7 @@
 (defonce model-store (atom {}))
 (defonce results-store (atom []))
 (defonce period-number-store (atom 0))
+(defonce old-outputs (atom []))
 
 (defn compile-model! []
   (compile-model (first @case-store) @calculation-store @meta-store))
@@ -297,7 +299,13 @@
         (reset! model-store m)
         (reset! period-number-store periods)
         (println "Model changed, rerunning")
-        (display/print-result-summary! (reset! results-store (time (run-model m periods))) (assoc options :model m)))
+        (let [results (reset! results-store (time (run-model m periods)))
+              new-outputs (out/calculate-outputs results m)
+              outputs (out/filter-for-change (out/collate-outputs new-outputs @old-outputs))]
+          (reset! old-outputs new-outputs)
+          (display/print-result-summary! results
+                                         outputs
+                                         (assoc options :model m))))
       (do
         (println "Model unchanged, not rerunning")
-        (display/print-result-summary! @results-store (assoc options :model m))))))
+        (display/print-result-summary! @results-store [] (assoc options :model m))))))
