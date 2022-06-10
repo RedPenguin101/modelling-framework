@@ -551,7 +551,7 @@
 
 (calculation!
  "INVESTMENT-PREMIUM"
- :premium-amount          [:placeholder 10299000]
+ :premium-amount          [:placeholder 6990000]
  :premium                 '(when-flag
                             [:TIME.Operating-Period/close-flag]
                             [:premium-amount])
@@ -576,7 +576,7 @@
   :display-name "Co-invest IRR"})
 
 (f/compile-run-display! 183 {:header       :TIME.period/end-date
-                             :sheets       ["RCF"]
+                             :sheets       ["INVESTMENT-PREMIUM"]
                              :show-imports false
                              :force-outputs true
                              :start        1

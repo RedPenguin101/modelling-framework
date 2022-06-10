@@ -316,6 +316,7 @@
 
   (print-result-summary!
    test-results
+   [nil]
    {:model nil
     :header :period/end-date
     :start 5

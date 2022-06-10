@@ -17,7 +17,6 @@
 (defn dividable? [x] (and x (not (zero? x))))
 
 (defn collate-outputs [new-outputs old-outputs]
-  (println new-outputs)
   (let [oom (into {} old-outputs)]
     (for [[rw no] new-outputs]
       (let [oo (rw oom)
