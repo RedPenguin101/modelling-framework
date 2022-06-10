@@ -1,5 +1,5 @@
 (ns models.gridlines
-  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! corkscrew! totalled-calculation! check!]]
+  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! corkscrew! totalled-calculation! check! metric!]]
             [fmwk.utils :refer [when-flag when-not-flag round mean]]
             [fmwk.dates :refer [year-frac-act-360 month-of add-days add-months date= date< date<= date> date>=]]
             [fmwk.irr   :refer [irr-days]]))
@@ -567,9 +567,18 @@
  :premium                 {:units :currency-thousands}
  :aurelius-share-of-distr {:units :currency-thousands :total true})
 
+(metric! :irr '(irr-days [:TIME.period/end-date :row]
+                         [:INVESTMENT-PREMIUM/aurelius-share-of-distr :row]))
 
-(f/compile-run-display! 10 {:header       :TIME.period/end-date
-                            :sheets       ["RCF"]
-                            :show-imports false
-                            :start        1
-                            :charts       [:RCF.Balance/end]})
+(comment
+  (output-meta!
+   :irr
+   {:units :percent
+    :display-name "Co-invest IRR"}))
+
+
+(f/compile-run-display! 183 {:header       :TIME.period/end-date
+                             :sheets       ["RCF"]
+                             :show-imports false
+                             :start        1
+                             :charts       [:RCF.Balance/end]})

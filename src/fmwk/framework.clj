@@ -134,6 +134,20 @@
 
 (defn- negative-sum-expression [row-names] (list '- (sum-expression row-names)))
 
+;; Output rewriter
+;;;;;;;;;;;;;;;;;;;;;
+
+(defn rewrite-metric-ref [ref]
+  (list 'rest (list ref '(into {} r))))
+
+(defn rewrite-metric-expr [expr]
+  (reverse
+   (conj
+    '([r] fn)
+    (clojure.walk/postwalk
+     #(if (link? %) (rewrite-metric-ref (first %)) %)
+     expr))))
+
 ;; Builders
 ;;;;;;;;;;;;;;;;;;;;;;
 
@@ -177,6 +191,9 @@
 (defn- bulk-metadata [calc-name mp calc]
   [calc-name (zipmap (keys calc) (repeat mp))])
 
+(defn metric [nm expr]
+  ["METRICS" [[nm expr]]])
+
 ;; Calculation and input preparation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Up to this points all inputs to the model have had the format
@@ -212,7 +229,7 @@
           {}
           (mapcat qualify-row-names md)))
 
-(defn- compile-model [inputs calculations metadata]
+(defn- compile-model [inputs calculations metadata metrics]
   (let [rows (mapcat qualify-all-references (into [(input->calculation inputs)] calculations))
         row-map (into {} rows)
         order (calculate-order row-map)]
@@ -222,6 +239,7 @@
                  :rows row-map
                  :calculation-order order
                  :runner (eval (tr/make-runner order row-map))
+                 :metrics (map #(update % 1 (comp eval rewrite-metric-expr)) (mapcat qualify-row-names metrics))
                  :meta (prep-metadata metadata)})))
 
 ;; Stateful wrappers
@@ -230,6 +248,7 @@
 (defonce calculation-store (atom []))
 (defonce case-store (atom []))
 (defonce meta-store (atom []))
+(defonce metric-store (atom []))
 
 (defn- get-calc! [calc-name]
   (get (into {} @calculation-store) calc-name))
@@ -237,11 +256,13 @@
 (defn reset-model! []
   (reset! calculation-store [])
   (reset! case-store [])
-  (reset! meta-store []))
+  (reset! meta-store [])
+  (reset! metric-store []))
 
 (defn- add-calc! [calc] (swap! calculation-store conj calc))
 (defn- add-case! [cas] (swap! case-store conj cas))
 (defn- add-meta! [md] (swap! meta-store conj md))
+(defn- add-metric! [metric] (swap! metric-store conj metric))
 
 (defn calculation! [calc-name & row-pairs]
   (let [md (apply implied-metadata calc-name row-pairs)]
@@ -262,6 +283,9 @@
 (defn base-case! [case-name & row-pairs]
   (add-case! (apply base-case case-name row-pairs)))
 
+(defn metric! [& row-pairs]
+  (add-metric! (apply metric row-pairs)))
+
 (defn check! [calc-name & row-pairs]
   (add-calc! (apply check calc-name row-pairs)))
 
@@ -281,7 +305,7 @@
 (defonce old-outputs (atom []))
 
 (defn compile-model! []
-  (compile-model (first @case-store) @calculation-store @meta-store))
+  (compile-model (first @case-store) @calculation-store @meta-store @metric-store))
 
 (defn run-model [{:keys [display-order calculation-order runner rows]} periods]
   (let [array (tr/make-init-table calculation-order rows periods)
@@ -293,7 +317,7 @@
         (dissoc m2 :runner :meta)))
 
 (defn compile-run-display! [periods options]
-  (let [m (compile-model (first @case-store) @calculation-store @meta-store)]
+  (let [m (compile-model (first @case-store) @calculation-store @meta-store @metric-store)]
     (if (or (:force-rerun options) (not= periods @period-number-store) (model-changed? m @model-store))
       (do
         (reset! model-store m)

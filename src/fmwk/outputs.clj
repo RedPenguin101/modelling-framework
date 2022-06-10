@@ -4,15 +4,20 @@
   (set (keep (fn [[rn m]] (when (attribute m) rn)) metadata)))
 
 (defn calculate-outputs [results model]
-  (let [output-rows (meta-rows (:meta model) :output)]
-    (keep (fn [[rw series]]
-            (when (output-rows rw)
-              [rw (apply + series)]))
-          results)))
+  (let [metrics (:metrics model)
+        output-rows (meta-rows (:meta model) :output)]
+    (concat
+     (for [[nm f] metrics]
+       [nm (f results)])
+     (keep (fn [[rw series]]
+             (when (output-rows rw)
+               [rw (apply + series)]))
+           results))))
 
 (defn dividable? [x] (and x (not (zero? x))))
 
 (defn collate-outputs [new-outputs old-outputs]
+  (println new-outputs)
   (let [oom (into {} old-outputs)]
     (for [[rw no] new-outputs]
       (let [oo (rw oom)
