@@ -1,31 +1,24 @@
 # Todo
-* **DONE** Refactor: When generating table row, only pass the meta for that row to `row->table-row`
 * Something about exports - either highlight or make declares?
+* Expand corkscrews - line item for each increase/decrease, not sum
+* Goal seek following 'IRR For Coinvestor' in Gridlines
+* Circular dependency - find and display
+* Improve checks, show which ones.
+* Display errors (bad refs) in output, not REPL. Goal should be no repl required for simple things.
+* Inputs, base cases, scenarios
+* Warnings on linked dependencies (links which are just other links)
+* Frontend select sheet?
+
+### Secondary
+* Results Diff - colors on changed cells
+* Check on rows, so they can be highlighted?
+* Different color for local link as opposed to import?
 * factor expression parsing/replacement to include following
     * `:row`
     * `:mean`
     * `:first`
     * `:window-mean 3`
     * `:look-back 2`
-* Fix charting to handle negative numbers
-* Totalled calc placeholder yellow 
-* Expand corkscrews - line item for each increase/decrease, not sum
-* Different color for local link as opposed to import?
-* Select outputs to show
-* Goal seek following 'IRR For Coinvestor' in Gridlines
-* Change outputs to calculate on results, not display
-* Circular dependency - find and display
-* Improve checks, show which ones.
-* Check on rows, so they can be highlighted?
-* Display errors (bad refs) in output, not REPL 
-* Inputs, base cases, scenarios
-* Output comparison across scenarios
-* Results Diff - colors on changed cells
-* Save run outputs, display last x (like gridlines output sheet)
-* Warnings on linked dependencies (links which are just other links)
-* different types of col aggregation - sum, avg, etc.
-
-### Secondary
 * In place of `:total true`, Able to specify 'summarize' function, which will be applied to the results. e.g. mean, sum. This might have limited applicability
 * Only-dependencies recalculation? Need to recompile model function
 * Isolate and show circular dependencies
