@@ -586,9 +586,9 @@
  {:units :percent
   :display-name "Blended Equity IRR"})
 
-(f/compile-run-display! 183 {:header        :TIME.period/end-date
+(f/compile-run-display! 182 {:header        :TIME.period/end-date
                              :sheets        ["INVESTMENT-PREMIUM"]
                              :show-imports  false
-                             :force-outputs true
+                             :force-outputs false
                              :start         1
                              :charts        []})

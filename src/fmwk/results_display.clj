@@ -207,26 +207,20 @@
 
 ;; html 
 
-(defn apply-classes [row]
+(defn create-cells [row]
   (cond (= 1 (count row)) (map #(conj [:td.header] %) row)
         :else             (into [[:td.title (first row)]]
                                 (map #(conj [:td.content] %) (rest row)))))
 
-(defn meta-rows [metadata attribute]
-  (set (keep (fn [[rn m]] (when (attribute m) rn)) metadata)))
-
-(defn row->table-row [row metadata]
-  (let [phs     (meta-rows metadata :placeholder)
-        imports (meta-rows metadata :import)
-        totals  (meta-rows metadata :total-row)]
-    (into (cond (phs (first row))     [:tr.placeholder]
-                (imports (first row)) [:tr.import]
-                (totals (first row))  [:tr.total-row]
-                :else [:tr])
-          (apply-classes (update row 0 name->title)))))
+(defn row->table-row [row {:keys [placeholder import total-row]}]
+  (into (cond placeholder  [:tr.placeholder]
+              import       [:tr.import]
+              total-row    [:tr.total-row]
+              :else        [:tr])
+        (create-cells (update row 0 name->title))))
 
 (defn table->html-table [table metadata]
-  (into [:table] (map #(row->table-row % metadata) table)))
+  (into [:table] (map #(row->table-row % (get metadata (first %))) table)))
 
 (defn remove-first-header [html-table]
   (into [:table] (drop 2 html-table)))

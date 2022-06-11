@@ -1,5 +1,5 @@
 (ns models.readme-example
-  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! corkscrew! totalled-calculation! check! outputs!]]
+  (:require [fmwk.framework :as f :refer [base-case! calculation! bulk-metadata! metadata! corkscrew! totalled-calculation! check!]]
             [fmwk.utils :refer [when-flag when-not-flag round mean]]
             [fmwk.dates :refer [year-frac-act-360 month-of add-days add-months date= date< date<= date> date>=]]
             [fmwk.irr :refer [irr-days]]))
