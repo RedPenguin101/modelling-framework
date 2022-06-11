@@ -41,7 +41,9 @@
 (defn scale-factors
   "Given a series of values, will return a tuple of [constant factor].
    These number are those, when applied, will translate the values to
-   new values of between 0 and the provided scale."
+   new values of between 0 and the provided scale.
+   Zero is preserved, i.e. only if there are negative values will a
+   non-zero input value correspond to 0"
   ([values] (scale-factors values 1))
   ([values scale-adjust]
    (let [mn (max (- (apply min values)) 0)]
@@ -50,11 +52,8 @@
 (defn scale [values [cst fct]]
   (map #(float (* fct (+ cst %))) values))
 
-(defn calc-and-scale [values scale-adjust]
+(defn calc-and-scale [scale-adjust values]
   (scale values (scale-factors values scale-adjust)))
-
-(defn flip-vals [size values]
-  (map #(* -1 (- % size)) values))
 
 (defn lines-from-points [points]
   (map vector points (rest points)))
@@ -62,18 +61,26 @@
 (def colors [:red :blue :green :orange])
 
 (defn series-lines-save [series filename]
-  (let [h-size 1000
-        v-size 500
-        margin 0.1
+  (let [h-size   1000
+        v-size   500
+        margin   0.1
         canvas   (c2d/canvas h-size v-size)
         c-series (apply concat series)
         y-scale  (scale-factors c-series (* v-size (- 1 (* 2 margin))))
         y-range  (- (apply max c-series) (apply min c-series))
         z-point  (min 1 (max 0 (/ (- (apply min c-series)) y-range)))
-        x-vals   (map #(+ (* h-size margin) %) (calc-and-scale (range 0 (apply max (map count series))) (* h-size (- 1 (* 2 margin)))))]
+        x-vals   (->> (map count series)
+                      (apply max)
+                      (range 0)
+                      (calc-and-scale (* h-size (- 1 (* 2 margin))))
+                      (map #(+ (* h-size margin) %)))]
     (draw-axis-lines2 canvas h-size v-size z-point)
     (doseq [[s c] (map vector series colors)]
-      (draw-lines canvas (lines-from-points (map vector x-vals (flip-vals v-size (map #(+ (* margin v-size) %) (scale s y-scale)))))
+      (draw-lines canvas (->> (scale s y-scale)
+                              (map #(+ (* margin v-size) %))
+                              (map #(- v-size %))
+                              (map vector x-vals)
+                              lines-from-points)
                   c))
     (c2d/save canvas filename)))
 
@@ -86,13 +93,20 @@
         y-scale  (scale-factors c-series (* v-size (- 1 (* 2 margin))))
         y-range  (- (apply max c-series) (apply min c-series))
         z-point  (min 1 (max 0 (/ (- (apply min c-series)) y-range)))
-        x-vals   (map #(+ (* h-size margin) %) (calc-and-scale (range 0 (apply max (map count series))) (* h-size (- 1 (* 2 margin)))))]
+        x-vals   (->> (map count series)
+                      (apply max)
+                      (range 0)
+                      (calc-and-scale (* h-size (- 1 (* 2 margin))))
+                      (map #(+ (* h-size margin) %)))]
     (draw-axis-lines2 canvas h-size v-size z-point)
     (doseq [[s c] (map vector series colors)]
-      (draw-lines canvas (lines-from-points (map vector x-vals (flip-vals v-size (map #(+ (* margin v-size) %) (scale s y-scale)))))
+      (draw-lines canvas (->> (scale s y-scale)
+                              (map #(+ (* margin v-size) %))
+                              (map #(- v-size %))
+                              (map vector x-vals)
+                              lines-from-points)
                   c))
-    (c2d/show-window canvas "Graph")
-    nil))
+    (c2d/show-window canvas "Graph")))
 
 (comment
   (series-lines ['(0 0 0 0 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 11000 12000 13000 14000 15000 16000)
