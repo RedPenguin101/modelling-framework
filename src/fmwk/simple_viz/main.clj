@@ -1,17 +1,7 @@
 (ns fmwk.simple-viz.main
   (:require [clojure2d.core :as c2d]))
 
-(defn- draw-axis-lines [canvas h-size v-size]
-
-  (c2d/with-canvas-> canvas
-    (c2d/set-color 0 0 0)
-    (c2d/set-stroke 2.0)
-    (c2d/line (int (* 0.1 h-size)) (int (* 0.9 v-size))
-              (int (* 0.9 h-size)) (int (* 0.9 v-size)))
-    (c2d/line (int (* 0.1 h-size)) (int (* 0.1 v-size))
-              (int (* 0.1 h-size)) (int (* 0.9 v-size)))))
-
-(defn- draw-axis-lines2
+(defn- draw-axis-lines
   "v-zero is a number between 0 and 1 which specified how far up
    the y axis, as a proportion, the x-axis should cross. A v-zero
    of 0 would mean the cross is right at the bottom of the plot
@@ -32,7 +22,7 @@
       (c2d/line (int (* 0.1 h-size)) (int (* 0.1 v-size))
                 (int (* 0.1 h-size)) (int (* 0.9 v-size))))))
 
-(defn- draw-lines [canvas lines color]
+(defn- draw-lines [canvas color lines]
   (c2d/with-canvas [c canvas]
     (c2d/set-color c color)
     (doseq [[v1 v2] lines]
@@ -74,21 +64,20 @@
                       (range 0)
                       (calc-and-scale (* h-size (- 1 (* 2 margin))))
                       (map #(+ (* h-size margin) %)))]
-    (draw-axis-lines2 canvas h-size v-size z-point)
+    (draw-axis-lines canvas h-size v-size z-point)
     (doseq [[s c] (map vector series colors)]
-      (draw-lines canvas (->> (scale s y-scale)
-                              (map #(+ (* margin v-size) %))
-                              (map #(- v-size %))
-                              (map vector x-vals)
-                              lines-from-points)
-                  c))
+      (draw-lines canvas c (->> (scale s y-scale)
+                                (map #(+ (* margin v-size) %))
+                                (map #(- v-size %))
+                                (map vector x-vals)
+                                lines-from-points)))
     (c2d/save canvas filename)))
 
 (defn series-lines [series]
   (let [h-size 1000
         v-size 500
-        margin 0.1
         canvas   (c2d/canvas h-size v-size)
+        margin 0.1
         c-series (apply concat series)
         y-scale  (scale-factors c-series (* v-size (- 1 (* 2 margin))))
         y-range  (- (apply max c-series) (apply min c-series))
@@ -98,14 +87,13 @@
                       (range 0)
                       (calc-and-scale (* h-size (- 1 (* 2 margin))))
                       (map #(+ (* h-size margin) %)))]
-    (draw-axis-lines2 canvas h-size v-size z-point)
-    (doseq [[s c] (map vector series colors)]
-      (draw-lines canvas (->> (scale s y-scale)
-                              (map #(+ (* margin v-size) %))
-                              (map #(- v-size %))
-                              (map vector x-vals)
-                              lines-from-points)
-                  c))
+    (draw-axis-lines canvas h-size v-size z-point)
+    (doseq [[values c] (map vector series colors)]
+      (draw-lines canvas c (->> (scale values y-scale)
+                                (map #(+ (* margin v-size) %))
+                                (map #(- v-size %))
+                                (map vector x-vals)
+                                lines-from-points)))
     (c2d/show-window canvas "Graph")))
 
 (comment
