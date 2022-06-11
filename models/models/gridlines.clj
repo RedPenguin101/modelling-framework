@@ -586,9 +586,12 @@
  {:units :percent
   :display-name "Blended Equity IRR"})
 
-(f/compile-run-display! 182 {:header        :TIME.period/end-date
-                             :sheets        ["INVESTMENT-PREMIUM"]
+(f/compile-run-display! 120 {:header        :TIME.period/end-date
+                             :sheets        ["INCOME"]
                              :show-imports  false
                              :force-outputs false
                              :start         1
-                             :charts        []})
+                             :charts        [:INCOME/EBITDA
+                                             :INCOME/depreciation-charge
+                                             :INCOME/corporate-tax-expense
+                                             :INCOME/profit-after-tax]})

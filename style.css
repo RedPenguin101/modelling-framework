@@ -98,6 +98,6 @@ td.header {
 }
 
 img.graph {
-  width: 500;
+  max-width: 600;
   max-height: 300;
 }
