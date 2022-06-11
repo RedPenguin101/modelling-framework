@@ -1,5 +1,5 @@
 # Todo
-* Refactor: When generating table row, only pass the meta for that row to `row->table-row`
+* **DONE** Refactor: When generating table row, only pass the meta for that row to `row->table-row`
 * Something about exports - either highlight or make declares?
 * factor expression parsing/replacement to include following
     * `:row`
